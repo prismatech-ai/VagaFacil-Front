@@ -1,0 +1,83 @@
+"use client"
+
+import React from "react"
+
+import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Briefcase, LogOut } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+
+export function DashboardHeader() {
+  const { user, logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    logout()
+    router.push("/")
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const getRoleLabel = (role: string) => {
+    const labels = {
+      admin: "Administrador",
+      empresa: "Empresa",
+      candidato: "Candidato",
+    }
+    return labels[role as keyof typeof labels] || role
+  }
+
+  return (
+    <header className="border-b bg-card">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Briefcase className="h-8 w-8 text-primary" />
+          <h1 className="text-2xl font-bold text-primary">Vaga Facil</h1>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-medium">{user?.nome}</p>
+            <p className="text-xs text-muted-foreground">{getRoleLabel(user?.role || "")}</p>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar>
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {user?.nome ? getInitials(user.nome) : "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </header>
+  )
+}
