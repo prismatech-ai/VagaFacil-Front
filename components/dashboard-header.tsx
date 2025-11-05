@@ -1,5 +1,7 @@
 "use client"
 
+import React from "react"
+
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -46,7 +48,7 @@ export function DashboardHeader() {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Briefcase className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold text-primary">Job Board</h1>
+          <h1 className="text-2xl font-bold text-primary">Vaga Facil</h1>
         </div>
 
         <div className="flex items-center gap-4">

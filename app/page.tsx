@@ -11,7 +11,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Briefcase className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">Job Board</h1>
+            <h1 className="text-2xl font-bold text-primary">Vaga Facil</h1>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>
@@ -84,7 +84,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t py-6 bg-card">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © 2025 Job Board. Todos os direitos reservados.
+          © 2025 Vaga Facil. Todos os direitos reservados.
         </div>
       </footer>
     </div>

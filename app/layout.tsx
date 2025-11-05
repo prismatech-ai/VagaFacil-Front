@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Job Board - Vagas de Emprego",
+  title: "Vaga Facil - Vagas de Emprego",
   description: "Plataforma de vagas de emprego",
   generator: "v0.app",
 }
