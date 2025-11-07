@@ -1,4 +1,4 @@
-import type { User, Empresa, Candidato, Vaga, Candidatura } from "./types"
+import type { User, Empresa, Candidato, Vaga, Candidatura, Questao } from "./types"
 
 // Usuários mock
 export const mockUsers: (User | Empresa | Candidato)[] = [
@@ -67,5 +67,90 @@ export const mockCandidaturas: Candidatura[] = [
     status: "pendente",
     mensagem: "Tenho grande interesse nesta vaga e acredito que minha experiência se encaixa perfeitamente.",
     createdAt: new Date("2024-03-10"),
+  },
+]
+
+// Questões mock para testes
+export const mockQuestoes: Questao[] = [
+  {
+    id: "q1",
+    pergunta: "O que é React?",
+    tipo: "multipla_escolha",
+    opcoes: ["Uma linguagem de programação", "Uma biblioteca JavaScript para construir interfaces", "Um framework backend", "Um banco de dados"],
+    respostaCorreta: 1,
+    nivelDificuldade: "facil",
+    explicacao: "React é uma biblioteca JavaScript para construir interfaces de usuário.",
+  },
+  {
+    id: "q2",
+    pergunta: "Qual é a função do useState no React?",
+    tipo: "multipla_escolha",
+    opcoes: ["Gerenciar estado global", "Gerenciar estado local de componentes", "Fazer requisições HTTP", "Estilizar componentes"],
+    respostaCorreta: 1,
+    nivelDificuldade: "facil",
+    explicacao: "useState é um hook que permite adicionar estado local a componentes funcionais.",
+  },
+  {
+    id: "q3",
+    pergunta: "O que é JSX?",
+    tipo: "multipla_escolha",
+    opcoes: ["Uma extensão de JavaScript", "Uma sintaxe que permite escrever HTML em JavaScript", "Um pré-processador CSS", "Um framework de testes"],
+    respostaCorreta: 1,
+    nivelDificuldade: "facil",
+    explicacao: "JSX é uma sintaxe que permite escrever HTML-like code em JavaScript.",
+  },
+  {
+    id: "q4",
+    pergunta: "Como você otimiza a performance de um componente React que renderiza uma lista grande?",
+    tipo: "multipla_escolha",
+    opcoes: ["Usando useMemo", "Usando React.memo e useMemo", "Usando React.memo, useMemo e useCallback", "Usando apenas useState"],
+    respostaCorreta: 2,
+    nivelDificuldade: "medio",
+    explicacao: "Para otimizar listas grandes, é recomendado usar React.memo, useMemo e useCallback juntos.",
+  },
+  {
+    id: "q5",
+    pergunta: "Qual é a diferença entre useEffect e useLayoutEffect?",
+    tipo: "multipla_escolha",
+    opcoes: ["Não há diferença", "useLayoutEffect executa antes da pintura do navegador", "useEffect executa antes da pintura", "useLayoutEffect é mais rápido"],
+    respostaCorreta: 1,
+    nivelDificuldade: "medio",
+    explicacao: "useLayoutEffect executa de forma síncrona após todas as mutações do DOM, antes da pintura do navegador.",
+  },
+  {
+    id: "q6",
+    pergunta: "Como você implementaria um custom hook para gerenciar formulários complexos?",
+    tipo: "multipla_escolha",
+    opcoes: ["Usando apenas useState", "Usando useState e useReducer", "Usando useReducer com validação", "Usando bibliotecas como react-hook-form"],
+    respostaCorreta: 3,
+    nivelDificuldade: "medio",
+    explicacao: "Para formulários complexos, é recomendado usar bibliotecas especializadas como react-hook-form.",
+  },
+  {
+    id: "q7",
+    pergunta: "Como você implementaria code splitting em uma aplicação React grande?",
+    tipo: "multipla_escolha",
+    opcoes: ["Usando React.lazy e Suspense", "Usando apenas import dinâmico", "Usando webpack manualmente", "Não é possível fazer code splitting"],
+    respostaCorreta: 0,
+    nivelDificuldade: "dificil",
+    explicacao: "React.lazy e Suspense são as formas recomendadas de fazer code splitting em React.",
+  },
+  {
+    id: "q8",
+    pergunta: "Qual é a melhor estratégia para gerenciar estado global em uma aplicação React grande?",
+    tipo: "multipla_escolha",
+    opcoes: ["Usando apenas Context API", "Usando Redux ou Zustand", "Usando apenas props drilling", "Usando apenas useState"],
+    respostaCorreta: 1,
+    nivelDificuldade: "dificil",
+    explicacao: "Para aplicações grandes, bibliotecas como Redux ou Zustand são mais adequadas que Context API.",
+  },
+  {
+    id: "q9",
+    pergunta: "Como você implementaria SSR (Server-Side Rendering) em React?",
+    tipo: "multipla_escolha",
+    opcoes: ["Usando Next.js ou Remix", "Usando apenas React", "Usando webpack", "Não é possível fazer SSR"],
+    respostaCorreta: 0,
+    nivelDificuldade: "dificil",
+    explicacao: "Next.js e Remix são frameworks que facilitam a implementação de SSR em React.",
   },
 ]
