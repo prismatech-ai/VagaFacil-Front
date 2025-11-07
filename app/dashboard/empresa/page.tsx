@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -133,6 +134,14 @@ export default function EmpresaDashboardPage() {
           <div>
             <h2 className="text-3xl font-bold mb-2">Painel da Empresa</h2>
             <p className="text-muted-foreground">Gerencie suas vagas e candidatos</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/empresa/pipeline">Pipeline</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/empresa/banco-talentos">Banco de Talentos</Link>
+            </Button>
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
