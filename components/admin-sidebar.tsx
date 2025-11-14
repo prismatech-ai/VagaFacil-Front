@@ -1,0 +1,110 @@
+"use client"
+
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  Briefcase,
+  FileText,
+  Bell,
+  HeadphonesIcon,
+} from "lucide-react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
+
+const menuItems = [
+  {
+    title: "Dashboard",
+    icon: LayoutDashboard,
+    href: "/dashboard/admin",
+  },
+  {
+    title: "Empresas",
+    icon: Building2,
+    href: "/dashboard/admin/empresas",
+  },
+  {
+    title: "Candidatos",
+    icon: Users,
+    href: "/dashboard/admin/candidatos",
+  },
+  {
+    title: "Vagas",
+    icon: Briefcase,
+    href: "/dashboard/admin/vagas",
+  },
+  {
+    title: "Testes",
+    icon: FileText,
+    href: "/dashboard/admin/testes",
+  },
+  {
+    title: "Notificações",
+    icon: Bell,
+    href: "/dashboard/admin/notificacoes",
+  },
+  {
+    title: "Suporte",
+    icon: HeadphonesIcon,
+    href: "/dashboard/admin/suporte",
+  },
+]
+
+export function AdminSidebar() {
+  const pathname = usePathname()
+
+  return (
+    <Sidebar>
+      <SidebarHeader className="border-b border-sidebar-border p-4">
+        <div className="flex items-center gap-2">
+          <Briefcase className="h-6 w-6 text-primary" />
+          <span className="font-bold text-lg">Vaga Facil</span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">Painel Administrativo</p>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {menuItems.map((item) => {
+                const Icon = item.icon
+                // Para o Dashboard, verifica exatamente a rota
+                // Para outras rotas, verifica se a rota atual começa com o href
+                const isActive = item.href === "/dashboard/admin"
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href)
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.title}
+                    >
+                      <Link href={item.href}>
+                        <Icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  )
+}
+

@@ -1,9 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
-import { DashboardHeader } from "@/components/dashboard-header"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -12,33 +9,9 @@ import { Users, Building2, Briefcase, FileText, UserCircle, Eye, Trash2 } from "
 import { mockUsers, mockVagas, mockCandidaturas } from "@/lib/mock-data"
 
 export default function AdminDashboardPage() {
-  const router = useRouter()
-  const { user, isLoading } = useAuth()
   const [users, setUsers] = useState(mockUsers)
   const [vagas, setVagas] = useState(mockVagas)
   const [candidaturas, setCandidaturas] = useState(mockCandidaturas)
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/login")
-      return
-    }
-
-    if (user && user.role !== "admin") {
-      router.push("/dashboard")
-    }
-  }, [user, isLoading, router])
-
-  if (isLoading || !user || user.role !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    )
-  }
 
   const empresas = users.filter((u) => u.role === "empresa")
   const candidatos = users.filter((u) => u.role === "candidato")
@@ -69,14 +42,11 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <DashboardHeader />
-
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Painel Administrativo</h2>
-          <p className="text-muted-foreground">Visão completa do sistema e gerenciamento de usuários</p>
-        </div>
+    <>
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold mb-2">Painel Administrativo</h2>
+        <p className="text-muted-foreground">Visão completa do sistema e gerenciamento de usuários</p>
+      </div>
 
         {/* Cards de Estatísticas */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -260,7 +230,6 @@ export default function AdminDashboardPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+    </>
   )
 }
