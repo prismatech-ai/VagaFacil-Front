@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Briefcase, Building2, UserCircle } from "lucide-react"
+import { Building2, UserCircle } from "lucide-react"
+import { Logo } from "@/components/logo"
 
 export default function HomePage() {
   return (
@@ -10,8 +11,7 @@ export default function HomePage() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Briefcase className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">Vaga Facil</h1>
+            <Logo width={140} />
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>

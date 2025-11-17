@@ -14,17 +14,60 @@ export interface User {
 export interface Candidato extends User {
   role: "candidato"
   telefone?: string
+  cpf?: string
+  rg?: string
+  dataNascimento?: Date
+  genero?: "Masculino" | "Feminino" | "Outro" | "Prefiro não informar"
+  estadoCivil?: "Solteiro" | "Casado" | "Divorciado" | "Viúvo" | "União Estável"
+  endereco?: Endereco
   curriculo?: string
   habilidades?: string[]
   educacao?: Educacao[]
   experiencias?: Experiencia[]
   cursos?: Curso[]
   localizacao?: string
-  dataNascimento?: Date
   linkedin?: string
   portfolio?: string
+  autoavaliacoes?: Autoavaliacao[]
   onboardingCompleto?: boolean
 }
+
+// Interface de endereço
+export interface Endereco {
+  cep?: string
+  logradouro?: string
+  numero?: string
+  complemento?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
+}
+
+// Interface de autoavaliação de competências
+export interface Autoavaliacao {
+  id: string
+  area: string // Ex: "Automação", "Elétrica", "Mecânica", etc.
+  competencias: Competencia[]
+  dataRealizacao: Date
+  observacoes?: string
+}
+
+// Interface de competência
+export interface Competencia {
+  id: string
+  nome: string
+  descricao?: string
+  nivel: NivelCompetencia
+  anosExperiencia?: number
+}
+
+// Níveis de competência
+export type NivelCompetencia = 
+  | "Iniciante" 
+  | "Básico" 
+  | "Intermediário" 
+  | "Avançado" 
+  | "Especialista"
 
 // Interface da empresa (estende User)
 export interface Empresa extends User {

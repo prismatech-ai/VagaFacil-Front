@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LogOut } from "lucide-react"
+import { Logo } from "@/components/logo"
 
 export default function AdminLayout({
   children,
@@ -72,7 +73,7 @@ export default function AdminLayout({
             <Separator orientation="vertical" className="h-6" />
             <div className="flex-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-primary">Vaga Facil</h1>
+                <Logo width={120} />
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right hidden sm:block">

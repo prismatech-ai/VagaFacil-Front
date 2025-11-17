@@ -22,6 +22,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { Logo } from "@/components/logo"
 
 const menuItems = [
   {
@@ -68,8 +69,7 @@ export function AdminSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-2">
-          <Briefcase className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg">Vaga Facil</span>
+          <Logo width={100} />
         </div>
         <p className="text-xs text-muted-foreground mt-1">Painel Administrativo</p>
       </SidebarHeader>
