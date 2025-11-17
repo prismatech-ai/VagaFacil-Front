@@ -5,7 +5,7 @@ import React from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Briefcase, LogOut } from "lucide-react"
+import { LogOut } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Logo } from "@/components/logo"
 
 export function DashboardHeader() {
   const { user, logout } = useAuth()
@@ -47,8 +48,7 @@ export function DashboardHeader() {
     <header className="border-b bg-card">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Briefcase className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold text-primary">Vaga Facil</h1>
+          <Logo width={140} />
         </div>
 
         <div className="flex items-center gap-4">

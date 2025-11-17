@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Briefcase, AlertCircle } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Logo } from "@/components/logo"
 
 export default function CadastroPage() {
   const router = useRouter()
@@ -37,6 +39,18 @@ export default function CadastroPage() {
 
   // Dados do candidato
   const [telefone, setTelefone] = useState("")
+  const [cpf, setCpf] = useState("")
+  const [rg, setRg] = useState("")
+  const [dataNascimento, setDataNascimento] = useState("")
+  const [genero, setGenero] = useState("")
+  const [estadoCivil, setEstadoCivil] = useState("")
+  const [cep, setCep] = useState("")
+  const [logradouro, setLogradouro] = useState("")
+  const [numero, setNumero] = useState("")
+  const [complemento, setComplemento] = useState("")
+  const [bairro, setBairro] = useState("")
+  const [cidade, setCidade] = useState("")
+  const [estado, setEstado] = useState("")
 
   useEffect(() => {
     if (tipoParam === "empresa" || tipoParam === "candidato") {
@@ -72,7 +86,23 @@ export default function CadastroPage() {
         nome,
         role: activeTab,
         ...(activeTab === "empresa" && { nomeEmpresa, cnpj }),
-        ...(activeTab === "candidato" && { telefone }),
+        ...(activeTab === "candidato" && {
+          telefone,
+          cpf,
+          rg,
+          dataNascimento: dataNascimento ? new Date(dataNascimento) : undefined,
+          genero: genero as any,
+          estadoCivil: estadoCivil as any,
+          endereco: {
+            cep,
+            logradouro,
+            numero,
+            complemento,
+            bairro,
+            cidade,
+            estado,
+          },
+        }),
       })
 
       if (success) {
@@ -92,8 +122,7 @@ export default function CadastroPage() {
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          <Briefcase className="h-10 w-10 text-primary" />
-          <h1 className="text-3xl font-bold text-primary">Vaga Facil</h1>
+          <Logo width={180} />
         </div>
 
         {/* Card de Cadastro */}
@@ -171,15 +200,165 @@ export default function CadastroPage() {
 
                 {/* Campos específicos do candidato */}
                 <TabsContent value="candidato" className="space-y-4 mt-0">
-                  <div className="space-y-2">
-                    <Label htmlFor="telefone">Telefone (opcional)</Label>
-                    <Input
-                      id="telefone"
-                      type="tel"
-                      placeholder="(00) 00000-0000"
-                      value={telefone}
-                      onChange={(e) => setTelefone(e.target.value)}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="cpf">CPF *</Label>
+                      <Input
+                        id="cpf"
+                        type="text"
+                        placeholder="000.000.000-00"
+                        value={cpf}
+                        onChange={(e) => setCpf(e.target.value)}
+                        required={activeTab === "candidato"}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rg">RG</Label>
+                      <Input
+                        id="rg"
+                        type="text"
+                        placeholder="00.000.000-0"
+                        value={rg}
+                        onChange={(e) => setRg(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="dataNascimento">Data de Nascimento *</Label>
+                      <Input
+                        id="dataNascimento"
+                        type="date"
+                        value={dataNascimento}
+                        onChange={(e) => setDataNascimento(e.target.value)}
+                        required={activeTab === "candidato"}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telefone">Telefone *</Label>
+                      <Input
+                        id="telefone"
+                        type="tel"
+                        placeholder="(00) 00000-0000"
+                        value={telefone}
+                        onChange={(e) => setTelefone(e.target.value)}
+                        required={activeTab === "candidato"}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="genero">Gênero</Label>
+                      <Select value={genero} onValueChange={setGenero}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Masculino">Masculino</SelectItem>
+                          <SelectItem value="Feminino">Feminino</SelectItem>
+                          <SelectItem value="Outro">Outro</SelectItem>
+                          <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="estadoCivil">Estado Civil</Label>
+                      <Select value={estadoCivil} onValueChange={setEstadoCivil}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Solteiro">Solteiro</SelectItem>
+                          <SelectItem value="Casado">Casado</SelectItem>
+                          <SelectItem value="Divorciado">Divorciado</SelectItem>
+                          <SelectItem value="Viúvo">Viúvo</SelectItem>
+                          <SelectItem value="União Estável">União Estável</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-2 border-t">
+                    <h4 className="font-semibold text-sm">Endereço</h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cep">CEP</Label>
+                        <Input
+                          id="cep"
+                          type="text"
+                          placeholder="00000-000"
+                          value={cep}
+                          onChange={(e) => setCep(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                        <Label htmlFor="logradouro">Logradouro</Label>
+                        <Input
+                          id="logradouro"
+                          type="text"
+                          placeholder="Rua, Avenida, etc."
+                          value={logradouro}
+                          onChange={(e) => setLogradouro(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="numero">Número</Label>
+                        <Input
+                          id="numero"
+                          type="text"
+                          placeholder="123"
+                          value={numero}
+                          onChange={(e) => setNumero(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                        <Label htmlFor="complemento">Complemento</Label>
+                        <Input
+                          id="complemento"
+                          type="text"
+                          placeholder="Apto, Bloco, etc."
+                          value={complemento}
+                          onChange={(e) => setComplemento(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="bairro">Bairro</Label>
+                        <Input
+                          id="bairro"
+                          type="text"
+                          placeholder="Bairro"
+                          value={bairro}
+                          onChange={(e) => setBairro(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="cidade">Cidade</Label>
+                        <Input
+                          id="cidade"
+                          type="text"
+                          placeholder="Cidade"
+                          value={cidade}
+                          onChange={(e) => setCidade(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="estado">Estado</Label>
+                        <Input
+                          id="estado"
+                          type="text"
+                          placeholder="UF"
+                          maxLength={2}
+                          value={estado}
+                          onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
 

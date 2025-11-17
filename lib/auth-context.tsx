@@ -20,6 +20,20 @@ interface RegisterData {
   nomeEmpresa?: string
   cnpj?: string
   telefone?: string
+  cpf?: string
+  rg?: string
+  dataNascimento?: Date
+  genero?: "Masculino" | "Feminino" | "Outro" | "Prefiro não informar"
+  estadoCivil?: "Solteiro" | "Casado" | "Divorciado" | "Viúvo" | "União Estável"
+  endereco?: {
+    cep?: string
+    logradouro?: string
+    numero?: string
+    complemento?: string
+    bairro?: string
+    cidade?: string
+    estado?: string
+  }
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -69,6 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }),
       ...(data.role === "candidato" && {
         telefone: data.telefone || "",
+        cpf: data.cpf,
+        rg: data.rg,
+        dataNascimento: data.dataNascimento,
+        genero: data.genero,
+        estadoCivil: data.estadoCivil,
+        endereco: data.endereco,
       }),
     } as User | Empresa | Candidato
 

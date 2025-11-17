@@ -148,6 +148,9 @@ export default function CandidatoDashboardPage() {
                 <Link href="/dashboard/candidato/perfil">Meu Perfil</Link>
               </Button>
               <Button variant="outline" asChild>
+                <Link href="/dashboard/candidato/autoavaliacao">Autoavaliação</Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link href="/dashboard/candidato/testes">Testes</Link>
               </Button>
             </div>
