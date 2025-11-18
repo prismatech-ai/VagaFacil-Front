@@ -34,9 +34,13 @@ export default function CadastroPage() {
   const [nome, setNome] = useState("")
 
   // Dados da empresa
-  const [nomeEmpresa, setNomeEmpresa] = useState("")
+  const [razaoSocial, setRazaoSocial] = useState("")
   const [cnpj, setCnpj] = useState("")
-
+  const [setor, setSetor] = useState("")
+  const [cepEmpresa, setCepEmpresa] = useState("")
+  const [pessoaDeContato, setPessoaDeContato] = useState("")
+  const [foneEmpresa, setFoneEmpresa] = useState("")
+  
   // Dados do candidato
   const [telefone, setTelefone] = useState("")
   const [cpf, setCpf] = useState("")
@@ -72,7 +76,7 @@ export default function CadastroPage() {
       return
     }
 
-    if (activeTab === "empresa" && (!nomeEmpresa || !cnpj)) {
+    if (activeTab === "empresa" && (!razaoSocial || !cnpj)) {
       setError("Preencha todos os campos obrigatórios")
       return
     }
@@ -85,7 +89,7 @@ export default function CadastroPage() {
         password,
         nome,
         role: activeTab,
-        ...(activeTab === "empresa" && { nomeEmpresa, cnpj }),
+        ...(activeTab === "empresa" && { razaoSocial, cnpj }),
         ...(activeTab === "candidato" && {
           telefone,
           cpf,
@@ -147,40 +151,18 @@ export default function CadastroPage() {
                 )}
 
                 {/* Campos comuns */}
-                <div className="space-y-2">
-                  <Label htmlFor="nome">Nome Completo</Label>
-                  <Input
-                    id="nome"
-                    type="text"
-                    placeholder="Seu nome completo"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
+                
 
                 {/* Campos específicos da empresa */}
                 <TabsContent value="empresa" className="space-y-4 mt-0">
                   <div className="space-y-2">
-                    <Label htmlFor="nomeEmpresa">Nome da Empresa</Label>
+                    <Label htmlFor="razaoSocial">Razão Social</Label>
                     <Input
-                      id="nomeEmpresa"
+                      id="razaoSocial"
                       type="text"
                       placeholder="Nome da sua empresa"
-                      value={nomeEmpresa}
-                      onChange={(e) => setNomeEmpresa(e.target.value)}
+                      value={razaoSocial}
+                      onChange={(e) => setRazaoSocial(e.target.value)}
                       required={activeTab === "empresa"}
                     />
                   </div>
@@ -196,11 +178,75 @@ export default function CadastroPage() {
                       required={activeTab === "empresa"}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="setor">Setor</Label>
+                    <Input
+                      id="setor"
+                      type="setor"
+                      placeholder="Celulose"
+                      value={setor}
+                      onChange={(e) => setSetor(e.target.value)}
+                      required={activeTab === "empresa"}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cepEmpresa">CEP</Label>
+                    <Input
+                      id="cepEmpresa"
+                      type="text"
+                      placeholder="00000-000"
+                      value={cepEmpresa}
+                      onChange={(e) => setCepEmpresa(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pessoadecontato">Pessoa de Contato</Label>
+                    <Input
+                      id="pessoadecontato"
+                      type="text"
+                      placeholder="00000-000"
+                      value={pessoaDeContato}
+                      onChange={(e) => setPessoaDeContato(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fone">Fone</Label>
+                    <Input
+                      id="fone"
+                      type="text"
+                      placeholder="00000-000"
+                      value={foneEmpresa}
+                      onChange={(e) => setFoneEmpresa(e.target.value)}
+                    />
+                  </div>
                 </TabsContent>
 
                 {/* Campos específicos do candidato */}
                 <TabsContent value="candidato" className="space-y-4 mt-0">
+
                   <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome">Nome Completo</Label>
+                      <Input
+                        id="nome"
+                        type="text"
+                        placeholder="Seu nome completo"
+                        value={nome}
+                        onChange={(e) => setNome(e.target.value)}
+                        required={activeTab === "candidato"}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="cpf">CPF *</Label>
                       <Input

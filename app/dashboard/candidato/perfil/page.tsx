@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Edit, Trash2, Save } from "lucide-react"
+import { UploadCurriculo } from "@/components/upload-curriculo"
 import type { Candidato, Educacao, Experiencia, Curso } from "@/lib/types"
 
 export default function PerfilPage() {
@@ -27,6 +28,8 @@ export default function PerfilPage() {
     telefone: "",
     localizacao: "",
     curriculo: "",
+    curriculoArquivo: null as string | null,
+    curriculoNome: null as string | null,
     linkedin: "",
     portfolio: "",
     habilidades: [] as string[],
@@ -56,6 +59,8 @@ export default function PerfilPage() {
         telefone: candidatoData.telefone || "",
         localizacao: candidatoData.localizacao || "",
         curriculo: candidatoData.curriculo || "",
+        curriculoArquivo: candidatoData.curriculoArquivo || null,
+        curriculoNome: candidatoData.curriculoNome || null,
         linkedin: candidatoData.linkedin || "",
         portfolio: candidatoData.portfolio || "",
         habilidades: candidatoData.habilidades || [],
@@ -80,6 +85,8 @@ export default function PerfilPage() {
     const updatedCandidato: Candidato = {
       ...candidato,
       ...formData,
+      curriculoArquivo: formData.curriculoArquivo || undefined,
+      curriculoNome: formData.curriculoNome || undefined,
     }
 
     setCandidato(updatedCandidato)
@@ -254,6 +261,28 @@ export default function PerfilPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
+                  <Label>Arquivo do Currículo</Label>
+                  <UploadCurriculo
+                    onFileUpload={(file) => {
+                      // Converte arquivo para base64 (em produção, enviaria para servidor)
+                      const reader = new FileReader()
+                      reader.onloadend = () => {
+                        const base64String = reader.result as string
+                        setFormData({ 
+                          ...formData, 
+                          curriculoArquivo: base64String,
+                          curriculoNome: file.name
+                        })
+                      }
+                      reader.readAsDataURL(file)
+                    }}
+                    currentFile={formData.curriculoArquivo || undefined}
+                    currentFileName={formData.curriculoNome || undefined}
+                    onRemove={() => setFormData({ ...formData, curriculoArquivo: null, curriculoNome: null })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="curriculo">Resumo Profissional</Label>
                   <Textarea
                     id="curriculo"
@@ -261,6 +290,7 @@ export default function PerfilPage() {
                     onChange={(e) => setFormData({ ...formData, curriculo: e.target.value })}
                     disabled={!isEditing}
                     rows={6}
+                    placeholder="Conte um pouco sobre você, suas experiências e objetivos profissionais..."
                   />
                 </div>
                 <div className="space-y-2">

@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Briefcase, Users, Eye, Edit, Trash2, MapPin, DollarSign } from "lucide-react"
+import { Plus, Briefcase, Users, Eye, Edit, Trash2, MapPin, DollarSign, CheckCircle2, X } from "lucide-react"
 import { mockVagas, mockCandidaturas, mockUsers } from "@/lib/mock-data"
 import type { Vaga } from "@/lib/types"
 import {
@@ -36,11 +36,21 @@ export default function EmpresaDashboardPage() {
 
   // Form state
   const [titulo, setTitulo] = useState("")
+  const [senha, setSenha] = useState("")
   const [descricao, setDescricao] = useState("")
   const [requisitos, setRequisitos] = useState("")
+  const [tipoVaga, setTipoVaga] = useState("")
+  const [disciplina, setDisciplina] = useState("")
+  const [nivel, setNivel] = useState<"Júnior" | "Pleno" | "Sênior" | "Especialista" | "">("")
+  const [escolaridade, setEscolaridade] = useState<"Ensino Fundamental" | "Ensino Médio" | "Nível técnico" | "Superior" | "Pós-graduação" | "">("")
+  const [experienciaMinima, setExperienciaMinima] = useState("")
   const [salario, setSalario] = useState("")
   const [localizacao, setLocalizacao] = useState("")
   const [tipo, setTipo] = useState<"CLT" | "PJ" | "Estágio" | "Temporário">("CLT")
+  const [beneficios, setBeneficios] = useState<string[]>([])
+  const [beneficioInput, setBeneficioInput] = useState("")
+  const [vagaCriada, setVagaCriada] = useState<Vaga | null>(null)
+  const [showConfirmacao, setShowConfirmacao] = useState(false)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -72,18 +82,36 @@ export default function EmpresaDashboardPage() {
     return vaga?.empresaId === user.id
   })
 
+  const addBeneficio = () => {
+    if (beneficioInput.trim() && !beneficios.includes(beneficioInput.trim())) {
+      setBeneficios([...beneficios, beneficioInput.trim()])
+      setBeneficioInput("")
+    }
+  }
+
+  const removeBeneficio = (beneficio: string) => {
+    setBeneficios(beneficios.filter((b) => b !== beneficio))
+  }
+
   const handleCreateVaga = (e: React.FormEvent) => {
     e.preventDefault()
 
     const novaVaga: Vaga = {
       id: Date.now().toString(),
       empresaId: user.id,
+      senha: senha || undefined,
       titulo,
       descricao,
       requisitos,
+      tipoVaga: tipoVaga || undefined,
+      disciplina: disciplina || undefined,
+      nivel: nivel || undefined,
+      escolaridade: escolaridade || undefined,
+      experienciaMinima: experienciaMinima || undefined,
       salario: salario || undefined,
       localizacao,
       tipo,
+      beneficios: beneficios.length > 0 ? beneficios : undefined,
       status: "aberta",
       createdAt: new Date(),
     }
@@ -91,14 +119,26 @@ export default function EmpresaDashboardPage() {
     setVagas([...vagas, novaVaga])
     mockVagas.push(novaVaga)
 
+    // Mostrar página de confirmação
+    setVagaCriada(novaVaga)
+    setShowConfirmacao(true)
+    setIsDialogOpen(false)
+
     // Reset form
     setTitulo("")
+    setSenha("")
     setDescricao("")
     setRequisitos("")
+    setTipoVaga("")
+    setDisciplina("")
+    setNivel("")
+    setEscolaridade("")
+    setExperienciaMinima("")
     setSalario("")
     setLocalizacao("")
     setTipo("CLT")
-    setIsDialogOpen(false)
+    setBeneficios([])
+    setBeneficioInput("")
   }
 
   const getStatusBadge = (status: string) => {
@@ -129,6 +169,163 @@ export default function EmpresaDashboardPage() {
     <div className="min-h-screen flex flex-col bg-secondary/30">
       <DashboardHeader />
 
+      {/* Dialog de Confirmação */}
+      {showConfirmacao && vagaCriada && (
+        <Dialog open={showConfirmacao} onOpenChange={setShowConfirmacao}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-2xl">EMPRESA – DADOS DA VAGA</DialogTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowConfirmacao(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Grid com os dados da vaga */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Coluna Esquerda */}
+                <div className="space-y-4">
+                  <Card className="border-2">
+                    <CardContent className="p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">ID</p>
+                        <p className="text-lg font-bold">{vagaCriada.id}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {vagaCriada.senha && (
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Senha</p>
+                          <p className="text-lg font-bold">{vagaCriada.senha}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {vagaCriada.tipoVaga && (
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Tipo de vaga</p>
+                          <p className="text-lg font-bold">{vagaCriada.tipoVaga}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {vagaCriada.disciplina && (
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Disciplina</p>
+                          <p className="text-lg font-bold">{vagaCriada.disciplina}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {vagaCriada.nivel && (
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Nível</p>
+                          <p className="text-lg font-bold">{vagaCriada.nivel}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {vagaCriada.escolaridade && (
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Escolaridade</p>
+                          <p className="text-lg font-bold">{vagaCriada.escolaridade}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Coluna Direita */}
+                <div className="space-y-4">
+                  {vagaCriada.experienciaMinima && (
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Experiência</p>
+                          <p className="text-lg font-bold">{vagaCriada.experienciaMinima}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Card className="border-2">
+                    <CardContent className="p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Local da vaga</p>
+                        <p className="text-lg font-bold">{vagaCriada.localizacao}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {vagaCriada.salario && (
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Faixa salarial</p>
+                          <p className="text-lg font-bold">{vagaCriada.salario}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {vagaCriada.beneficios && vagaCriada.beneficios.length > 0 && (
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Benefícios</p>
+                          <p className="text-lg font-bold">{vagaCriada.beneficios.join(", ")}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
+
+              {/* Mensagem de Confirmação */}
+              <Card className="border-2 border-primary bg-primary/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-6 w-6 text-primary" />
+                    <div>
+                      <p className="text-lg font-bold text-primary mb-1">Parabéns!</p>
+                      <p className="text-sm">
+                        Sua vaga foi cadastrada com <span className="font-bold">sucesso</span>
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-end">
+                <Button onClick={() => setShowConfirmacao(false)}>Fechar</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -151,23 +348,192 @@ export default function EmpresaDashboardPage() {
                 Nova Vaga
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Publicar Nova Vaga</DialogTitle>
-                <DialogDescription>Preencha os detalhes da vaga que deseja publicar</DialogDescription>
+                <DialogTitle>Cadastrar Nova Vaga</DialogTitle>
+                <DialogDescription>Preencha os dados da vaga conforme solicitado</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleCreateVaga} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="titulo">Título da Vaga *</Label>
-                  <Input
-                    id="titulo"
-                    placeholder="Ex: Desenvolvedor Full Stack"
-                    value={titulo}
-                    onChange={(e) => setTitulo(e.target.value)}
-                    required
-                  />
+              <form onSubmit={handleCreateVaga} className="space-y-6">
+                {/* Linha 1: Título e Senha */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="titulo">Título da Vaga *</Label>
+                    <Input
+                      id="titulo"
+                      placeholder="Ex: Técnico em Manutenção"
+                      value={titulo}
+                      onChange={(e) => setTitulo(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="senha">Senha</Label>
+                    <Input
+                      id="senha"
+                      type="text"
+                      placeholder="Ex: CMPC@2025"
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                    />
+                  </div>
                 </div>
 
+                {/* Linha 2: Tipo de Vaga e Disciplina */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tipoVaga">Tipo de Vaga</Label>
+                    <Select value={tipoVaga} onValueChange={setTipoVaga}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Manutenção">Manutenção</SelectItem>
+                        <SelectItem value="Operação">Operação</SelectItem>
+                        <SelectItem value="Projeto">Projeto</SelectItem>
+                        <SelectItem value="Administrativo">Administrativo</SelectItem>
+                        <SelectItem value="Outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="disciplina">Disciplina</Label>
+                    <Select value={disciplina} onValueChange={setDisciplina}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Mecânica">Mecânica</SelectItem>
+                        <SelectItem value="Elétrica">Elétrica</SelectItem>
+                        <SelectItem value="Automação">Automação</SelectItem>
+                        <SelectItem value="Instrumentação">Instrumentação</SelectItem>
+                        <SelectItem value="Caldeiraria e Solda">Caldeiraria e Solda</SelectItem>
+                        <SelectItem value="Civil">Civil</SelectItem>
+                        <SelectItem value="Outra">Outra</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Linha 3: Nível e Escolaridade */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nivel">Nível</Label>
+                    <Select value={nivel} onValueChange={(v) => setNivel(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Júnior">Júnior</SelectItem>
+                        <SelectItem value="Pleno">Pleno</SelectItem>
+                        <SelectItem value="Sênior">Sênior</SelectItem>
+                        <SelectItem value="Especialista">Especialista</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="escolaridade">Escolaridade</Label>
+                    <Select value={escolaridade} onValueChange={(v) => setEscolaridade(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Ensino Fundamental">Ensino Fundamental</SelectItem>
+                        <SelectItem value="Ensino Médio">Ensino Médio</SelectItem>
+                        <SelectItem value="Nível técnico">Nível técnico</SelectItem>
+                        <SelectItem value="Superior">Superior</SelectItem>
+                        <SelectItem value="Pós-graduação">Pós-graduação</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Linha 4: Experiência e Localização */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="experienciaMinima">Experiência Mínima</Label>
+                    <Input
+                      id="experienciaMinima"
+                      placeholder="Ex: mínima 2 anos"
+                      value={experienciaMinima}
+                      onChange={(e) => setExperienciaMinima(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="localizacao">Local da Vaga *</Label>
+                    <Input
+                      id="localizacao"
+                      placeholder="Ex: Guaíba/RS"
+                      value={localizacao}
+                      onChange={(e) => setLocalizacao(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Linha 5: Faixa Salarial e Tipo de Contrato */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="salario">Faixa Salarial</Label>
+                    <Input
+                      id="salario"
+                      placeholder="Ex: R$ 7.000,00"
+                      value={salario}
+                      onChange={(e) => setSalario(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tipo">Tipo de Contrato *</Label>
+                    <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CLT">CLT</SelectItem>
+                        <SelectItem value="PJ">PJ</SelectItem>
+                        <SelectItem value="Estágio">Estágio</SelectItem>
+                        <SelectItem value="Temporário">Temporário</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Benefícios */}
+                <div className="space-y-2">
+                  <Label htmlFor="beneficios">Benefícios</Label>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      id="beneficios"
+                      placeholder="Ex: Plano de saúde, Transporte"
+                      value={beneficioInput}
+                      onChange={(e) => setBeneficioInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addBeneficio())}
+                    />
+                    <Button type="button" onClick={addBeneficio}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {beneficios.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {beneficios.map((beneficio) => (
+                        <div
+                          key={beneficio}
+                          className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full text-sm"
+                        >
+                          <span>{beneficio}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeBeneficio(beneficio)}
+                            className="text-primary hover:text-primary/80"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Descrição e Requisitos */}
                 <div className="space-y-2">
                   <Label htmlFor="descricao">Descrição *</Label>
                   <Textarea
@@ -192,49 +558,11 @@ export default function EmpresaDashboardPage() {
                   />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="tipo">Tipo de Contrato *</Label>
-                    <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CLT">CLT</SelectItem>
-                        <SelectItem value="PJ">PJ</SelectItem>
-                        <SelectItem value="Estágio">Estágio</SelectItem>
-                        <SelectItem value="Temporário">Temporário</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="salario">Faixa Salarial</Label>
-                    <Input
-                      id="salario"
-                      placeholder="Ex: R$ 5.000 - R$ 8.000"
-                      value={salario}
-                      onChange={(e) => setSalario(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="localizacao">Localização *</Label>
-                  <Input
-                    id="localizacao"
-                    placeholder="Ex: São Paulo - SP (Remoto)"
-                    value={localizacao}
-                    onChange={(e) => setLocalizacao(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="flex gap-2 justify-end pt-4">
+                <div className="flex gap-2 justify-end pt-4 border-t">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Publicar Vaga</Button>
+                  <Button type="submit">Cadastrar Vaga</Button>
                 </div>
               </form>
             </DialogContent>
