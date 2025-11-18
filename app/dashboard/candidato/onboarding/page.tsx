@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react"
+import { UploadCurriculo } from "@/components/upload-curriculo"
 import type { Candidato } from "@/lib/types"
 
 const TOTAL_STEPS = 4
@@ -24,6 +25,8 @@ export default function OnboardingPage() {
     localizacao: "",
     habilidades: [] as string[],
     curriculo: "",
+    curriculoArquivo: null as string | null,
+    curriculoNome: null as string | null,
     linkedin: "",
     portfolio: "",
   })
@@ -55,6 +58,8 @@ export default function OnboardingPage() {
     const updatedUser: Candidato = {
       ...(user as Candidato),
       ...formData,
+      curriculoArquivo: formData.curriculoArquivo || undefined,
+      curriculoNome: formData.curriculoNome || undefined,
       onboardingCompleto: true,
     }
     localStorage.setItem("currentUser", JSON.stringify(updatedUser))
@@ -168,6 +173,27 @@ export default function OnboardingPage() {
             {currentStep === 3 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Links e Portfólio</h3>
+                <div className="space-y-2">
+                  <Label>Arquivo do Currículo (opcional)</Label>
+                  <UploadCurriculo
+                    onFileUpload={(file) => {
+                      // Converte arquivo para base64 (em produção, enviaria para servidor)
+                      const reader = new FileReader()
+                      reader.onloadend = () => {
+                        const base64String = reader.result as string
+                        setFormData({ 
+                          ...formData, 
+                          curriculoArquivo: base64String,
+                          curriculoNome: file.name
+                        })
+                      }
+                      reader.readAsDataURL(file)
+                    }}
+                    currentFile={formData.curriculoArquivo || undefined}
+                    currentFileName={formData.curriculoNome || undefined}
+                    onRemove={() => setFormData({ ...formData, curriculoArquivo: null, curriculoNome: null })}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="linkedin">LinkedIn (opcional)</Label>
                   <Input

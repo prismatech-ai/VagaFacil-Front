@@ -20,7 +20,9 @@ export interface Candidato extends User {
   genero?: "Masculino" | "Feminino" | "Outro" | "Prefiro não informar"
   estadoCivil?: "Solteiro" | "Casado" | "Divorciado" | "Viúvo" | "União Estável"
   endereco?: Endereco
-  curriculo?: string
+  curriculo?: string // Resumo profissional em texto
+  curriculoArquivo?: string // URL ou base64 do arquivo de currículo
+  curriculoNome?: string // Nome do arquivo de currículo
   habilidades?: string[]
   educacao?: Educacao[]
   experiencias?: Experiencia[]
@@ -118,12 +120,19 @@ export interface Curso {
 export interface Vaga {
   id: string
   empresaId: string
+  senha?: string // Senha para acesso à vaga
   titulo: string
   descricao: string
   requisitos: string
+  tipoVaga?: string // Ex: "Manutenção", "Operação", etc.
+  disciplina?: string // Ex: "Mecânica", "Elétrica", "Automação", etc.
+  nivel?: "Júnior" | "Pleno" | "Sênior" | "Especialista"
+  escolaridade?: "Ensino Fundamental" | "Ensino Médio" | "Nível técnico" | "Superior" | "Pós-graduação"
+  experienciaMinima?: string // Ex: "mínima 2 anos"
   salario?: string
   localizacao: string
   tipo: "CLT" | "PJ" | "Estágio" | "Temporário"
+  beneficios?: string[] // Ex: ["Plano de saúde", "Transporte"]
   status: "aberta" | "fechada"
   perguntasTriagem?: PerguntaTriagem[]
   createdAt: Date
