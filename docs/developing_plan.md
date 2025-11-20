@@ -1,230 +1,294 @@
-# Developing Plan — Aplicativo de Vagas (Admin / Empresa / Candidato)
+# 🧭 Developing Plan — Plataforma de Recrutamento para Indústria (Protótipo de Telas)
 
-## 1. Visão Geral
-
-Este documento apresenta o plano de desenvolvimento do aplicativo de vagas baseado no **scoping.md**, organizado em fases, entregáveis, responsáveis, dependências e critérios de aceite. O objetivo é trazer clareza aos passos, prioridades e estrutura técnica do desenvolvimento.
-
----
-
-## 2. Metodologia de Trabalho
-
-* **Metodologia:** Ágil (Scrum/Kanban)
-* **Sprints:** 1 a 2 semanas
-* **Entregas incrementais** com foco em módulos independentes
-* **Revisões quinzenais** com stakeholders
+Este plano define a ordem de desenvolvimento das telas do front-end da plataforma de Recrutamento voltada à Indústria.  
+O foco é **prototipagem visual e navegação interativa**, sem integrações reais com backend ou APIs.
 
 ---
 
-## 3. Arquitetura Geral do Sistema
+## 🎯 Etapas Gerais
 
-### Frontend
-
-* React + Vite
-* Componentização orientada a design system
-* API REST para comunicação
-* State Management: Zustand ou Redux
-
-### Backend
-
-* Python (FastAPI ou Django REST Framework)
-* Autenticação JWT
-* PostgreSQL
-* ORM: SQLAlchemy (FastAPI) ou Django ORM
-
-### Infraestrutura
-
-* Docker
-* Deploy em serviços cloud (Render, Railway, AWS ou Azure)
-* CI/CD com GitHub Actions
+1. **Setup do Projeto e Layout Global**  
+2. **Telas de Autenticação e Home**  
+3. **Prototipagem por Perfil de Usuário:**  
+   - Admin  
+   - Empresa  
+   - Candidato  
 
 ---
 
-## 4. Fases do Desenvolvimento
+## 1️⃣ Setup do Projeto e Layout Global
 
-## **Fase 1 — Preparação e Arquitetura (Semana 1–2)**
+### Objetivo
+Criar a estrutura base do front-end com **navegação funcional** e **identidade visual consistente**.
 
-### Entregáveis:
-
-* Configuração do repositório
-* Setup do ambiente backend (Python + framework escolhido)
-* Setup do ambiente frontend (React + estrutura de pastas)
-* Definição de padrões de código e commits
-* Criação do Design System inicial (cores azul e branco, tipografia, botões e inputs)
-
-### Critérios de Aceite:
-
-* Projeto rodando localmente (front + back)
-* Documentação inicial criada
-* CI/CD básico funcionando
+### Tarefas
+- [x] Setup com Next.js + TypeScript + Tailwind + ShadCN UI  
+- [x] Implementar layout global:
+  - Sidebar com ícones por tipo de perfil  
+  - Topbar com nome do usuário (mock)  
+  - Containers e espaçamentos padronizados  
+- [x] Estruturar rotas estáticas para todos os módulos  
+- [x] Definir paleta de cores (tons industriais: cinza, azul, grafite)  
+- [x] Criar componentes base:
+  - `Card`, `Table`, `Button`, `Badge`, `Modal`, `Input`, `Tabs`
 
 ---
 
-## **Fase 2 — Sistema de Autenticação (Semana 2–4)**
+## 2️⃣ Telas de Autenticação e Home
 
-### Funcionalidades:
+### Telas
 
-* Cadastro, login e logout
-* Autenticação JWT
-* Recuperação de senha
-* Redirecionamento baseado em perfil (Admin, Empresa, Candidato)
+- [x] **Login**
+  - Campos: e mail e senha  
+  - Botão “Entrar” (mock)  
+  - Link de “Esqueci minha senha”  
 
-### Entregáveis:
+- [x] **Recuperação de Senha**
+  - Campo de e mail  
+  - Tela de confirmação visual  
 
-* Endpoints de autenticação
-* Telas de login/cadastro
-* Middleware de acesso no frontend
+- [x] **Cadastro Inicial (Empresa e Candidato)**
+  - Campos simples  
+  - Tela de verificação de e mail (mock)
 
-### Critérios de Aceite:
-
-* Usuário consegue criar conta, logar e acessar seu painel
-* Tokens seguros e expiração configurada
-
----
-
-## **Fase 3 — Módulo Candidato (Semana 4–8)**
-
-### Funcionalidades:
-
-* Onboarding guiado
-* Edição de perfil profissional completo
-* Testes dinâmicos (fácil/médio/difícil com adaptação)
-* Descoberta de vagas (listagem + filtros)
-* Aplicação para vagas
-* Minhas candidaturas + status
-
-### Entregáveis:
-
-* CRUD completo no backend
-* Telas de perfil, vagas, testes e candidaturas
-* Sistema de testes automatizados no backend
-
-### Critérios de Aceite:
-
-* Candidato consegue criar perfil, realizar testes e se candidatar
-* Feed e filtros funcionando
+- [x] **Home Genérica**
+  - Tela com botões para acessar dashboards por perfil  
+  - Cards demonstrativos  
 
 ---
 
-## **Fase 4 — Módulo Empresa (Semana 8–12)**
+## 3️⃣ Perfil: Admin
 
-### Funcionalidades:
+### Telas
 
-* Cadastro de empresa e validação
-* Dashboard com métricas
-* Criação, edição, publicação e encerramento de vagas
-* Pipeline de candidatos (movimentação entre etapas)
-* Banco de talentos com filtros
-* Convite direto para vagas
+- [x] **Dashboard Administrativo**
+  - Métricas:
+    - Total de candidatos  
+    - Total de empresas  
+    - Vagas publicadas  
+    - Candidaturas  
+    - Contratações  
+  - Cards clicáveis  
+  - Gráficos placeholder (ApexCharts mock)
 
-### Entregáveis:
+- [x ] **Gestão de Candidatos**
+  - Lista em tabela  
+  - Filtros por formação, localização e status  
+  - Tela de detalhes:
+    - Dados pessoais  
+    - Formação  
+    - Experiência  
+    - Testes  
+    - Histórico de candidaturas  
 
-* Endpoints para vagas e pipeline
-* Telas de gestão, listagens e pipeline drag-and-drop
+- [ ] **Gestão de Empresas**
+  - Tabela com filtros  
+  - Modal de cadastro/edição  
+  - Tela de detalhes:
+    - Dados institucionais  
+    - Vagas publicadas  
+    - Usuários da empresa  
 
-### Critérios de Aceite:
+- [ ] **Gestão de Vagas**
+  - Tabela geral  
+  - Filtros por status, empresa, período  
+  - Tela de detalhes da vaga:
+    - Descrição completa  
+    - Lista de candidatos  
+    - Métricas básicas  
 
-* Empresa consegue criar vaga, gerenciar pipeline e convidar candidatos
+- [ ] **Testes**
+  - Tela de listagem  
+  - Tela de criação de teste:
+    - Perguntas por nível (N, B, I, A, E)  
+    - Pools de dificuldade: fácil, médio, difícil  
+  - Tela de edição  
 
----
+- [ ] **Suporte**
+  - Lista de tickets (cores por status)  
+  - Tela de mensagens (thread visual)
 
-## **Fase 5 — Módulo Administrador (Semana 12–15)**
-
-### Funcionalidades:
-
-* Dashboard geral com métricas globais
-* Gestão completa de candidatos
-* Gestão completa de empresas
-* Gestão de vagas (listar, editar, deletar)
-* Criação e edição de testes padronizados
-* Suporte e mensagens
-* Notificações
-
-### Entregáveis:
-
-* Painel administrativo completo
-* Ferramentas CRUD avançadas
-
-### Critérios de Aceite:
-
-* Admin consegue monitorar e controlar todo o sistema
-
----
-
-## **Fase 6 — Notificações e Comunicação (Semana 15–16)**
-
-### Funcionalidades:
-
-* Notificações para todos os perfis
-* Convites, atualizações de status e alertas internos
-* Sistema de tickets (Admin ↔ Empresa/Candidato)
-
-### Critérios de Aceite:
-
-* Notificações entregues conforme eventos do backend
+- [ ] **Notificações**
+  - Tela com histórico de alertas  
 
 ---
 
-## **Fase 7 — Revisões, Otimizações e QA (Semana 16–18)**
+## 4️⃣ Perfil: Empresa
 
-### Atividades:
+### Telas
 
-* Testes completos (unitários + integração)
-* Ajustes de performance
-* Correção de bugs
-* Revisão de UX
+- [ ] **Dashboard da Empresa**
+  - Vagas abertas  
+  - Candidatos por etapa  
+  - Visualizações de vagas  
+  - Botões de atalho: Criar Vaga, Banco de Talentos  
 
-### Entregáveis:
+- [ ] **Perfil da Empresa**
+  - Página pública visual (logo, descrição, localização)  
+  - Página interna para edição  
+  - Gestão de usuários da organização  
 
-* Build final para deploy
-* Documentação completa da API e do sistema
+- [ ] **Gestão de Vagas**
+  - Criação de vaga:
+    - Descrição completa  
+    - Perguntas de triagem  
+  - Publicar vaga  
+  - Editar vaga  
+  - Encerrar vaga  
+  - Tela de listagem com métricas por vaga  
 
----
+- [ ] **Pipeline de Candidatos**
+  - Colunas:
+    - Em análise  
+    - Entrevista  
+    - Finalista  
+    - Recusado  
+  - Funcionalidade drag and drop (mock)  
+  - Tela de detalhes do candidato  
 
-## 5. Estrutura do Banco de Dados
+- [ ] **Banco de Talentos**
+  - Lista completa de candidatos  
+  - Filtros por:
+    - Pontuação  
+    - Localização  
+    - Competências  
+  - Opção de convidar para vaga  
+  - Ver histórico de testes  
 
-### Tabelas Principais:
+- [ ] **Resultados de Testes**
+  - Níveis por habilidade  
+  - Gráficos simples (mock)
 
-* users
-* candidates
-* companies
-* jobs
-* job_applications
-* tests
-* test_questions
-* test_results
-* support_tickets
-* notifications
+- [ ] **Notificações**
+  - Novos candidatos  
+  - Atualizações no pipeline  
 
----
+- [ ] **Conta e Privacidade**
+  - Editar informações  
+  - Encerrar conta (confirmação visual)
 
-## 6. Dependências e Riscos
-
-### Dependências:
-
-* Serviço externo de validação de CNPJ
-* Infraestrutura para e-mail
-
-### Riscos:
-
-* Complexidade do teste adaptativo
-* Volume alto de dados no pipeline
-* Mudança de requisitos durante o desenvolvimento
-
----
-
-## 7. Roadmap Macro
-
-* **Mês 1:** Arquitetura + Autenticação
-* **Mês 2:** Módulo Candidato
-* **Mês 3:** Módulo Empresa
-* **Mês 4:** Módulo Admin + QA
-
----
-
-## 8. Considerações Finais
-
-O plano de desenvolvimento organiza o projeto em etapas claras, priorizando módulos de maior impacto inicial e garantindo escalabilidade futura. Alterações no escopo podem gerar versões 2.0.
+- [ ] **Suporte**
+  - Abertura de ticket  
+  - Histórico  
 
 ---
 
-**Documento finalizado — developing_plan.md**
+## 5️⃣ Perfil: Candidato
+
+### Telas
+
+- [ ] **Onboarding do Candidato**
+  - Multi step:
+    - Dados pessoais  
+    - Verificação PCD  
+    - Formação e experiência  
+    - Autoavaliação de habilidades  
+    - Teste inicial  
+  - Barra de progresso e feedback visual  
+
+- [ ] **Perfil do Candidato**
+  - Dados pessoais  
+  - Currículo  
+  - Educação  
+  - Experiência  
+  - Testes realizados  
+
+- [ ] **Testes**
+  - Execução do teste dinâmico:
+    - Níveis N, B, I, A, E  
+    - Pools fácil, médio e difícil  
+  - Tela de resultado visual  
+
+- [ ] **Descoberta de Vagas**
+  - Feed de vagas recomendadas  
+  - Lista com filtros  
+  - Tela da vaga completa  
+  - Tipos:
+    - Emprego  
+    - Trabalho temporário  
+
+- [ ] **Candidatura**
+  - Aplicar com o perfil salvo  
+  - Tela de confirmação  
+
+- [ ] **Minhas Candidaturas**
+  - Lista com status:
+    - Pré selecionado  
+    - Sigilo liberado  
+    - Entrevista  
+    - Selecionado  
+    - Contratado  
+
+- [ ] **Conta e Privacidade**
+  - Editar dados  
+  - Encerrar conta  
+
+- [ ] **Notificações**
+  - Alterações no pipeline  
+  - Convites de teste  
+  - Vagas recomendadas  
+
+---
+
+## ♻️ Componentes Reutilizáveis
+
+- [ ] `DataTable` – tabela com paginação, busca e filtros  
+- [ ] `ModalBase` – modais reutilizáveis  
+- [ ] `FormBuilder` – construção rápida de formulários  
+- [ ] `CardKPI` – indicadores do dashboard  
+- [ ] `ChartCard` – gráficos placeholder  
+- [ ] `ProfileCard` – exibição compacta de perfis  
+- [ ] `PipelineBoard` – funil de etapas (mock)  
+- [ ] `FileUpload` – upload de currículo e nota fiscal (drag and drop)  
+- [ ] `NotificationBell` – contador visual de notificações  
+- [ ] `EmptyState` e `ErrorState` – estados visuais  
+
+---
+
+## 🔗 Navegação de Rotas (Protótipo)
+app/
+login
+recuperar-senha
+home
+
+admin/
+dashboard
+candidatos
+empresas
+vagas
+testes
+suporte
+notificacoes
+
+empresa/
+dashboard
+perfil
+vagas
+vagas/criar
+vagas/[id]
+pipeline
+talentos
+testes
+suporte
+configuracoes
+
+candidato/
+onboarding
+perfil
+testes
+vagas
+vagas/[id]
+candidaturas
+notificacoes
+configuracoes
+
+## ✅ Considerações Finais
+
+- O objetivo é construir **todas as telas navegáveis**, com dados mockados.  
+- Não haverá integrações com bancos ou API nesta etapa.  
+- A identidade visual deve ser **consistente entre perfis**.  
+- As rotas devem permitir demonstração fluida do fluxo completo.  
+- Prototipagem serve como base para:
+  - Validação UX  
+  - Pitch para empresas  
+  - Entendimento técnico para a fase 2 (backend + integrações)

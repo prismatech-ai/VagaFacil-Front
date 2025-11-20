@@ -1,3 +1,4 @@
+// Copied from old admin layout, with same content
 "use client"
 
 import { useEffect } from "react"
@@ -112,4 +113,5 @@ export default function AdminLayout({
     </SidebarProvider>
   )
 }
+
 
