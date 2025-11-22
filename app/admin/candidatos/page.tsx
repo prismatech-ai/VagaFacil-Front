@@ -10,26 +10,30 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Eye, Pencil, Search, Trash2, MapPin, Link as LinkIcon, Plus } from "lucide-react"
+import { Eye, Pencil, Search, Trash2, MapPin, LinkIcon, Mail, Filter, Award } from "lucide-react"
 import { mockUsers } from "@/lib/mock-data"
 import type { Candidato } from "@/lib/types"
+import { Slider } from "@/components/ui/slider"
 
 export default function AdminCandidatosPage() {
   const initialCandidatos = useMemo(
     () => (mockUsers.filter((u) => u.role === "candidato") as Candidato[]).map((c) => ({ ...c })),
-    []
+    [],
   )
   const [candidatos, setCandidatos] = useState<Candidato[]>(initialCandidatos)
   const [filtros, setFiltros] = useState({
     busca: "",
     localizacao: "",
     habilidade: "",
+    anosExperienciaMin: 0,
+    anosExperienciaMax: 20,
   })
 
   const [dialogVerOpen, setDialogVerOpen] = useState(false)
   const [dialogEditarOpen, setDialogEditarOpen] = useState(false)
   const [conviteDialogOpen, setConviteDialogOpen] = useState(false)
   const [emailConvite, setEmailConvite] = useState("")
+  const [nomeConvite, setNomeConvite] = useState("")
   const [candidatoSelecionado, setCandidatoSelecionado] = useState<Candidato | null>(null)
   const [formEdicao, setFormEdicao] = useState({
     nome: "",
@@ -38,6 +42,7 @@ export default function AdminCandidatosPage() {
     localizacao: "",
     linkedin: "",
     habilidades: "",
+    anosExperiencia: 0,
   })
 
   const getInitials = (name: string) => {
@@ -60,9 +65,10 @@ export default function AdminCandidatosPage() {
         c.email.toLowerCase().includes(busca) ||
         (c.curriculo?.toLowerCase().includes(busca) ?? false)
       const matchLocal = !local || (c.localizacao?.toLowerCase().includes(local) ?? false)
-      const matchHab =
-        !hab || (c.habilidades?.some((h) => h.toLowerCase().includes(hab)) ?? false)
-      return matchBusca && matchLocal && matchHab
+      const matchHab = !hab || (c.habilidades?.some((h) => h.toLowerCase().includes(hab)) ?? false)
+      const matchAnosExp =
+        (c.anosExperiencia ?? 0) >= filtros.anosExperienciaMin && (c.anosExperiencia ?? 0) <= filtros.anosExperienciaMax
+      return matchBusca && matchLocal && matchHab && matchAnosExp
     })
   }, [candidatos, filtros])
 
@@ -80,6 +86,7 @@ export default function AdminCandidatosPage() {
       localizacao: cand.localizacao ?? "",
       linkedin: cand.linkedin ?? "",
       habilidades: cand.habilidades?.join(", ") ?? "",
+      anosExperiencia: cand.anosExperiencia ?? 0,
     })
     setDialogEditarOpen(true)
   }
@@ -101,9 +108,10 @@ export default function AdminCandidatosPage() {
               localizacao: formEdicao.localizacao || undefined,
               linkedin: formEdicao.linkedin || undefined,
               habilidades,
+              anosExperiencia: formEdicao.anosExperiencia,
             }
-          : c
-      )
+          : c,
+      ),
     )
     setDialogEditarOpen(false)
   }
@@ -112,28 +120,58 @@ export default function AdminCandidatosPage() {
     setCandidatos((prev) => prev.filter((c) => c.id !== id))
   }
 
+  const enviarConvite = () => {
+    if (!emailConvite.trim()) return
+    // Mock: Send invitation email with onboarding link
+    console.log(`[v0] Convite enviado para ${emailConvite} (Nome: ${nomeConvite || "Não informado"})`)
+    console.log(`[v0] Email incluirá link para cadastro básico, experiência, currículo, autoavaliação e testes`)
+
+    // Reset form
+    setEmailConvite("")
+    setNomeConvite("")
+    setConviteDialogOpen(false)
+  }
+
+  const limparFiltros = () => {
+    setFiltros({
+      busca: "",
+      localizacao: "",
+      habilidade: "",
+      anosExperienciaMin: 0,
+      anosExperienciaMax: 20,
+    })
+  }
+
   return (
     <>
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold mb-2">Gestão de Candidatos</h2>
           <p className="text-muted-foreground">
-            Lista completa de candidatos com filtros e ações administrativas
+            Lista completa de candidatos com filtros avançados e ações administrativas
           </p>
         </div>
         <Button onClick={() => setConviteDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Mail className="h-4 w-4 mr-2" />
           Convidar Candidato
         </Button>
       </div>
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>Busque por nome, email, localização e habilidades</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Filtros Avançados</CardTitle>
+              <CardDescription>Busque e filtre candidatos por características específicas</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={limparFiltros}>
+              <Filter className="h-4 w-4 mr-2" />
+              Limpar Filtros
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="space-y-2">
               <Label htmlFor="busca">Buscar</Label>
               <div className="relative">
@@ -166,19 +204,49 @@ export default function AdminCandidatosPage() {
               />
             </div>
           </div>
+
+          <div className="space-y-2">
+            <Label>
+              Anos de Experiência: {filtros.anosExperienciaMin} - {filtros.anosExperienciaMax} anos
+            </Label>
+            <div className="flex gap-4 items-center">
+              <span className="text-sm text-muted-foreground w-8">0</span>
+              <Slider
+                min={0}
+                max={20}
+                step={1}
+                value={[filtros.anosExperienciaMin, filtros.anosExperienciaMax]}
+                onValueChange={(values) =>
+                  setFiltros({ ...filtros, anosExperienciaMin: values[0], anosExperienciaMax: values[1] })
+                }
+                className="flex-1"
+              />
+              <span className="text-sm text-muted-foreground w-8">20+</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Dialog: Convidar Candidato */}
       <Dialog open={conviteDialogOpen} onOpenChange={setConviteDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Convidar Candidato</DialogTitle>
             <DialogDescription>
-              Informe o e-mail do candidato. Ele receberá um link para realizar o cadastro e onboarding.
+              Informe os dados do candidato. Ele receberá um email com link para completar o cadastro incluindo: dados
+              básicos, experiências, currículo, autoavaliação e testes.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nome-convite">Nome do candidato (opcional)</Label>
+              <Input
+                id="nome-convite"
+                type="text"
+                placeholder="João Silva"
+                value={nomeConvite}
+                onChange={(e) => setNomeConvite(e.target.value)}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email-convite">E-mail do candidato</Label>
               <Input
@@ -189,11 +257,23 @@ export default function AdminCandidatosPage() {
                 onChange={(e) => setEmailConvite(e.target.value)}
               />
             </div>
+
+            <div className="p-3 bg-muted rounded-lg text-xs space-y-1">
+              <p className="font-medium">O candidato terá acesso a:</p>
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                <li>Cadastro básico de dados pessoais</li>
+                <li>Experiências profissionais e currículo</li>
+                <li>Autoavaliação de habilidades</li>
+                <li>Testes de competência (após login)</li>
+              </ul>
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" type="button" onClick={() => setConviteDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="button" disabled={!emailConvite.trim()} onClick={() => setConviteDialogOpen(false)}>
+              <Button type="button" disabled={!emailConvite.trim()} onClick={enviarConvite}>
+                <Mail className="h-4 w-4 mr-2" />
                 Enviar Convite
               </Button>
             </div>
@@ -204,7 +284,7 @@ export default function AdminCandidatosPage() {
       <Card>
         <CardHeader>
           <CardTitle>Candidatos</CardTitle>
-          <CardDescription>{candidatosFiltrados.length} resultados</CardDescription>
+          <CardDescription>{candidatosFiltrados.length} resultados encontrados</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -214,6 +294,7 @@ export default function AdminCandidatosPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Localização</TableHead>
+                  <TableHead>Experiência</TableHead>
                   <TableHead>Habilidades</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -221,8 +302,8 @@ export default function AdminCandidatosPage() {
               <TableBody>
                 {candidatosFiltrados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      Nenhum candidato encontrado
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      Nenhum candidato encontrado com os filtros aplicados
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -237,9 +318,7 @@ export default function AdminCandidatosPage() {
                           </Avatar>
                           <div>
                             <div className="font-medium">{c.nome}</div>
-                            {c.telefone && (
-                              <div className="text-xs text-muted-foreground">{c.telefone}</div>
-                            )}
+                            {c.telefone && <div className="text-xs text-muted-foreground">{c.telefone}</div>}
                           </div>
                         </div>
                       </TableCell>
@@ -251,15 +330,27 @@ export default function AdminCandidatosPage() {
                         </div>
                       </TableCell>
                       <TableCell className="align-top">
+                        <div className="flex items-center gap-2 text-sm">
+                          {c.anosExperiencia ? (
+                            <>
+                              <Award className="h-4 w-4 text-muted-foreground" />
+                              {c.anosExperiencia} anos
+                            </>
+                          ) : (
+                            "-"
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
                         <div className="flex flex-wrap gap-1 max-w-[360px]">
-                          {(c.habilidades ?? []).slice(0, 4).map((h) => (
+                          {(c.habilidades ?? []).slice(0, 3).map((h) => (
                             <Badge key={h} variant="outline" className="text-xs">
                               {h}
                             </Badge>
                           ))}
-                          {(c.habilidades?.length ?? 0) > 4 && (
+                          {(c.habilidades?.length ?? 0) > 3 && (
                             <Badge variant="outline" className="text-xs">
-                              +{(c.habilidades?.length ?? 0) - 4}
+                              +{(c.habilidades?.length ?? 0) - 3}
                             </Badge>
                           )}
                         </div>
@@ -272,11 +363,7 @@ export default function AdminCandidatosPage() {
                           <Button variant="ghost" size="sm" onClick={() => abrirEditar(c)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removerCandidato(c.id)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => removerCandidato(c.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -290,100 +377,149 @@ export default function AdminCandidatosPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog: Ver Perfil */}
       <Dialog open={dialogVerOpen} onOpenChange={setDialogVerOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do Candidato</DialogTitle>
+            <DialogTitle>Perfil do Candidato</DialogTitle>
             <DialogDescription>
               {candidatoSelecionado?.nome} - {candidatoSelecionado?.email}
             </DialogDescription>
           </DialogHeader>
           {candidatoSelecionado && (
             <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold mb-2">Informações Pessoais</h4>
-                <div className="space-y-1 text-sm">
-                  {candidatoSelecionado.telefone && (
-                    <p>
-                      <span className="font-medium">Telefone:</span> {candidatoSelecionado.telefone}
-                    </p>
-                  )}
-                  {candidatoSelecionado.localizacao && (
-                    <p>
-                      <span className="font-medium">Localização:</span> {candidatoSelecionado.localizacao}
-                    </p>
-                  )}
-                  {candidatoSelecionado.linkedin && (
-                    <p className="flex items-center gap-2">
-                      <LinkIcon className="h-4 w-4" />
-                      <a
-                        href={candidatoSelecionado.linkedin}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        LinkedIn
-                      </a>
-                    </p>
-                  )}
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Informações Pessoais</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {candidatoSelecionado.telefone && (
+                      <p>
+                        <span className="font-medium">Telefone:</span> {candidatoSelecionado.telefone}
+                      </p>
+                    )}
+                    {candidatoSelecionado.localizacao && (
+                      <p>
+                        <span className="font-medium">Localização:</span> {candidatoSelecionado.localizacao}
+                      </p>
+                    )}
+                    {candidatoSelecionado.anosExperiencia !== undefined && (
+                      <p>
+                        <span className="font-medium">Experiência:</span> {candidatoSelecionado.anosExperiencia} anos
+                      </p>
+                    )}
+                    {candidatoSelecionado.linkedin && (
+                      <p className="flex items-center gap-2">
+                        <LinkIcon className="h-4 w-4" />
+                        <a
+                          href={candidatoSelecionado.linkedin}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          LinkedIn
+                        </a>
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Status</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Cadastro completo:</span>
+                      <Badge variant="outline">Sim</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Currículo enviado:</span>
+                      <Badge variant="outline">{candidatoSelecionado.curriculo ? "Sim" : "Não"}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Testes realizados:</span>
+                      <Badge variant="outline">{candidatoSelecionado.testesRealizados?.length ?? 0}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {candidatoSelecionado.curriculo && (
-                <div>
-                  <h4 className="font-semibold mb-2">Resumo Profissional</h4>
-                  <p className="text-sm text-muted-foreground">{candidatoSelecionado.curriculo}</p>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Resumo Profissional</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">{candidatoSelecionado.curriculo}</p>
+                  </CardContent>
+                </Card>
               )}
 
               {candidatoSelecionado.habilidades && candidatoSelecionado.habilidades.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Habilidades</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {candidatoSelecionado.habilidades.map((habilidade) => (
-                      <Badge key={habilidade} variant="outline">
-                        {habilidade}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Habilidades</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {candidatoSelecionado.habilidades.map((habilidade) => (
+                        <Badge key={habilidade} variant="secondary">
+                          {habilidade}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
               {candidatoSelecionado.educacao && candidatoSelecionado.educacao.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Formação</h4>
-                  <div className="space-y-2">
-                    {candidatoSelecionado.educacao.map((edu) => (
-                      <div key={edu.id} className="p-3 border rounded-lg">
-                        <p className="font-medium">{edu.curso}</p>
-                        <p className="text-sm text-muted-foreground">{edu.instituicao}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {edu.nivel} • {edu.status}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Formação Acadêmica</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {candidatoSelecionado.educacao.map((edu) => (
+                        <div key={edu.id} className="p-3 border rounded-lg">
+                          <p className="font-medium">{edu.curso}</p>
+                          <p className="text-sm text-muted-foreground">{edu.instituicao}</p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {edu.nivel}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {edu.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
               {candidatoSelecionado.experiencias && candidatoSelecionado.experiencias.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Experiência Profissional</h4>
-                  <div className="space-y-2">
-                    {candidatoSelecionado.experiencias.map((exp) => (
-                      <div key={exp.id} className="p-3 border rounded-lg">
-                        <p className="font-medium">{exp.cargo}</p>
-                        <p className="text-sm text-muted-foreground">{exp.empresa}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {exp.dataInicio.toLocaleDateString("pt-BR")} -{" "}
-                          {exp.atual ? "Atual" : exp.dataFim?.toLocaleDateString("pt-BR")}
-                        </p>
-                        {exp.descricao && <p className="text-sm mt-2">{exp.descricao}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Experiência Profissional</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {candidatoSelecionado.experiencias.map((exp) => (
+                        <div key={exp.id} className="p-3 border rounded-lg">
+                          <p className="font-medium">{exp.cargo}</p>
+                          <p className="text-sm text-muted-foreground">{exp.empresa}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {exp.dataInicio.toLocaleDateString("pt-BR")} -{" "}
+                            {exp.atual ? "Atual" : exp.dataFim?.toLocaleDateString("pt-BR")}
+                          </p>
+                          {exp.descricao && <p className="text-sm mt-2">{exp.descricao}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           )}
@@ -441,6 +577,18 @@ export default function AdminCandidatosPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="anosExperiencia">Anos de Experiência</Label>
+                <Input
+                  id="anosExperiencia"
+                  type="number"
+                  min="0"
+                  value={formEdicao.anosExperiencia}
+                  onChange={(e) =>
+                    setFormEdicao((f) => ({ ...f, anosExperiencia: Number.parseInt(e.target.value) || 0 }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="habilidades">Habilidades</Label>
                 <Input
                   id="habilidades"
@@ -464,5 +612,3 @@ export default function AdminCandidatosPage() {
     </>
   )
 }
-
-

@@ -1,7 +1,8 @@
-// Copied from old admin layout, with same content
 "use client"
 
-import { useEffect } from "react"
+import type React from "react"
+
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
@@ -17,8 +18,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut } from "lucide-react"
+import { LogOut, Bell } from "lucide-react"
 import { Logo } from "@/components/logo"
+import { Badge } from "@/components/ui/badge"
+import { mockNotificacoes } from "@/lib/mock-data"
 
 export default function AdminLayout({
   children,
@@ -27,6 +30,8 @@ export default function AdminLayout({
 }) {
   const router = useRouter()
   const { user, isLoading, logout } = useAuth()
+
+  const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -38,6 +43,12 @@ export default function AdminLayout({
       router.push("/dashboard")
     }
   }, [user, isLoading, router])
+
+  useEffect(() => {
+    // Count unread notifications sent by admin
+    const naoLidas = mockNotificacoes.filter((n) => !n.lida && n.createdBy === "1").length
+    setNotificacoesNaoLidas(naoLidas)
+  }, [])
 
   if (isLoading || !user || user.role !== "admin") {
     return (
@@ -77,6 +88,23 @@ export default function AdminLayout({
                 <Logo width={120} />
               </div>
               <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
+                  onClick={() => router.push("/admin/notificacoes")}
+                >
+                  <Bell className="h-5 w-5" />
+                  {notificacoesNaoLidas > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    >
+                      {notificacoesNaoLidas}
+                    </Badge>
+                  )}
+                </Button>
+
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-medium">{user?.nome}</p>
                   <p className="text-xs text-muted-foreground">Administrador</p>
@@ -105,13 +133,9 @@ export default function AdminLayout({
           </div>
         </header>
         <main className="flex-1 overflow-auto bg-secondary/30">
-          <div className="container mx-auto p-6">
-            {children}
-          </div>
+          <div className="container mx-auto p-6">{children}</div>
         </main>
       </SidebarInset>
     </SidebarProvider>
   )
 }
-
-

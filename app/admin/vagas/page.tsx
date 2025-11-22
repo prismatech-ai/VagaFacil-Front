@@ -1,4 +1,3 @@
-// Copied from old admin vagas page
 "use client"
 
 import { useMemo, useState } from "react"
@@ -10,10 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, Trash2, Search, Briefcase, Building2, MapPin, Plus } from "lucide-react"
+import { Eye, Trash2, Search, Briefcase, Building2, MapPin, Plus, X, Target } from "lucide-react"
 import { mockUsers, mockVagas, mockCandidaturas } from "@/lib/mock-data"
-import type { Vaga, Candidatura } from "@/lib/types"
+import type { Vaga, Candidatura, Candidato } from "@/lib/types"
 import { Textarea } from "@/components/ui/textarea"
+import { Slider } from "@/components/ui/slider"
 
 export default function AdminVagasPage() {
   const [vagas, setVagas] = useState<Vaga[]>(mockVagas.map((v) => ({ ...v })))
@@ -33,10 +33,16 @@ export default function AdminVagasPage() {
   const [localizacaoForm, setLocalizacaoForm] = useState("")
   const [tipoForm, setTipoForm] = useState<"CLT" | "PJ" | "Estágio" | "Temporário">("CLT")
 
-  const empresas = useMemo(
-    () => mockUsers.filter((u) => u.role === "empresa"),
-    []
-  )
+  const [habilidadesForm, setHabilidadesForm] = useState<string[]>([])
+  const [novaHabilidade, setNovaHabilidade] = useState("")
+  const [anosExpMinForm, setAnosExpMinForm] = useState(0)
+  const [anosExpMaxForm, setAnosExpMaxForm] = useState(10)
+  const [salarioMinForm, setSalarioMinForm] = useState<number | undefined>()
+  const [salarioMaxForm, setSalarioMaxForm] = useState<number | undefined>()
+
+  const empresas = useMemo(() => mockUsers.filter((u) => u.role === "empresa"), [])
+
+  const candidatos = useMemo(() => mockUsers.filter((u) => u.role === "candidato") as Candidato[], [])
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -54,6 +60,52 @@ export default function AdminVagasPage() {
     return labels[status] || status
   }
 
+  const calcularMatch = (candidato: Candidato, vaga: Vaga): number => {
+    let score = 0
+    let maxScore = 0
+
+    // Match de habilidades (peso 40%)
+    if (vaga.habilidadesRequeridas && vaga.habilidadesRequeridas.length > 0) {
+      maxScore += 40
+      const habilidadesCandidato = candidato.habilidades || []
+      const habilidadesMatch = vaga.habilidadesRequeridas.filter((h) =>
+        habilidadesCandidato.some((hc) => hc.toLowerCase().includes(h.toLowerCase())),
+      ).length
+      score += (habilidadesMatch / vaga.habilidadesRequeridas.length) * 40
+    }
+
+    // Match de anos de experiência (peso 30%)
+    if (vaga.anosExperienciaMin !== undefined) {
+      maxScore += 30
+      const anosExp = candidato.anosExperiencia || 0
+      if (anosExp >= vaga.anosExperienciaMin) {
+        const maxExp = vaga.anosExperienciaMax || vaga.anosExperienciaMin + 10
+        if (anosExp <= maxExp) {
+          score += 30 // Dentro da faixa ideal
+        } else {
+          score += 20 // Acima da faixa, mas qualificado
+        }
+      } else {
+        const percentual = anosExp / vaga.anosExperienciaMin
+        score += percentual * 30
+      }
+    }
+
+    // Match de localização (peso 30%)
+    if (vaga.localizacao && candidato.localizacao) {
+      maxScore += 30
+      const vagaLoc = vaga.localizacao.toLowerCase()
+      const candLoc = candidato.localizacao.toLowerCase()
+      if (candLoc.includes(vagaLoc) || vagaLoc.includes(candLoc)) {
+        score += 30
+      } else if (vagaLoc.includes("remoto") || candLoc.includes("remoto")) {
+        score += 20
+      }
+    }
+
+    return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0
+  }
+
   const candidaturasPorVaga = useMemo(() => {
     const map: Record<string, Candidatura[]> = {}
     vagas.forEach((v) => {
@@ -64,7 +116,7 @@ export default function AdminVagasPage() {
 
   const vagasFiltradas = useMemo(() => {
     const now = new Date()
-    const dias = periodoFiltro ? parseInt(periodoFiltro, 10) : 0
+    const dias = periodoFiltro ? Number.parseInt(periodoFiltro, 10) : 0
     const cutoff = dias ? new Date(now.getTime() - dias * 24 * 60 * 60 * 1000) : null
     const buscaLower = busca.trim().toLowerCase()
     return vagas.filter((v) => {
@@ -102,12 +154,39 @@ export default function AdminVagasPage() {
     }, {})
   }
 
+  const adicionarHabilidade = () => {
+    if (novaHabilidade.trim() && !habilidadesForm.includes(novaHabilidade.trim())) {
+      setHabilidadesForm([...habilidadesForm, novaHabilidade.trim()])
+      setNovaHabilidade("")
+    }
+  }
+
+  const removerHabilidade = (hab: string) => {
+    setHabilidadesForm(habilidadesForm.filter((h) => h !== hab))
+  }
+
+  const resetForm = () => {
+    setEmpresaIdForm("")
+    setUsuarioIdForm("")
+    setTituloForm("")
+    setDescricaoForm("")
+    setRequisitosForm("")
+    setLocalizacaoForm("")
+    setTipoForm("CLT")
+    setHabilidadesForm([])
+    setNovaHabilidade("")
+    setAnosExpMinForm(0)
+    setAnosExpMaxForm(10)
+    setSalarioMinForm(undefined)
+    setSalarioMaxForm(undefined)
+  }
+
   return (
     <>
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold mb-2">Gestão de Vagas</h2>
-          <p className="text-muted-foreground">Tabela geral com filtros e detalhes</p>
+          <p className="text-muted-foreground">Gerencie vagas com requisitos detalhados e matching de candidatos</p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -147,7 +226,7 @@ export default function AdminVagasPage() {
                   {empresas.map((e) => (
                     <SelectItem key={e.id} value={e.id}>
                       {/* @ts-ignore */}
-                      {e.nomeEmpresa as string || e.nome}
+                      {(e.nomeEmpresa as string) || e.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -185,16 +264,22 @@ export default function AdminVagasPage() {
 
       {/* Dialog Criar Vaga */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Registrar Nova Vaga</DialogTitle>
-            <DialogDescription>Selecione a empresa e preencha as informações da vaga</DialogDescription>
+            <DialogDescription>Preencha os requisitos detalhados para melhor matching com candidatos</DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="empresa">Empresa</Label>
-                <Select value={empresaIdForm} onValueChange={(v) => { setEmpresaIdForm(v); if (!usuarioIdForm) setUsuarioIdForm(v) }}>
+                <Select
+                  value={empresaIdForm}
+                  onValueChange={(v) => {
+                    setEmpresaIdForm(v)
+                    if (!usuarioIdForm) setUsuarioIdForm(v)
+                  }}
+                >
                   <SelectTrigger id="empresa">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -227,11 +312,21 @@ export default function AdminVagasPage() {
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="titulo">Título</Label>
-                <Input id="titulo" value={tituloForm} onChange={(e) => setTituloForm(e.target.value)} placeholder="Ex: Técnico em Manutenção" />
+                <Input
+                  id="titulo"
+                  value={tituloForm}
+                  onChange={(e) => setTituloForm(e.target.value)}
+                  placeholder="Ex: Desenvolvedor Full Stack"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="local">Localização</Label>
-                <Input id="local" value={localizacaoForm} onChange={(e) => setLocalizacaoForm(e.target.value)} placeholder="Ex: São Paulo - SP" />
+                <Input
+                  id="local"
+                  value={localizacaoForm}
+                  onChange={(e) => setLocalizacaoForm(e.target.value)}
+                  placeholder="Ex: São Paulo - SP ou Remoto"
+                />
               </div>
             </div>
 
@@ -253,21 +348,111 @@ export default function AdminVagasPage() {
             </div>
 
             <div className="space-y-2">
+              <Label>Habilidades Requeridas</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ex: React, Python, Solda..."
+                  value={novaHabilidade}
+                  onChange={(e) => setNovaHabilidade(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), adicionarHabilidade())}
+                />
+                <Button type="button" onClick={adicionarHabilidade} variant="outline">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {habilidadesForm.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {habilidadesForm.map((hab) => (
+                    <Badge key={hab} variant="secondary" className="gap-1">
+                      {hab}
+                      <button onClick={() => removerHabilidade(hab)} className="ml-1">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Anos de Experiência: {anosExpMinForm} - {anosExpMaxForm} anos
+              </Label>
+              <div className="flex gap-4 items-center">
+                <span className="text-sm text-muted-foreground w-8">0</span>
+                <Slider
+                  min={0}
+                  max={20}
+                  step={1}
+                  value={[anosExpMinForm, anosExpMaxForm]}
+                  onValueChange={(values) => {
+                    setAnosExpMinForm(values[0])
+                    setAnosExpMaxForm(values[1])
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-sm text-muted-foreground w-8">20+</span>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="salarioMin">Salário Mínimo (R$)</Label>
+                <Input
+                  id="salarioMin"
+                  type="number"
+                  placeholder="Ex: 5000"
+                  value={salarioMinForm || ""}
+                  onChange={(e) => setSalarioMinForm(e.target.value ? Number.parseInt(e.target.value) : undefined)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="salarioMax">Salário Máximo (R$)</Label>
+                <Input
+                  id="salarioMax"
+                  type="number"
+                  placeholder="Ex: 10000"
+                  value={salarioMaxForm || ""}
+                  onChange={(e) => setSalarioMaxForm(e.target.value ? Number.parseInt(e.target.value) : undefined)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="descricao">Descrição</Label>
-              <Textarea id="descricao" rows={4} value={descricaoForm} onChange={(e) => setDescricaoForm(e.target.value)} placeholder="Descreva as responsabilidades e contexto da vaga..." />
+              <Textarea
+                id="descricao"
+                rows={4}
+                value={descricaoForm}
+                onChange={(e) => setDescricaoForm(e.target.value)}
+                placeholder="Descreva as responsabilidades e contexto da vaga..."
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="requisitos">Requisitos</Label>
-              <Textarea id="requisitos" rows={3} value={requisitosForm} onChange={(e) => setRequisitosForm(e.target.value)} placeholder="Liste os requisitos necessários..." />
+              <Label htmlFor="requisitos">Requisitos Adicionais</Label>
+              <Textarea
+                id="requisitos"
+                rows={3}
+                value={requisitosForm}
+                onChange={(e) => setRequisitosForm(e.target.value)}
+                placeholder="Outros requisitos, certificações, idiomas..."
+              />
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" type="button" onClick={() => setCreateOpen(false)}>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  setCreateOpen(false)
+                  resetForm()
+                }}
+              >
                 Cancelar
               </Button>
               <Button
                 type="button"
-                disabled={!empresaIdForm || !tituloForm.trim() || !localizacaoForm.trim() || !descricaoForm.trim() || !requisitosForm.trim()}
+                disabled={!empresaIdForm || !tituloForm.trim() || !localizacaoForm.trim() || !descricaoForm.trim()}
                 onClick={() => {
                   const novaVaga: Vaga = {
                     id: Date.now().toString(),
@@ -275,21 +460,20 @@ export default function AdminVagasPage() {
                     titulo: tituloForm,
                     descricao: descricaoForm,
                     requisitos: requisitosForm,
+                    habilidadesRequeridas: habilidadesForm,
+                    anosExperienciaMin: anosExpMinForm,
+                    anosExperienciaMax: anosExpMaxForm,
                     localizacao: localizacaoForm,
                     tipo: tipoForm,
                     status: "aberta",
                     createdAt: new Date(),
+                    salarioMin: salarioMinForm,
+                    salarioMax: salarioMaxForm,
                   }
                   setVagas((prev) => [novaVaga, ...prev])
                   mockVagas.push(novaVaga)
                   setCreateOpen(false)
-                  setEmpresaIdForm("")
-                  setUsuarioIdForm("")
-                  setTituloForm("")
-                  setDescricaoForm("")
-                  setRequisitosForm("")
-                  setLocalizacaoForm("")
-                  setTipoForm("CLT")
+                  resetForm()
                 }}
               >
                 Registrar Vaga
@@ -376,7 +560,7 @@ export default function AdminVagasPage() {
 
       {/* Dialog Detalhes da Vaga */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalhes da Vaga</DialogTitle>
             <DialogDescription>
@@ -392,13 +576,25 @@ export default function AdminVagasPage() {
                     <CardDescription>Dados principais</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <div><span className="font-medium">Localização:</span> {vagaSelecionada.localizacao}</div>
-                    <div><span className="font-medium">Tipo:</span> {vagaSelecionada.tipo}</div>
-                    {vagaSelecionada.salario && (
-                      <div><span className="font-medium">Faixa salarial:</span> {vagaSelecionada.salario}</div>
+                    <div>
+                      <span className="font-medium">Localização:</span> {vagaSelecionada.localizacao}
+                    </div>
+                    <div>
+                      <span className="font-medium">Tipo:</span> {vagaSelecionada.tipo}
+                    </div>
+                    {(vagaSelecionada.salarioMin || vagaSelecionada.salarioMax) && (
+                      <div>
+                        <span className="font-medium">Faixa salarial:</span>{" "}
+                        {vagaSelecionada.salarioMin && `R$ ${vagaSelecionada.salarioMin.toLocaleString("pt-BR")}`}
+                        {vagaSelecionada.salarioMin && vagaSelecionada.salarioMax && " - "}
+                        {vagaSelecionada.salarioMax && `R$ ${vagaSelecionada.salarioMax.toLocaleString("pt-BR")}`}
+                      </div>
                     )}
-                    {vagaSelecionada.nivel && (
-                      <div><span className="font-medium">Nível:</span> {vagaSelecionada.nivel}</div>
+                    {vagaSelecionada.anosExperienciaMin !== undefined && (
+                      <div>
+                        <span className="font-medium">Experiência:</span> {vagaSelecionada.anosExperienciaMin} -{" "}
+                        {vagaSelecionada.anosExperienciaMax || vagaSelecionada.anosExperienciaMin + 10} anos
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -415,10 +611,14 @@ export default function AdminVagasPage() {
                       const total = lista.length
                       return (
                         <>
-                          <div><span className="font-medium">Total:</span> {total}</div>
+                          <div>
+                            <span className="font-medium">Total:</span> {total}
+                          </div>
                           <div className="flex flex-wrap gap-2">
                             {Object.entries(cont).map(([k, v]) => (
-                              <Badge key={k} variant="outline">{k.replace("_", " ")}: {v}</Badge>
+                              <Badge key={k} variant="outline">
+                                {k.replace("_", " ")}: {v}
+                              </Badge>
                             ))}
                             {total === 0 && <span className="text-muted-foreground">Sem candidaturas</span>}
                           </div>
@@ -429,6 +629,23 @@ export default function AdminVagasPage() {
                 </Card>
               </div>
 
+              {vagaSelecionada.habilidadesRequeridas && vagaSelecionada.habilidadesRequeridas.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Habilidades Requeridas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {vagaSelecionada.habilidadesRequeridas.map((hab) => (
+                        <Badge key={hab} variant="secondary">
+                          {hab}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Descrição</CardTitle>
@@ -438,54 +655,75 @@ export default function AdminVagasPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Requisitos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{vagaSelecionada.requisitos}</p>
-                </CardContent>
-              </Card>
+              {vagaSelecionada.requisitos && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Requisitos Adicionais</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">{vagaSelecionada.requisitos}</p>
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Candidatos</CardTitle>
-                  <CardDescription>Lista dos candidatos aplicados</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Candidatos Compatíveis</CardTitle>
+                      <CardDescription>Matching baseado em habilidades, experiência e localização</CardDescription>
+                    </div>
+                    <Target className="h-5 w-5 text-muted-foreground" />
+                  </div>
                 </CardHeader>
-                <CardContent className="rounded-md border p-0 overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Candidato</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Mensagem</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(candidaturasPorVaga[vagaSelecionada.id] ?? []).length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
-                            Nenhuma candidatura
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        (candidaturasPorVaga[vagaSelecionada.id] ?? []).map((c) => (
-                          <TableRow key={c.id}>
-                            <TableCell>
-                              {/* @ts-ignore */}
-                              {mockUsers.find((u) => u.id === c.candidatoId)?.nome}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{c.status.replace("_", " ")}</Badge>
-                            </TableCell>
-                            <TableCell className="max-w-[420px]">
-                              <span className="line-clamp-2">{c.mensagem || "-"}</span>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                <CardContent>
+                  <div className="space-y-3">
+                    {candidatos
+                      .map((candidato) => ({
+                        candidato,
+                        matchScore: calcularMatch(candidato, vagaSelecionada),
+                      }))
+                      .filter((item) => item.matchScore > 30)
+                      .sort((a, b) => b.matchScore - a.matchScore)
+                      .slice(0, 10)
+                      .map(({ candidato, matchScore }) => (
+                        <div key={candidato.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <p className="font-medium">{candidato.nome}</p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {(candidato.habilidades || []).slice(0, 3).map((hab) => (
+                                <Badge key={hab} variant="outline" className="text-xs">
+                                  {hab}
+                                </Badge>
+                              ))}
+                              {candidato.anosExperiencia !== undefined && (
+                                <Badge variant="outline" className="text-xs">
+                                  {candidato.anosExperiencia} anos exp
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              <div className="text-sm font-medium">{matchScore}% match</div>
+                              <div className="text-xs text-muted-foreground">
+                                {matchScore >= 80 ? "Excelente" : matchScore >= 60 ? "Bom" : "Moderado"}
+                              </div>
+                            </div>
+                            <div
+                              className={`w-2 h-2 rounded-full ${
+                                matchScore >= 80 ? "bg-green-500" : matchScore >= 60 ? "bg-yellow-500" : "bg-orange-500"
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    {candidatos.filter((c) => calcularMatch(c, vagaSelecionada) > 30).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum candidato com match acima de 30% encontrado
+                      </p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -495,5 +733,3 @@ export default function AdminVagasPage() {
     </>
   )
 }
-
-

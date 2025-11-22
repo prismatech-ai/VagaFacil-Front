@@ -1,40 +1,36 @@
-// Copied from old empresas page
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
+import { Building2, Search, Plus, Mail, X, Briefcase, User, Globe, FileText } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Building2, Briefcase, ExternalLink, Globe, Pencil, Plus, Search, Trash2, Users } from "lucide-react"
-import { mockUsers, mockVagas } from "@/lib/mock-data"
 import type { Empresa } from "@/lib/types"
+import { mockUsers } from "@/lib/mock-data"
 
 type EmpresaAcesso = {
   id: string
   nome: string
   email: string
   createdAt: Date
+  conviteEnviado: boolean
 }
 
 export default function AdminEmpresasPage() {
-  const initialEmpresas = useMemo(
-    () => (mockUsers.filter((u) => u.role === "empresa") as Empresa[]).map((e) => ({ ...e })),
-    []
-  )
+  const initialEmpresas = mockUsers.filter((u) => u.role === "empresa") as Empresa[]
   const [empresas, setEmpresas] = useState<Empresa[]>(initialEmpresas)
   const [filtros, setFiltros] = useState({
     busca: "",
-    cnpj: "",
+    status: "",
   })
 
   const [dialogVerOpen, setDialogVerOpen] = useState(false)
-  const [dialogEditarOpen, setDialogEditarOpen] = useState(false)
-  const [modoEdicao, setModoEdicao] = useState<"create" | "edit">("edit")
+  const [modoEdicao, setModoEdicao] = useState<"create" | "edit" | null>(null)
   const [empresaSelecionada, setEmpresaSelecionada] = useState<Empresa | null>(null)
 
   const [formEmpresa, setFormEmpresa] = useState({
@@ -44,8 +40,6 @@ export default function AdminEmpresasPage() {
     cnpj: "",
     site: "",
     descricao: "",
-    responsavelNome: "",
-    responsavelEmail: "",
   })
 
   // Gestão de acesso (usuários da empresa) - estado local apenas para protótipo
@@ -58,6 +52,7 @@ export default function AdminEmpresasPage() {
           nome: e.nome,
           email: e.email,
           createdAt: e.createdAt,
+          conviteEnviado: true,
         },
       ]
     })
@@ -65,28 +60,22 @@ export default function AdminEmpresasPage() {
   })
   const [novoAcesso, setNovoAcesso] = useState({ nome: "", email: "" })
 
-  const vagasPorEmpresa = useMemo(() => {
-    const counts: Record<string, number> = {}
-    empresas.forEach((e) => {
-      counts[e.id] = mockVagas.filter((v) => v.empresaId === e.id).length
-    })
-    return counts
-  }, [empresas])
+  const vagasPorEmpresa = {
+    "1": 5,
+    "2": 3,
+    "3": 8,
+  }
 
-  const empresasFiltradas = useMemo(() => {
+  const empresasFiltradas = empresas.filter((e) => {
     const busca = filtros.busca.trim().toLowerCase()
-    const cnpjBusca = filtros.cnpj.replace(/\D/g, "")
-    return empresas.filter((e) => {
-      const matchBusca =
-        !busca ||
-        e.nomeEmpresa?.toLowerCase().includes(busca) ||
-        e.nome?.toLowerCase().includes(busca) ||
-        e.email.toLowerCase().includes(busca) ||
-        (e.descricao?.toLowerCase().includes(busca) ?? false)
-      const matchCnpj = !cnpjBusca || e.cnpj.replace(/\D/g, "").includes(cnpjBusca)
-      return matchBusca && matchCnpj
-    })
-  }, [empresas, filtros])
+    return (
+      !busca ||
+      e.nomeEmpresa?.toLowerCase().includes(busca) ||
+      e.email.toLowerCase().includes(busca) ||
+      e.nome.toLowerCase().includes(busca) ||
+      e.cnpj?.toLowerCase().includes(busca)
+    )
+  })
 
   const getInitials = (name: string) => {
     return name
@@ -103,7 +92,6 @@ export default function AdminEmpresasPage() {
   }
 
   const abrirCriar = () => {
-    setModoEdicao("create")
     setEmpresaSelecionada(null)
     setFormEmpresa({
       nomeEmpresa: "",
@@ -112,14 +100,12 @@ export default function AdminEmpresasPage() {
       cnpj: "",
       site: "",
       descricao: "",
-      responsavelNome: "",
-      responsavelEmail: "",
     })
-    setDialogEditarOpen(true)
+    setModoEdicao("create")
   }
 
   const abrirEditar = (empresa: Empresa) => {
-    setModoEdicao("edit")
+    setDialogVerOpen(false)
     setEmpresaSelecionada(empresa)
     setFormEmpresa({
       nomeEmpresa: empresa.nomeEmpresa ?? "",
@@ -128,20 +114,17 @@ export default function AdminEmpresasPage() {
       cnpj: empresa.cnpj ?? "",
       site: empresa.site ?? "",
       descricao: empresa.descricao ?? "",
-      responsavelNome: empresa.nome ?? "",
-      responsavelEmail: empresa.email ?? "",
     })
-    setDialogEditarOpen(true)
+    setModoEdicao("edit")
   }
 
   const salvarEmpresa = () => {
     if (modoEdicao === "create") {
-      const id = `${Date.now()}`
       const novaEmpresa: Empresa = {
-        id,
+        id: Date.now().toString(),
         role: "empresa",
-        email: formEmpresa.responsavelEmail || `contato@${(formEmpresa.site || "empresa").replace(/^https?:\/\//, "")}`,
-        nome: formEmpresa.responsavelNome || formEmpresa.nomeEmpresa || "Responsável",
+        email: `contato@${(formEmpresa.site || "empresa.com").replace(/^https?:\/\//, "")}`,
+        nome: formEmpresa.nomeEmpresa || "Nova Empresa",
         createdAt: new Date(),
         nomeEmpresa: formEmpresa.nomeEmpresa || "Nova Empresa",
         cnpj: formEmpresa.cnpj || "00.000.000/0000-00",
@@ -153,14 +136,7 @@ export default function AdminEmpresasPage() {
       setEmpresas((prev) => [novaEmpresa, ...prev])
       setAcessosPorEmpresa((prev) => ({
         ...prev,
-        [id]: [
-          {
-            id: `${id}-owner`,
-            nome: novaEmpresa.nome,
-            email: novaEmpresa.email,
-            createdAt: novaEmpresa.createdAt,
-          },
-        ],
+        [novaEmpresa.id]: [],
       }))
     } else if (empresaSelecionada) {
       setEmpresas((prev) =>
@@ -174,14 +150,12 @@ export default function AdminEmpresasPage() {
                 cnpj: formEmpresa.cnpj || e.cnpj,
                 site: formEmpresa.site || undefined,
                 descricao: formEmpresa.descricao || undefined,
-                nome: formEmpresa.responsavelNome || e.nome,
-                email: formEmpresa.responsavelEmail || e.email,
               }
-            : e
-        )
+            : e,
+        ),
       )
     }
-    setDialogEditarOpen(false)
+    setModoEdicao(null)
   }
 
   const removerEmpresa = (id: string) => {
@@ -196,10 +170,33 @@ export default function AdminEmpresasPage() {
         ...prev,
         [empresaSelecionada.id]: [
           ...atual,
-          { id: `${empresaSelecionada.id}-${Date.now()}`, nome: novoAcesso.nome, email: novoAcesso.email, createdAt: new Date() },
+          {
+            id: `${empresaSelecionada.id}-${Date.now()}`,
+            nome: novoAcesso.nome,
+            email: novoAcesso.email,
+            createdAt: new Date(),
+            conviteEnviado: false,
+          },
         ],
       }
     })
+    // Mock: Send invitation email
+    console.log(
+      `[v0] Convite enviado para ${novoAcesso.email} para completar cadastro da empresa ${empresaSelecionada.nomeEmpresa}`,
+    )
+    // Update status to show invitation was sent
+    setTimeout(() => {
+      setAcessosPorEmpresa((prev) => {
+        const atual = prev[empresaSelecionada.id] ?? []
+        const updated = atual.map((a) =>
+          a.email === novoAcesso.email && !a.conviteEnviado ? { ...a, conviteEnviado: true } : a,
+        )
+        return {
+          ...prev,
+          [empresaSelecionada.id]: updated,
+        }
+      })
+    }, 1000)
     setNovoAcesso({ nome: "", email: "" })
   }
 
@@ -219,7 +216,9 @@ export default function AdminEmpresasPage() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold mb-2">Gestão de Empresas</h2>
-          <p className="text-muted-foreground">Gerencie dados institucionais, vagas publicadas e acessos dos usuários</p>
+          <p className="text-muted-foreground">
+            Gerencie dados institucionais, vagas publicadas e acessos dos usuários
+          </p>
         </div>
         <Button onClick={abrirCriar}>
           <Plus className="h-4 w-4 mr-2" />
@@ -230,10 +229,10 @@ export default function AdminEmpresasPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
-          <CardDescription>Busque por nome, e-mail, descrição ou CNPJ</CardDescription>
+          <CardDescription>Busque por nome, email ou CNPJ</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label htmlFor="busca">Buscar</Label>
               <div className="relative">
@@ -246,15 +245,6 @@ export default function AdminEmpresasPage() {
                   className="pl-10"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cnpj">CNPJ</Label>
-              <Input
-                id="cnpj"
-                placeholder="00.000.000/0000-00"
-                value={filtros.cnpj}
-                onChange={(e) => setFiltros({ ...filtros, cnpj: e.target.value })}
-              />
             </div>
           </div>
         </CardContent>
@@ -271,7 +261,7 @@ export default function AdminEmpresasPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Empresa</TableHead>
-                  <TableHead>Responsável</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>CNPJ</TableHead>
                   <TableHead>Vagas</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -295,50 +285,30 @@ export default function AdminEmpresasPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium flex items-center gap-2">
-                              {e.nomeEmpresa || "-"}
-                              {e.site && (
-                                <a
-                                  href={e.site.startsWith("http") ? e.site : `https://${e.site}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                  site
-                                </a>
-                              )}
+                            <div className="font-medium">{e.nomeEmpresa || "-"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {e.razaoSocial || e.nomeFantasia || "-"}
                             </div>
-                            <div className="text-xs text-muted-foreground">{e.descricao || "-"}</div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <div className="space-y-0.5">
-                            <div className="text-sm font-medium">{e.nome}</div>
-                            <div className="text-xs text-muted-foreground">{e.email}</div>
-                          </div>
-                        </div>
+                      <TableCell className="align-top">{e.email}</TableCell>
+                      <TableCell className="align-top">
+                        <span className="text-sm text-muted-foreground">{e.cnpj || "-"}</span>
                       </TableCell>
-                      <TableCell>{e.cnpj}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                          <Badge variant="outline">{vagasPorEmpresa[e.id] ?? 0}</Badge>
-                        </div>
+                      <TableCell className="align-top">
+                        <Badge variant="outline">{vagasPorEmpresa[e.id] ?? 0}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="align-top text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="sm" onClick={() => abrirVer(e)}>
-                            <Users className="h-4 w-4" />
+                            <Mail className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => abrirEditar(e)}>
-                            <Pencil className="h-4 w-4" />
+                            <User className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => removerEmpresa(e.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <X className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
                       </TableCell>
@@ -351,73 +321,130 @@ export default function AdminEmpresasPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog: Detalhes / Acessos */}
+      {/* Dialog: Ver Empresa */}
       <Dialog open={dialogVerOpen} onOpenChange={setDialogVerOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalhes da Empresa</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="space-y-3 pb-4 border-b">
+            <DialogTitle className="text-2xl">Detalhes da Empresa</DialogTitle>
+            <DialogDescription className="text-base">
               {empresaSelecionada?.nomeEmpresa} • {empresaSelecionada?.cnpj}
             </DialogDescription>
           </DialogHeader>
           {empresaSelecionada && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Dados Institucionais</CardTitle>
-                    <CardDescription>Informações públicas da organização</CardDescription>
+            <div className="space-y-6 pt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+                <Card className="lg:col-span-2 border-2">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      Informações Gerais
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div><span className="font-medium">Razão Social:</span> {empresaSelecionada.razaoSocial || "-"}</div>
-                    <div><span className="font-medium">Nome Fantasia:</span> {empresaSelecionada.nomeFantasia || "-"}</div>
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Site:</span>
-                      {empresaSelecionada.site ? (
-                        <a
-                          href={empresaSelecionada.site.startsWith("http") ? empresaSelecionada.site : `https://${empresaSelecionada.site}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          {empresaSelecionada.site}
-                        </a>
-                      ) : (
-                        <span>-</span>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <span className="text-sm text-muted-foreground">Nome</span>
+                        <p className="font-medium">{empresaSelecionada.nomeEmpresa || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-sm text-muted-foreground">CNPJ</span>
+                        <p className="font-medium">{empresaSelecionada.cnpj || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-sm text-muted-foreground">Razão Social</span>
+                        <p className="font-medium">{empresaSelecionada.razaoSocial || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-sm text-muted-foreground">Nome Fantasia</span>
+                        <p className="font-medium">{empresaSelecionada.nomeFantasia || "-"}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 space-y-3 border-t">
+                      <div className="flex items-start gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div className="space-y-1 flex-1">
+                          <span className="text-sm text-muted-foreground">Email</span>
+                          <p className="font-medium text-sm">{empresaSelecionada.email}</p>
+                        </div>
+                      </div>
+
+                      {empresaSelecionada.site && (
+                        <div className="flex items-start gap-2">
+                          <Globe className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="space-y-1 flex-1">
+                            <span className="text-sm text-muted-foreground">Website</span>
+                            <a
+                              href={
+                                empresaSelecionada.site.startsWith("http")
+                                  ? empresaSelecionada.site
+                                  : `https://${empresaSelecionada.site}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline text-sm font-medium"
+                            >
+                              {empresaSelecionada.site}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      {empresaSelecionada.descricao && (
+                        <div className="flex items-start gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="space-y-1 flex-1">
+                            <span className="text-sm text-muted-foreground">Descrição</span>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {empresaSelecionada.descricao}
+                            </p>
+                          </div>
+                        </div>
                       )}
                     </div>
-                    {empresaSelecionada.descricao && (
-                      <div className="mt-2 text-muted-foreground">{empresaSelecionada.descricao}</div>
-                    )}
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Resumo</CardTitle>
-                    <CardDescription>Métricas rápidas</CardDescription>
+                <Card className="lg:col-span-2 border-2">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg">Estatísticas</CardTitle>
                   </CardHeader>
-                  <CardContent className="flex gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Vagas:</span> {vagasPorEmpresa[empresaSelecionada.id] ?? 0}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Usuários:</span> {(acessosPorEmpresa[empresaSelecionada.id] ?? []).length}
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <div className="p-2 rounded-md bg-primary/10">
+                          <Briefcase className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-muted-foreground">Vagas Ativas</p>
+                          <p className="text-2xl font-bold">{vagasPorEmpresa[empresaSelecionada.id] ?? 0}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <div className="p-2 rounded-md bg-blue-500/10">
+                          <User className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-muted-foreground">Usuários</p>
+                          <p className="text-2xl font-bold">{acessosPorEmpresa[empresaSelecionada.id]?.length ?? 0}</p>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Usuários da Conta</CardTitle>
+              <Card className="border-2">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <User className="h-5 w-5 text-primary" />
+                    Usuários da Conta
+                  </CardTitle>
                   <CardDescription>Gerencie o acesso dos usuários da empresa</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="novo-nome">Nome</Label>
                       <Input
@@ -438,8 +465,8 @@ export default function AdminEmpresasPage() {
                           placeholder="email@empresa.com"
                         />
                         <Button type="button" onClick={adicionarAcesso}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Adicionar
+                          <Mail className="h-4 w-4 mr-2" />
+                          Enviar Convite
                         </Button>
                       </div>
                     </div>
@@ -451,24 +478,36 @@ export default function AdminEmpresasPage() {
                         <TableRow>
                           <TableHead>Nome</TableHead>
                           <TableHead>Email</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(acessosPorEmpresa[empresaSelecionada.id] ?? []).map((a) => (
+                        {acessosPorEmpresa[empresaSelecionada.id]?.map((a) => (
                           <TableRow key={a.id}>
-                            <TableCell>{a.nome}</TableCell>
+                            <TableCell className="font-medium">{a.nome}</TableCell>
                             <TableCell>{a.email}</TableCell>
+                            <TableCell>
+                              {a.conviteEnviado ? (
+                                <Badge variant="outline" className="text-green-600">
+                                  Ativo
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-yellow-600">
+                                  Convite pendente
+                                </Badge>
+                              )}
+                            </TableCell>
                             <TableCell className="text-right">
                               <Button variant="ghost" size="sm" onClick={() => removerAcesso(a.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <X className="h-4 w-4 text-destructive" />
                               </Button>
                             </TableCell>
                           </TableRow>
                         ))}
-                        {(acessosPorEmpresa[empresaSelecionada.id] ?? []).length === 0 && (
+                        {acessosPorEmpresa[empresaSelecionada.id]?.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            <TableCell colSpan={4} className="text-center text-muted-foreground">
                               Nenhum usuário adicionado
                             </TableCell>
                           </TableRow>
@@ -484,68 +523,78 @@ export default function AdminEmpresasPage() {
       </Dialog>
 
       {/* Dialog: Criar/Editar Empresa */}
-      <Dialog open={dialogEditarOpen} onOpenChange={setDialogEditarOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={modoEdicao !== null} onOpenChange={() => setModoEdicao(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{modoEdicao === "create" ? "Nova Empresa" : "Editar Empresa"}</DialogTitle>
             <DialogDescription>
               {modoEdicao === "create"
                 ? "Preencha as informações para cadastrar uma nova empresa"
-                : "Atualize os dados institucionais e do responsável"}
+                : "Atualize as informações da empresa"}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="nomeEmpresa">Nome da Empresa</Label>
-              <Input
-                id="nomeEmpresa"
-                value={formEmpresa.nomeEmpresa}
-                onChange={(e) => setFormEmpresa((f) => ({ ...f, nomeEmpresa: e.target.value }))}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nomeEmpresa">Nome da Empresa</Label>
+                <Input
+                  id="nomeEmpresa"
+                  value={formEmpresa.nomeEmpresa}
+                  onChange={(e) => setFormEmpresa((f) => ({ ...f, nomeEmpresa: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cnpj">CNPJ</Label>
+                <Input
+                  id="cnpj"
+                  value={formEmpresa.cnpj}
+                  onChange={(e) => setFormEmpresa((f) => ({ ...f, cnpj: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="razao">Razão Social</Label>
+                <Input
+                  id="razao"
+                  value={formEmpresa.razaoSocial}
+                  onChange={(e) => setFormEmpresa((f) => ({ ...f, razaoSocial: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fantasia">Nome Fantasia</Label>
+                <Input
+                  id="fantasia"
+                  value={formEmpresa.nomeFantasia}
+                  onChange={(e) => setFormEmpresa((f) => ({ ...f, nomeFantasia: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="site">Site</Label>
+                <Input
+                  id="site"
+                  value={formEmpresa.site}
+                  onChange={(e) => setFormEmpresa((f) => ({ ...f, site: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="descricao">Descrição</Label>
+                <Input
+                  id="descricao"
+                  value={formEmpresa.descricao}
+                  onChange={(e) => setFormEmpresa((f) => ({ ...f, descricao: e.target.value }))}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="cnpj">CNPJ</Label>
-              <Input id="cnpj" value={formEmpresa.cnpj} onChange={(e) => setFormEmpresa((f) => ({ ...f, cnpj: e.target.value }))} />
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" type="button" onClick={() => setModoEdicao(null)}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={salvarEmpresa}>
+                {modoEdicao === "create" ? "Criar Empresa" : "Salvar"}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="razao">Razão Social</Label>
-              <Input id="razao" value={formEmpresa.razaoSocial} onChange={(e) => setFormEmpresa((f) => ({ ...f, razaoSocial: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fantasia">Nome Fantasia</Label>
-              <Input id="fantasia" value={formEmpresa.nomeFantasia} onChange={(e) => setFormEmpresa((f) => ({ ...f, nomeFantasia: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="site">Site</Label>
-              <Input id="site" value={formEmpresa.site} onChange={(e) => setFormEmpresa((f) => ({ ...f, site: e.target.value }))} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="descricao">Descrição</Label>
-              <Input id="descricao" value={formEmpresa.descricao} onChange={(e) => setFormEmpresa((f) => ({ ...f, descricao: e.target.value }))} />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="resp-nome">Responsável (Nome)</Label>
-              <Input id="resp-nome" value={formEmpresa.responsavelNome} onChange={(e) => setFormEmpresa((f) => ({ ...f, responsavelNome: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="resp-email">Responsável (Email)</Label>
-              <Input id="resp-email" type="email" value={formEmpresa.responsavelEmail} onChange={(e) => setFormEmpresa((f) => ({ ...f, responsavelEmail: e.target.value }))} />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={() => setDialogEditarOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="button" onClick={salvarEmpresa}>
-              {modoEdicao === "create" ? "Criar" : "Salvar"}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
     </>
   )
 }
-
-
