@@ -21,7 +21,7 @@ export default function DashboardPage() {
       } else if (user.role === "empresa") {
         router.push("/empresa/dashboard")
       } else if (user.role === "candidato") {
-        router.push("/candidato/dashboard")
+        router.push("/dashboard/candidato")
       }
     }
   }, [user, isLoading, router])
