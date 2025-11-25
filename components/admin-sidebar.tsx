@@ -28,37 +28,37 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
-    href: "/dashboard/admin",
+    href: "/admin/dashboard",
   },
   {
     title: "Empresas",
     icon: Building2,
-    href: "/dashboard/admin/empresas",
+    href: "/admin/empresas",
   },
   {
     title: "Candidatos",
     icon: Users,
-    href: "/dashboard/admin/candidatos",
+    href: "/admin/candidatos",
   },
   {
     title: "Vagas",
     icon: Briefcase,
-    href: "/dashboard/admin/vagas",
+    href: "/admin/vagas",
   },
   {
     title: "Testes",
     icon: FileText,
-    href: "/dashboard/admin/testes",
+    href: "/admin/testes",
   },
   {
     title: "Notificações",
     icon: Bell,
-    href: "/dashboard/admin/notificacoes",
+    href: "/admin/notificacoes",
   },
   {
     title: "Suporte",
     icon: HeadphonesIcon,
-    href: "/dashboard/admin/suporte",
+    href: "/admin/suporte",
   },
 ]
 
@@ -82,7 +82,7 @@ export function AdminSidebar() {
                 const Icon = item.icon
                 // Para o Dashboard, verifica exatamente a rota
                 // Para outras rotas, verifica se a rota atual começa com o href
-                const isActive = item.href === "/dashboard/admin"
+                const isActive = item.href === "/admin/dashboard"
                   ? pathname === item.href
                   : pathname.startsWith(item.href)
                 return (
@@ -107,4 +107,3 @@ export function AdminSidebar() {
     </Sidebar>
   )
 }
-

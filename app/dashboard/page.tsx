@@ -17,9 +17,9 @@ export default function DashboardPage() {
     if (user) {
       // Redirecionar para o dashboard específico baseado no role
       if (user.role === "admin") {
-        router.push("/dashboard/admin")
+        router.push("/admin/dashboard")
       } else if (user.role === "empresa") {
-        router.push("/dashboard/empresa")
+        router.push("/empresa/dashboard")
       } else if (user.role === "candidato") {
         router.push("/dashboard/candidato")
       }

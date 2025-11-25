@@ -33,4 +33,3 @@ export function Logo({ className = "", width = 140 }: LogoProps) {
     </div>
   )
 }
-

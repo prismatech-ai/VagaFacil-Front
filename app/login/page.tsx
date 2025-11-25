@@ -31,7 +31,20 @@ export default function LoginPage() {
       const success = await login(email, password)
 
       if (success) {
-        router.push("/dashboard")
+        const storedUser = localStorage.getItem("user")
+        if (storedUser) {
+          const user = JSON.parse(storedUser)
+
+          if (user.role === "admin") {
+            router.push("/admin/dashboard")
+          } else if (user.role === "candidato") {
+            router.push("/dashboard/candidato")
+          } else if (user.role === "empresa") {
+            router.push("/dashboard/empresa")
+          } else {
+            router.push("/dashboard")
+          }
+        }
       } else {
         setError("Email ou senha incorretos")
       }

@@ -1,3 +1,4 @@
+// Replicated from /admin/dashboard for Empresa Dashboard
 "use client"
 
 import { useState } from "react"
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Users, Building2, Briefcase, FileText, UserCircle, Eye, Trash2 } from "lucide-react"
 import { mockUsers, mockVagas, mockCandidaturas } from "@/lib/mock-data"
 
-export default function AdminDashboardPage() {
+export default function EmpresaDashboardClonePage() {
   const [users, setUsers] = useState(mockUsers)
   const [vagas, setVagas] = useState(mockVagas)
   const [candidaturas, setCandidaturas] = useState(mockCandidaturas)

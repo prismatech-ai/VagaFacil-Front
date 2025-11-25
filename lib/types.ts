@@ -1,228 +1,114 @@
-// Tipos de usuário do sistema
-export type UserRole = "admin" | "empresa" | "candidato"
-
-// Interface do usuário
-export interface User {
+export type User = {
   id: string
   email: string
   nome: string
-  role: UserRole
+  role: "admin" | "empresa" | "candidato"
   createdAt: Date
-}
-
-// Interface do candidato (estende User)
-export interface Candidato extends User {
-  role: "candidato"
   telefone?: string
-  cpf?: string
-  rg?: string
-  dataNascimento?: Date
-  genero?: "Masculino" | "Feminino" | "Outro" | "Prefiro não informar"
-  estadoCivil?: "Solteiro" | "Casado" | "Divorciado" | "Viúvo" | "União Estável"
-  endereco?: Endereco
-  curriculo?: string // Resumo profissional em texto
-  curriculoArquivo?: string // URL ou base64 do arquivo de currículo
-  curriculoNome?: string // Nome do arquivo de currículo
-  habilidades?: string[]
-  educacao?: Educacao[]
-  experiencias?: Experiencia[]
-  cursos?: Curso[]
   localizacao?: string
   linkedin?: string
-  portfolio?: string
-  autoavaliacoes?: Autoavaliacao[]
-  onboardingCompleto?: boolean
 }
 
-// Interface de endereço
-export interface Endereco {
-  cep?: string
-  logradouro?: string
-  numero?: string
-  complemento?: string
-  bairro?: string
-  cidade?: string
-  estado?: string
-}
-
-// Interface de autoavaliação de competências
-export interface Autoavaliacao {
-  id: string
-  area: string // Ex: "Automação", "Elétrica", "Mecânica", etc.
-  competencias: Competencia[]
-  dataRealizacao: Date
-  observacoes?: string
-}
-
-// Interface de competência
-export interface Competencia {
-  id: string
-  nome: string
-  descricao?: string
-  nivel: NivelCompetencia
-  anosExperiencia?: number
-}
-
-// Níveis de competência
-export type NivelCompetencia = 
-  | "Iniciante" 
-  | "Básico" 
-  | "Intermediário" 
-  | "Avançado" 
-  | "Especialista"
-
-// Interface da empresa (estende User)
-export interface Empresa extends User {
+export type Empresa = User & {
   role: "empresa"
-  nomeEmpresa: string
-  cnpj: string
+  nomeEmpresa?: string
+  cnpj?: string
   razaoSocial?: string
   nomeFantasia?: string
-  setor?: string
   site?: string
-  logo?: string
   descricao?: string
 }
 
-// Interface de educação
-export interface Educacao {
+export type Candidato = User & {
+  role: "candidato"
+  curriculo?: string
+  habilidades?: string[]
+  anosExperiencia?: number
+  nivelDesejado?: string
+  educacao?: Educacao[]
+  experiencias?: Experiencia[]
+  autoavaliacao?: {
+    nivel: number
+    habilidades: Record<string, number>
+  }
+  testesRealizados?: string[]
+}
+
+export type Educacao = {
   id: string
+  nivel: string
   instituicao: string
   curso: string
-  nivel: "Ensino Médio" | "Técnico" | "Superior" | "Pós-graduação" | "Mestrado" | "Doutorado"
-  status: "Completo" | "Em andamento" | "Incompleto"
+  status: string
   dataInicio?: Date
   dataFim?: Date
 }
 
-// Interface de experiência
-export interface Experiencia {
+export type Experiencia = {
   id: string
-  empresa: string
   cargo: string
-  descricao?: string
+  empresa: string
   dataInicio: Date
   dataFim?: Date
   atual: boolean
+  descricao?: string
 }
 
-// Interface de curso
-export interface Curso {
-  id: string
-  nome: string
-  instituicao: string
-  cargaHoraria?: number
-  dataConclusao?: Date
-  certificado?: string
-}
-
-// Interface da vaga
-export interface Vaga {
+export type Vaga = {
   id: string
   empresaId: string
-  senha?: string // Senha para acesso à vaga
   titulo: string
   descricao: string
   requisitos: string
-  tipoVaga?: string // Ex: "Manutenção", "Operação", etc.
-  disciplina?: string // Ex: "Mecânica", "Elétrica", "Automação", etc.
-  nivel?: "Júnior" | "Pleno" | "Sênior" | "Especialista"
-  escolaridade?: "Ensino Fundamental" | "Ensino Médio" | "Nível técnico" | "Superior" | "Pós-graduação"
-  experienciaMinima?: string // Ex: "mínima 2 anos"
-  salario?: string
+  habilidadesRequeridas?: string[]
+  anosExperienciaMin?: number
+  anosExperienciaMax?: number
   localizacao: string
   tipo: "CLT" | "PJ" | "Estágio" | "Temporário"
-  beneficios?: string[] // Ex: ["Plano de saúde", "Transporte"]
   status: "aberta" | "fechada"
-  perguntasTriagem?: PerguntaTriagem[]
   createdAt: Date
+  salarioMin?: number
+  salarioMax?: number
 }
 
-// Interface de pergunta de triagem
-export interface PerguntaTriagem {
+export type Candidatura = {
   id: string
-  pergunta: string
-  tipo: "texto" | "multipla_escolha" | "sim_nao"
-  opcoes?: string[]
-  obrigatoria: boolean
-}
-
-// Interface da candidatura
-export interface Candidatura {
-  id: string
+  candidatoId: string
   vagaId: string
-  candidatoId: string
-  status: "pendente" | "em_analise" | "entrevista" | "finalista" | "aprovado" | "rejeitado"
+  status: "pendente" | "em_analise" | "aprovado" | "rejeitado"
   mensagem?: string
-  respostasTriagem?: RespostaTriagem[]
   createdAt: Date
+  matchScore?: number
 }
 
-// Interface de resposta de triagem
-export interface RespostaTriagem {
-  perguntaId: string
-  resposta: string
-}
-
-// Interface de teste
-export interface Teste {
+export type Teste = {
   id: string
-  titulo: string
-  descricao?: string
-  tipo: "padronizado" | "dinamico"
-  nivelDificuldade?: "facil" | "medio" | "dificil"
-  questoes?: Questao[]
+  nome: string
+  descricao: string
+  nivel: 1 | 2 | 3 | 4 | 5
+  habilidade: string
+  questoes: Questao[]
   createdAt: Date
+  createdBy: string
 }
 
-// Interface de questão
-export interface Questao {
+export type Questao = {
   id: string
   pergunta: string
-  tipo: "multipla_escolha" | "verdadeiro_falso"
-  opcoes: string[]
+  alternativas: string[]
   respostaCorreta: number
-  nivelDificuldade: "facil" | "medio" | "dificil"
-  explicacao?: string
+  nivel: 1 | 2 | 3 | 4 | 5
+  nivelDificuldade?: "facil" | "medio" | "dificil" | "muito-dificil" | "expert"
+  habilidade?: string
 }
 
-// Interface de resultado de teste
-export interface ResultadoTeste {
+export type Notificacao = {
   id: string
-  testeId: string
-  candidatoId: string
-  pontuacao: number
-  totalQuestoes: number
-  nivelFinal: "facil" | "medio" | "dificil"
-  respostas: RespostaQuestao[]
-  dataRealizacao: Date
-}
-
-// Interface de resposta de questão
-export interface RespostaQuestao {
-  questaoId: string
-  resposta: number
-  correta: boolean
-  tempoResposta?: number
-}
-
-// Interface de ticket de suporte
-export interface TicketSuporte {
-  id: string
-  usuarioId: string
-  assunto: string
+  destinatarioId: string
+  tipo: "convite" | "vaga" | "candidatura" | "sistema"
+  titulo: string
   mensagem: string
-  status: "aberto" | "em_andamento" | "resolvido" | "fechado"
-  prioridade: "baixa" | "media" | "alta"
-  respostas?: RespostaTicket[]
+  lida: boolean
   createdAt: Date
-}
-
-// Interface de resposta de ticket
-export interface RespostaTicket {
-  id: string
-  ticketId: string
-  usuarioId: string
-  mensagem: string
-  createdAt: Date
+  createdBy?: string
 }
