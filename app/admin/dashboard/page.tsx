@@ -8,11 +8,52 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users, Building2, Briefcase, FileText, UserCircle, Eye, Trash2, TrendingUp, TrendingDown } from "lucide-react"
 import { mockUsers, mockVagas, mockCandidaturas } from "@/lib/mock-data"
+import { api } from "@/lib/api"
+import { useEffect } from "react"
+import type { User, Vaga, Candidatura } from "@/lib/types"
 
 export default function AdminDashboardPage() {
-  const [users, setUsers] = useState(mockUsers)
-  const [vagas, setVagas] = useState(mockVagas)
-  const [candidaturas, setCandidaturas] = useState(mockCandidaturas)
+  const [users, setUsers] = useState<User[]>([])
+  const [vagas, setVagas] = useState<Vaga[]>([])
+  const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      // #colocarRota - Ajuste as rotas conforme seu backend
+      const [usersData, vagasData, candidaturasData] = await Promise.all([
+        api.get<User[]>("/admin/usuarios").catch(() => {
+          console.warn("Erro ao carregar usuários, usando dados mockados")
+          return mockUsers
+        }),
+        api.get<Vaga[]>("/admin/vagas").catch(() => {
+          console.warn("Erro ao carregar vagas, usando dados mockados")
+          return mockVagas
+        }),
+        api.get<Candidatura[]>("/admin/candidaturas").catch(() => {
+          console.warn("Erro ao carregar candidaturas, usando dados mockados")
+          return mockCandidaturas
+        }),
+      ])
+
+      setUsers(Array.isArray(usersData) ? usersData : mockUsers)
+      setVagas(Array.isArray(vagasData) ? vagasData : mockVagas)
+      setCandidaturas(Array.isArray(candidaturasData) ? candidaturasData : mockCandidaturas)
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error)
+      // Fallback para dados mockados
+      setUsers(mockUsers)
+      setVagas(mockVagas)
+      setCandidaturas(mockCandidaturas)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const empresas = users.filter((u) => u.role === "empresa")
   const candidatos = users.filter((u) => u.role === "candidato")

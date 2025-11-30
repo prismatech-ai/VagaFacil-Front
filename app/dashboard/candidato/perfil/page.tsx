@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Edit, Trash2, Save } from "lucide-react"
 import { UploadCurriculo } from "@/components/upload-curriculo"
 import type { Candidato, Educacao, Experiencia, Curso } from "@/lib/types"
+import { api } from "@/lib/api"
 
 export default function PerfilPage() {
   const router = useRouter()
@@ -53,6 +54,30 @@ export default function PerfilPage() {
     }
 
     if (user && user.role === "candidato") {
+      loadPerfil()
+    }
+  }, [user, isLoading, router])
+
+  const loadPerfil = async () => {
+    if (!user) return
+
+    try {
+      // #colocarRota - Ajuste a rota conforme seu backend
+      const candidatoData = await api.get<Candidato>(`/candidatos/${user.id}`)
+      setCandidato(candidatoData)
+      setFormData({
+        telefone: candidatoData.telefone || "",
+        localizacao: candidatoData.localizacao || "",
+        curriculo: candidatoData.curriculo || "",
+        curriculoArquivo: candidatoData.curriculoArquivo || null,
+        curriculoNome: candidatoData.curriculoNome || null,
+        linkedin: candidatoData.linkedin || "",
+        portfolio: candidatoData.portfolio || "",
+        habilidades: candidatoData.habilidades || [],
+      })
+    } catch (error) {
+      console.error("Erro ao carregar perfil:", error)
+      // Fallback para dados do user atual
       const candidatoData = user as Candidato
       setCandidato(candidatoData)
       setFormData({
@@ -66,7 +91,7 @@ export default function PerfilPage() {
         habilidades: candidatoData.habilidades || [],
       })
     }
-  }, [user, isLoading, router])
+  }
 
   if (isLoading || !user || user.role !== "candidato") {
     return (
@@ -79,19 +104,25 @@ export default function PerfilPage() {
     )
   }
 
-  const handleSave = () => {
-    if (!candidato) return
+  const handleSave = async () => {
+    if (!candidato || !user) return
 
-    const updatedCandidato: Candidato = {
-      ...candidato,
-      ...formData,
-      curriculoArquivo: formData.curriculoArquivo || undefined,
-      curriculoNome: formData.curriculoNome || undefined,
+    try {
+      // #colocarRota - Ajuste a rota conforme seu backend
+      const updatedCandidato = await api.put<Candidato>(`/candidatos/${user.id}`, {
+        ...formData,
+        curriculoArquivo: formData.curriculoArquivo || undefined,
+        curriculoNome: formData.curriculoNome || undefined,
+      })
+
+      setCandidato(updatedCandidato)
+      localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
+      setIsEditing(false)
+      alert("Perfil atualizado com sucesso!")
+    } catch (error) {
+      console.error("Erro ao salvar perfil:", error)
+      alert("Erro ao salvar perfil. Tente novamente.")
     }
-
-    setCandidato(updatedCandidato)
-    localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
-    setIsEditing(false)
   }
 
   const addHabilidade = () => {

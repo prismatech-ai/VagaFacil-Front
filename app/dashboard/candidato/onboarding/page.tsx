@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react"
 import { UploadCurriculo } from "@/components/upload-curriculo"
 import type { Candidato } from "@/lib/types"
+import { api } from "@/lib/api"
 
 const TOTAL_STEPS = 4
 
@@ -53,17 +54,24 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleComplete = () => {
-    // Salvar dados do onboarding
-    const updatedUser: Candidato = {
-      ...(user as Candidato),
-      ...formData,
-      curriculoArquivo: formData.curriculoArquivo || undefined,
-      curriculoNome: formData.curriculoNome || undefined,
-      onboardingCompleto: true,
+  const handleComplete = async () => {
+    if (!user) return
+
+    try {
+      // #colocarRota - Ajuste a rota conforme seu backend
+      const updatedUser = await api.post<Candidato>(`/candidatos/${user.id}/onboarding`, {
+        ...formData,
+        curriculoArquivo: formData.curriculoArquivo || undefined,
+        curriculoNome: formData.curriculoNome || undefined,
+        onboardingCompleto: true,
+      })
+
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser))
+      router.push("/dashboard/candidato")
+    } catch (error) {
+      console.error("Erro ao completar onboarding:", error)
+      alert("Erro ao salvar dados do onboarding. Tente novamente.")
     }
-    localStorage.setItem("currentUser", JSON.stringify(updatedUser))
-    router.push("/dashboard/candidato")
   }
 
   const addHabilidade = () => {

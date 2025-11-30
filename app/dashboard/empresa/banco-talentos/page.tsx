@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Search, MapPin, Award, Send, Eye } from "lucide-react"
 import { mockUsers, mockVagas } from "@/lib/mock-data"
 import type { Candidato, Vaga } from "@/lib/types"
+import { api } from "@/lib/api"
 
 export default function BancoTalentosPage() {
   const router = useRouter()
@@ -30,6 +31,7 @@ export default function BancoTalentosPage() {
     localizacao: "",
     pontuacaoMinima: "",
   })
+  const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -39,14 +41,35 @@ export default function BancoTalentosPage() {
 
     if (user && user.role !== "empresa") {
       router.push("/dashboard")
+      return
     }
 
-    // Filtrar apenas candidatos
-    const todosCandidatos = mockUsers.filter((u) => u.role === "candidato") as Candidato[]
-    setCandidatos(todosCandidatos)
+    if (user && user.role === "empresa") {
+      loadCandidatos()
+    }
   }, [user, isLoading, router])
 
-  if (isLoading || !user || user.role !== "empresa") {
+  const loadCandidatos = async () => {
+    try {
+      setLoadingData(true)
+      // #colocarRota - Ajuste a rota conforme seu backend
+      const candidatosData = await api.get<Candidato[]>("/candidatos").catch(() => {
+        console.warn("Erro ao carregar candidatos, usando dados mockados")
+        return mockUsers.filter((u) => u.role === "candidato") as Candidato[]
+      })
+
+      setCandidatos(Array.isArray(candidatosData) ? candidatosData : [])
+    } catch (error) {
+      console.error("Erro ao carregar candidatos:", error)
+      // Fallback para dados mockados
+      const todosCandidatos = mockUsers.filter((u) => u.role === "candidato") as Candidato[]
+      setCandidatos(todosCandidatos)
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  if (isLoading || !user || user.role !== "empresa" || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -79,13 +102,23 @@ export default function BancoTalentosPage() {
       .slice(0, 2)
   }
 
-  const handleConvite = () => {
+  const handleConvite = async () => {
     if (!vagaSelecionada || !candidatoSelecionado) return
 
-    // Aqui você faria a chamada à API para enviar o convite
-    alert(`Convite enviado para ${candidatoSelecionado.nome} para a vaga selecionada!`)
-    setConviteDialogOpen(false)
-    setVagaSelecionada("")
+    try {
+      // #colocarRota - Ajuste a rota conforme seu backend
+      await api.post("/convites", {
+        candidatoId: candidatoSelecionado.id,
+        vagaId: vagaSelecionada,
+      })
+
+      alert(`Convite enviado para ${candidatoSelecionado.nome} para a vaga selecionada!`)
+      setConviteDialogOpen(false)
+      setVagaSelecionada("")
+    } catch (error) {
+      console.error("Erro ao enviar convite:", error)
+      alert("Erro ao enviar convite. Tente novamente.")
+    }
   }
 
   return (
