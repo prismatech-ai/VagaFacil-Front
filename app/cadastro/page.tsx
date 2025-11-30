@@ -191,7 +191,17 @@ export default function CadastroPage() {
                 )}
 
                 {/* Campos comuns */}
-
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
 
                 {/* Campos específicos da empresa */}
                 <TabsContent value="empresa" className="space-y-4 mt-0">
@@ -276,17 +286,7 @@ export default function CadastroPage() {
                         required={activeTab === "candidato"}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="cpf">CPF *</Label>
                       <Input

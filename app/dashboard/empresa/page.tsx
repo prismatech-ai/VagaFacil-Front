@@ -162,26 +162,29 @@ export default function EmpresaDashboardPage() {
 
       setVagas([...vagas, novaVaga])
 
-    // Mostrar página de confirmação
-    setVagaCriada(novaVaga)
-    setShowConfirmacao(true)
-    setIsDialogOpen(false)
+      // Mostrar página de confirmação
+      setVagaCriada(novaVaga)
+      setShowConfirmacao(true)
+      setIsDialogOpen(false)
 
-    // Reset form
-    setTitulo("")
-    setSenha("")
-    setDescricao("")
-    setRequisitos("")
-    setTipoVaga("")
-    setDisciplina("")
-    setNivel("")
-    setEscolaridade("")
-    setExperienciaMinima("")
-    setSalario("")
-    setLocalizacao("")
-    setTipo("CLT")
-    setBeneficios([])
-    setBeneficioInput("")
+      // Reset form
+      setTitulo("")
+      setSenha("")
+      setDescricao("")
+      setRequisitos("")
+      setTipoVaga("")
+      setDisciplina("")
+      setNivel("")
+      setEscolaridade("")
+      setExperienciaMinima("")
+      setSalario("")
+      setLocalizacao("")
+      setTipo("CLT")
+      setBeneficios([])
+      setBeneficioInput("")
+    } catch (error) {
+      console.error("Erro ao criar vaga:", error)
+    }
   }
 
   const getStatusBadge = (status: string) => {

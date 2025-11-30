@@ -67,18 +67,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       // #colocarRota - Substitua "/auth/login" pela rota correta do seu backend
-      const response = await api.post<{ user: User; token: string }>("/auth/login", {
+      const response = await api.post<any>("/api/v1/auth/login", {
         email,
         password,
       })
 
-      if (response.user && response.token) {
-        setUser(response.user)
-        localStorage.setItem("user", JSON.stringify(response.user))
-        localStorage.setItem("token", response.token)
-        return true
+      console.log("Resposta completa do login:", response)
+
+      // Tratar resposta do backend: { access_token, refresh_token, token_type }
+      const accessToken = response.access_token || response.token
+      
+      if (accessToken) {
+        // Decodificar o JWT para extrair as informações do usuário
+        try {
+          const decoded = JSON.parse(atob(accessToken.split('.')[1]))
+          console.log("Token decodificado:", decoded)
+          
+          const userData: User = {
+            id: String(decoded.sub || email),
+            email: decoded.email || email,
+            nome: decoded.nome || decoded.name || email.split("@")[0],
+            role: mapUserType(decoded.user_type),
+          }
+          
+          setUser(userData)
+          localStorage.setItem("user", JSON.stringify(userData))
+          localStorage.setItem("token", accessToken)
+          if (response.refresh_token) {
+            localStorage.setItem("refresh_token", response.refresh_token)
+          }
+          console.log("Login bem-sucedido:", userData)
+          return true
+        } catch (decodeError) {
+          console.error("Erro ao decodificar token:", decodeError)
+          return false
+        }
       }
 
+      console.warn("Resposta sem access_token:", response)
       return false
     } catch (error) {
       console.error("Erro ao fazer login:", error)
@@ -99,6 +125,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return false
     }
+  }
+
+  // Função auxiliar para mapear user_type do backend para role da aplicação
+  const mapUserType = (userType: string): "admin" | "empresa" | "candidato" => {
+    const typeMap: Record<string, "admin" | "empresa" | "candidato"> = {
+      admin: "admin",
+      empresa: "empresa",
+      company: "empresa",
+      candidato: "candidato",
+      candidate: "candidato",
+      user: "candidato",
+    }
+    return typeMap[userType?.toLowerCase()] || "candidato"
   }
 
   const register = async (data: RegisterData): Promise<boolean> => {
