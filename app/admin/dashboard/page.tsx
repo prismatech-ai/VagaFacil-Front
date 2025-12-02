@@ -27,15 +27,15 @@ export default function AdminDashboardPage() {
       setLoading(true)
       // #colocarRota - Ajuste as rotas conforme seu backend
       const [usersData, vagasData, candidaturasData] = await Promise.all([
-        api.get<User[]>("/admin/usuarios").catch(() => {
+        api.get<User[]>("/api/v1/admin/usuarios").catch(() => {
           console.warn("Erro ao carregar usuários, usando dados mockados")
           return mockUsers
         }),
-        api.get<Vaga[]>("/admin/vagas").catch(() => {
+        api.get<Vaga[]>("/api/v1/admin/vagas").catch(() => {
           console.warn("Erro ao carregar vagas, usando dados mockados")
           return mockVagas
         }),
-        api.get<Candidatura[]>("/admin/candidaturas").catch(() => {
+        api.get<Candidatura[]>("/api/v1/admin/candidaturas").catch(() => {
           console.warn("Erro ao carregar candidaturas, usando dados mockados")
           return mockCandidaturas
         }),
