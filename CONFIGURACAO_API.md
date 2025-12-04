@@ -66,9 +66,9 @@ Todos os lugares onde você precisa adicionar rotas estão marcados com o coment
 - `#colocarRota` - Enviar convite: `/convites`
 
 #### Dashboard Admin (`app/admin/dashboard/page.tsx`)
-- `#colocarRota` - Listar usuários: `/admin/usuarios`
-- `#colocarRota` - Listar vagas: `/admin/vagas`
-- `#colocarRota` - Listar candidaturas: `/admin/candidaturas`
+- `#colocarRota` - Listar usuários: `/api/v1/admin/usuarios`
+- `#colocarRota` - Listar vagas: `/api/v1/admin/vagas`
+- `#colocarRota` - Listar candidaturas: `/api/v1/admin/candidaturas`
 
 ## 📝 Como usar
 
