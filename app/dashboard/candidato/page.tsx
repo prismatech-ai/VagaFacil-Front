@@ -29,16 +29,18 @@ import { mockVagas, mockCandidaturas, mockUsers } from "@/lib/mock-data"
 import type { Vaga, Candidatura } from "@/lib/types"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { api } from "@/lib/api"
 
 export default function CandidatoDashboardPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
-  const [vagas, setVagas] = useState(mockVagas)
-  const [candidaturas, setCandidaturas] = useState(mockCandidaturas)
+  const [vagas, setVagas] = useState<Vaga[]>([])
+  const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedVaga, setSelectedVaga] = useState<Vaga | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [mensagem, setMensagem] = useState("")
+  const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -48,10 +50,44 @@ export default function CandidatoDashboardPage() {
 
     if (user && user.role !== "candidato") {
       router.push("/dashboard")
+      return
+    }
+
+    if (user && user.role === "candidato") {
+      loadData()
     }
   }, [user, isLoading, router])
 
-  if (isLoading || !user || user.role !== "candidato") {
+  const loadData = async () => {
+    if (!user) return
+
+    try {
+      setLoadingData(true)
+      // #colocarRota - Ajuste a rota conforme seu backend
+      const [vagasData, candidaturasData] = await Promise.all([
+        api.get<Vaga[]>("/vagas/abertas").catch(() => {
+          console.warn("Erro ao carregar vagas, usando dados mockados")
+          return mockVagas
+        }),
+        api.get<Candidatura[]>(`/candidaturas?candidatoId=${user.id}`).catch(() => {
+          console.warn("Erro ao carregar candidaturas, usando dados mockados")
+          return mockCandidaturas.filter((c) => c.candidatoId === user.id)
+        }),
+      ])
+
+      setVagas(Array.isArray(vagasData) ? vagasData : mockVagas)
+      setCandidaturas(Array.isArray(candidaturasData) ? candidaturasData : [])
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error)
+      // Fallback para dados mockados em caso de erro
+      setVagas(mockVagas)
+      setCandidaturas(mockCandidaturas.filter((c) => c.candidatoId === user?.id))
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  if (isLoading || !user || user.role !== "candidato" || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -75,26 +111,27 @@ export default function CandidatoDashboardPage() {
       vaga.localizacao.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleCandidatar = (e: React.FormEvent) => {
+  const handleCandidatar = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!selectedVaga) return
+    if (!selectedVaga || !user) return
 
-    const novaCandidatura: Candidatura = {
-      id: Date.now().toString(),
-      vagaId: selectedVaga.id,
-      candidatoId: user.id,
-      status: "pendente",
-      mensagem: mensagem || undefined,
-      createdAt: new Date(),
+    try {
+      // #colocarRota - Ajuste a rota conforme seu backend
+      const novaCandidatura = await api.post<Candidatura>("/candidaturas", {
+        vagaId: selectedVaga.id,
+        candidatoId: user.id,
+        mensagem: mensagem || undefined,
+      })
+
+      setCandidaturas([...candidaturas, novaCandidatura])
+      setMensagem("")
+      setSelectedVaga(null)
+      setIsDialogOpen(false)
+    } catch (error) {
+      console.error("Erro ao candidatar-se:", error)
+      alert("Erro ao enviar candidatura. Tente novamente.")
     }
-
-    setCandidaturas([...candidaturas, novaCandidatura])
-    mockCandidaturas.push(novaCandidatura)
-
-    setMensagem("")
-    setSelectedVaga(null)
-    setIsDialogOpen(false)
   }
 
   const getStatusBadge = (status: string) => {

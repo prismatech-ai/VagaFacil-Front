@@ -123,3 +123,32 @@
     @apply bg-background text-foreground;
   }
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Landing & Navbar enhancements */
+.nav-link {
+  @apply text-sm text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded;
+}
+.nav-link-active {
+  @apply text-primary font-medium;
+}
+
+.section-title {
+  @apply text-2xl md:text-3xl font-semibold mb-4;
+}
+
+.feature-card {
+  @apply p-6 border rounded-lg hover:shadow-lg transition-shadow bg-white/60;
+}
+
+.testimonial {
+  @apply p-6 border rounded-lg bg-gray-50/60;
+}
+
+/* Small responsive tweak so sticky header doesn't overlap sections when using IDs */
+section[id] {
+  scroll-margin-top: 96px; /* header height + margin */
+}

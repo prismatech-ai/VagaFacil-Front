@@ -40,7 +40,7 @@ export default function CadastroPage() {
   const [cepEmpresa, setCepEmpresa] = useState("")
   const [pessoaDeContato, setPessoaDeContato] = useState("")
   const [foneEmpresa, setFoneEmpresa] = useState("")
-  
+
   // Dados do candidato
   const [telefone, setTelefone] = useState("")
   const [cpf, setCpf] = useState("")
@@ -84,30 +84,70 @@ export default function CadastroPage() {
     setIsLoading(true)
 
     try {
-      const success = await register({
+      // --- 3. Monta o Objeto de Registro ---
+      let registerData: any = {
         email,
         password,
         nome,
         role: activeTab,
-        ...(activeTab === "empresa" && { razaoSocial, cnpj }),
-        ...(activeTab === "candidato" && {
-          telefone,
-          cpf,
-          rg,
-          dataNascimento: dataNascimento ? new Date(dataNascimento) : undefined,
-          genero: genero as any,
-          estadoCivil: estadoCivil as any,
-          endereco: {
-            cep,
-            logradouro,
-            numero,
-            complemento,
-            bairro,
-            cidade,
-            estado,
-          },
-        }),
-      })
+        confirmPassword: confirmPassword, // Necessário apenas para validação, será removido no final
+      }
+
+      if (activeTab === "empresa") {
+        // Adiciona campos de empresa
+        registerData = {
+          ...registerData,
+          razaoSocial: razaoSocial || undefined,
+          cnpj: cnpj || undefined,
+          setor: setor || undefined,
+          cepEmpresa: cepEmpresa || undefined,
+          pessoaDeContato: pessoaDeContato || undefined,
+          foneEmpresa: foneEmpresa || undefined,
+        }
+      } else if (activeTab === "candidato") {
+
+        // 3.1 Monta sub-objeto Endereço (com limpeza interna)
+        const enderecoData: any = {
+          cep: cep || undefined,
+          logradouro: logradouro || undefined,
+          numero: numero || undefined,
+          complemento: complemento || undefined,
+          bairro: bairro || undefined,
+          cidade: cidade || undefined,
+          estado: estado || undefined,
+        }
+
+        // Remove chaves 'undefined' de DENTRO do objeto endereco
+        Object.keys(enderecoData).forEach(key => {
+          if (enderecoData[key] === undefined) {
+            delete enderecoData[key];
+          }
+        });
+
+        // 3.2 Adiciona campos de candidato e o sub-objeto Endereço
+        registerData = {
+          ...registerData,
+          telefone: telefone || undefined,
+          cpf: cpf || undefined,
+          rg: rg || undefined,
+          dataNascimento: dataNascimento || undefined,
+          genero: genero || undefined,
+          estadoCivil: estadoCivil || undefined,
+          endereco: enderecoData, // Inclui a sub-estrutura de endereço (que já foi limpa)
+        }
+      }
+
+      // --- 4. Filtro Final (Remove todas as chaves com valor undefined ou chaves irrelevantes como confirmPassword) ---
+      const finalRegisterData: any = {}
+      Object.keys(registerData).forEach(key => {
+        if (registerData[key] !== undefined && key !== 'confirmPassword') {
+          finalRegisterData[key] = registerData[key];
+        }
+      });
+
+      console.log("Dados enviados ao backend:", finalRegisterData)
+
+      const success = await register(finalRegisterData) // Usa o objeto final limpo
 
       if (success) {
         router.push("/dashboard")
@@ -151,7 +191,17 @@ export default function CadastroPage() {
                 )}
 
                 {/* Campos comuns */}
-                
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
 
                 {/* Campos específicos da empresa */}
                 <TabsContent value="empresa" className="space-y-4 mt-0">
@@ -236,17 +286,7 @@ export default function CadastroPage() {
                         required={activeTab === "candidato"}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="cpf">CPF *</Label>
                       <Input

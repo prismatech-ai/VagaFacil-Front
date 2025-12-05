@@ -26,13 +26,15 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { api } from "@/lib/api"
 
 export default function EmpresaDashboardPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
-  const [vagas, setVagas] = useState(mockVagas)
+  const [vagas, setVagas] = useState<Vaga[]>([])
   const [candidaturas, setCandidaturas] = useState(mockCandidaturas)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
 
   // Form state
   const [titulo, setTitulo] = useState("")
@@ -60,10 +62,50 @@ export default function EmpresaDashboardPage() {
 
     if (user && user.role !== "empresa") {
       router.push("/dashboard")
+      return
+    }
+
+    if (user && user.role === "empresa") {
+      loadData()
     }
   }, [user, isLoading, router])
 
-  if (isLoading || !user || user.role !== "empresa") {
+  const loadData = async () => {
+    if (!user) return
+
+    try {
+      setLoadingData(true)
+      // #colocarRota - Ajuste as rotas conforme seu backend
+      const [vagasData, candidaturasData] = await Promise.all([
+        api.get<Vaga[]>(`/vagas?empresaId=${user.id}`).catch(() => {
+          console.warn("Erro ao carregar vagas, usando dados mockados")
+          return mockVagas.filter((v) => v.empresaId === user.id)
+        }),
+        api.get(`/candidaturas?empresaId=${user.id}`).catch(() => {
+          console.warn("Erro ao carregar candidaturas, usando dados mockados")
+          return mockCandidaturas.filter((c) => {
+            const vaga = mockVagas.find((v) => v.id === c.vagaId)
+            return vaga?.empresaId === user.id
+          })
+        }),
+      ])
+
+      setVagas(Array.isArray(vagasData) ? vagasData : [])
+      setCandidaturas(Array.isArray(candidaturasData) ? candidaturasData : [])
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error)
+      // Fallback para dados mockados
+      setVagas(mockVagas.filter((v) => v.empresaId === user?.id))
+      setCandidaturas(mockCandidaturas.filter((c) => {
+        const vaga = mockVagas.find((v) => v.id === c.vagaId)
+        return vaga?.empresaId === user?.id
+      }))
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  if (isLoading || !user || user.role !== "empresa" || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -93,52 +135,56 @@ export default function EmpresaDashboardPage() {
     setBeneficios(beneficios.filter((b) => b !== beneficio))
   }
 
-  const handleCreateVaga = (e: React.FormEvent) => {
+  const handleCreateVaga = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const novaVaga: Vaga = {
-      id: Date.now().toString(),
-      empresaId: user.id,
-      senha: senha || undefined,
-      titulo,
-      descricao,
-      requisitos,
-      tipoVaga: tipoVaga || undefined,
-      disciplina: disciplina || undefined,
-      nivel: nivel || undefined,
-      escolaridade: escolaridade || undefined,
-      experienciaMinima: experienciaMinima || undefined,
-      salario: salario || undefined,
-      localizacao,
-      tipo,
-      beneficios: beneficios.length > 0 ? beneficios : undefined,
-      status: "aberta",
-      createdAt: new Date(),
+    if (!user) return
+
+    try {
+      // #colocarRota - Ajuste a rota conforme seu backend
+      const novaVaga = await api.post<Vaga>("/vagas", {
+        empresaId: user.id,
+        senha: senha || undefined,
+        titulo,
+        descricao,
+        requisitos,
+        tipoVaga: tipoVaga || undefined,
+        disciplina: disciplina || undefined,
+        nivel: nivel || undefined,
+        escolaridade: escolaridade || undefined,
+        experienciaMinima: experienciaMinima || undefined,
+        salario: salario || undefined,
+        localizacao,
+        tipo,
+        beneficios: beneficios.length > 0 ? beneficios : undefined,
+        status: "aberta",
+      })
+
+      setVagas([...vagas, novaVaga])
+
+      // Mostrar página de confirmação
+      setVagaCriada(novaVaga)
+      setShowConfirmacao(true)
+      setIsDialogOpen(false)
+
+      // Reset form
+      setTitulo("")
+      setSenha("")
+      setDescricao("")
+      setRequisitos("")
+      setTipoVaga("")
+      setDisciplina("")
+      setNivel("")
+      setEscolaridade("")
+      setExperienciaMinima("")
+      setSalario("")
+      setLocalizacao("")
+      setTipo("CLT")
+      setBeneficios([])
+      setBeneficioInput("")
+    } catch (error) {
+      console.error("Erro ao criar vaga:", error)
     }
-
-    setVagas([...vagas, novaVaga])
-    mockVagas.push(novaVaga)
-
-    // Mostrar página de confirmação
-    setVagaCriada(novaVaga)
-    setShowConfirmacao(true)
-    setIsDialogOpen(false)
-
-    // Reset form
-    setTitulo("")
-    setSenha("")
-    setDescricao("")
-    setRequisitos("")
-    setTipoVaga("")
-    setDisciplina("")
-    setNivel("")
-    setEscolaridade("")
-    setExperienciaMinima("")
-    setSalario("")
-    setLocalizacao("")
-    setTipo("CLT")
-    setBeneficios([])
-    setBeneficioInput("")
   }
 
   const getStatusBadge = (status: string) => {

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { CheckCircle2, XCircle, Clock, Award } from "lucide-react"
 import type { Questao, ResultadoTeste, RespostaQuestao } from "@/lib/types"
 import { mockQuestoes } from "@/lib/mock-data"
+import { api } from "@/lib/api"
 
 export default function TestesPage() {
   const router = useRouter()
@@ -23,6 +24,7 @@ export default function TestesPage() {
   const [nivelAtual, setNivelAtual] = useState<"facil" | "medio" | "dificil">("facil")
   const [respostas, setRespostas] = useState<RespostaQuestao[]>([])
   const [questoes, setQuestoes] = useState<Questao[]>([])
+  const [questoesDisponiveis, setQuestoesDisponiveis] = useState<Questao[]>([])
   const [respostaSelecionada, setRespostaSelecionada] = useState<number | null>(null)
   const [resultado, setResultado] = useState<ResultadoTeste | null>(null)
   const [tempoInicio, setTempoInicio] = useState<Date | null>(null)
@@ -35,8 +37,28 @@ export default function TestesPage() {
 
     if (user && user.role !== "candidato") {
       router.push("/dashboard")
+      return
+    }
+
+    if (user && user.role === "candidato") {
+      loadQuestoes()
     }
   }, [user, isLoading, router])
+
+  const loadQuestoes = async () => {
+    try {
+      // #colocarRota - Ajuste a rota conforme seu backend
+      const questoesData = await api.get<Questao[]>("/testes/questoes").catch(() => {
+        console.warn("Erro ao carregar questões, usando dados mockados")
+        return mockQuestoes
+      })
+
+      setQuestoesDisponiveis(Array.isArray(questoesData) ? questoesData : mockQuestoes)
+    } catch (error) {
+      console.error("Erro ao carregar questões:", error)
+      setQuestoesDisponiveis(mockQuestoes)
+    }
+  }
 
   if (isLoading || !user || user.role !== "candidato") {
     return (
@@ -50,7 +72,7 @@ export default function TestesPage() {
   }
 
   const iniciarTeste = () => {
-    const questoesFacil = mockQuestoes.filter((q) => q.nivelDificuldade === "facil").slice(0, 3)
+    const questoesFacil = questoesDisponiveis.filter((q) => q.nivelDificuldade === "facil").slice(0, 3)
     setQuestoes(questoesFacil)
     setNivelAtual("facil")
     setQuestaoAtual(0)
@@ -85,17 +107,17 @@ export default function TestesPage() {
 
       if (acertos / total >= 0.7 && nivelAtual === "facil") {
         // Subir para médio
-        const questoesMedio = mockQuestoes.filter((q) => q.nivelDificuldade === "medio").slice(0, 2)
+        const questoesMedio = questoesDisponiveis.filter((q) => q.nivelDificuldade === "medio").slice(0, 2)
         setQuestoes([...questoes, ...questoesMedio])
         setNivelAtual("medio")
       } else if (acertos / total >= 0.7 && nivelAtual === "medio") {
         // Subir para difícil
-        const questoesDificil = mockQuestoes.filter((q) => q.nivelDificuldade === "dificil").slice(0, 2)
+        const questoesDificil = questoesDisponiveis.filter((q) => q.nivelDificuldade === "dificil").slice(0, 2)
         setQuestoes([...questoes, ...questoesDificil])
         setNivelAtual("dificil")
       } else if (acertos / total < 0.5 && nivelAtual === "medio") {
         // Descer para fácil
-        const questoesFacil = mockQuestoes.filter((q) => q.nivelDificuldade === "facil").slice(0, 2)
+        const questoesFacil = questoesDisponiveis.filter((q) => q.nivelDificuldade === "facil").slice(0, 2)
         setQuestoes([...questoes, ...questoesFacil])
         setNivelAtual("facil")
       }
@@ -110,7 +132,7 @@ export default function TestesPage() {
     }
   }
 
-  const finalizarTeste = (todasRespostas: RespostaQuestao[]) => {
+  const finalizarTeste = async (todasRespostas: RespostaQuestao[]) => {
     const acertos = todasRespostas.filter((r) => r.correta).length
     const total = todasRespostas.length
     const pontuacao = Math.round((acertos / total) * 100)
@@ -134,8 +156,17 @@ export default function TestesPage() {
       dataRealizacao: new Date(),
     }
 
-    setResultado(resultadoFinal)
-    setTesteEmAndamento(false)
+    try {
+      // #colocarRota - Ajuste a rota conforme seu backend
+      await api.post("/testes/resultados", resultadoFinal)
+      setResultado(resultadoFinal)
+      setTesteEmAndamento(false)
+    } catch (error) {
+      console.error("Erro ao salvar resultado do teste:", error)
+      // Mesmo com erro, mostra o resultado para o usuário
+      setResultado(resultadoFinal)
+      setTesteEmAndamento(false)
+    }
   }
 
   const questao = questoes[questaoAtual]

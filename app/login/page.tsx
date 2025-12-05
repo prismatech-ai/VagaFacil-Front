@@ -29,11 +29,15 @@ export default function LoginPage() {
 
     try {
       const success = await login(email, password)
+      console.log("Login retornou:", success)
 
       if (success) {
         const storedUser = localStorage.getItem("user")
+        console.log("Usuário armazenado:", storedUser)
+        
         if (storedUser) {
           const user = JSON.parse(storedUser)
+          console.log("Usuário parseado:", user)
 
           if (user.role === "admin") {
             router.push("/admin/dashboard")
@@ -49,6 +53,7 @@ export default function LoginPage() {
         setError("Email ou senha incorretos")
       }
     } catch (err) {
+      console.error("Erro no handleSubmit:", err)
       setError("Erro ao fazer login. Tente novamente.")
     } finally {
       setIsLoading(false)
