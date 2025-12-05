@@ -19,7 +19,7 @@ import {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-white font-sans text-slate-900">
       {/* --- NAVBAR --- */}
       <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/70 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -44,12 +44,12 @@ export default function LandingPage() {
             <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">
               Login
             </Link>
-            <Link href="/cadastro">
+            <Link href="/candidato/registro">
               <Button variant="outline" size="sm" className="hidden sm:flex hover:bg-primary/5 bg-transparent">
                 Sou candidato
               </Button>
             </Link>
-            <Link href="/cadastro">
+            <Link href="/empresa/registro">
               <Button size="sm" className="shadow-sm hover:shadow-md transition-shadow">
                 Sou empresa
               </Button>
@@ -62,17 +62,19 @@ export default function LandingPage() {
         {/* --- HERO SECTION --- */}
         <section className="container mx-auto px-4 py-20 md:py-28 text-center relative overflow-hidden">
           {/* Background decoration */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl -z-10"></div>
+          {/* Updated hero background to use turquoise primary color */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#24BFB0]/5 rounded-full blur-3xl -z-10"></div>
 
           <div className="max-w-4xl mx-auto space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold border border-primary/20 mb-4">
+            {/* Updated badge to use turquoise brand color */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#24BFB0]/10 text-[#03565C] text-sm font-semibold border border-[#24BFB0]/20 mb-4">
               <Zap className="w-4 h-4" />
               Reduza seu tempo de contratação em até 57%
             </div>
 
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 leading-[1.05] text-balance">
-              A plataforma de recrutamento para a{" "}
-              <span className="text-primary bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+              A plataforma de recrutamento para a {/* Updated gradient to use turquoise colors */}
+              <span className="text-[#24BFB0] bg-gradient-to-r from-[#24BFB0] to-[#25D9B8] bg-clip-text text-transparent">
                 indústria!
               </span>
             </h1>
@@ -147,17 +149,20 @@ export default function LandingPage() {
         </section>
 
         {/* --- PAIN SECTION --- */}
-        <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-24 relative overflow-hidden">
+        {/* Updated section background to use dark teal brand color */}
+        <section className="bg-gradient-to-br from-[#03565C] via-[#024850] to-[#03565C] text-white py-24 relative overflow-hidden">
           {/* Background pattern */}
           <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
+            {/* Updated glow colors to turquoise */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-[#24BFB0] rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#25D9B8] rounded-full blur-3xl"></div>
           </div>
 
           <div className="container mx-auto px-4 relative z-10">
             <div className="grid md:grid-cols-2 gap-16 items-center">
               <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 text-blue-300 text-sm font-semibold border border-blue-500/30 backdrop-blur-sm">
+                {/* Updated badge to use turquoise */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#24BFB0]/20 text-[#25D9B8] text-sm font-semibold border border-[#24BFB0]/30 backdrop-blur-sm">
                   <TrendingUp className="w-4 h-4" /> Eficiência Comprovada
                 </div>
                 <h2 className="text-4xl md:text-5xl font-extrabold leading-tight text-balance">
@@ -194,22 +199,23 @@ export default function LandingPage() {
               </div>
 
               {/* Enhanced Chart */}
-              <div className="bg-slate-800/50 p-10 rounded-3xl border border-slate-700/50 shadow-2xl backdrop-blur-sm">
+              {/* Updated chart bar colors to dark teal and turquoise */}
+              <div className="bg-[#024850]/50 p-10 rounded-3xl border border-[#03565C]/50 shadow-2xl backdrop-blur-sm">
                 <h3 className="text-center mb-10 text-sm text-slate-400 font-semibold uppercase tracking-widest">
                   Tempo médio para contratação
                 </h3>
-                <div className="flex justify-center items-end gap-16 h-72">
+                <div className="flex justify-center items-end gap-16 h-74">
                   {/* Market Standard Bar */}
                   <div className="flex flex-col items-center gap-4 w-28 group cursor-default">
                     <div className="relative">
                       <span className="text-3xl font-bold text-slate-400 group-hover:text-slate-300 transition-colors">
                         33 dias
                       </span>
-                      <div className="absolute -top-1 -right-15 bg-red-500/20 text-red-400 text-xs px-2 py-1 rounded-full border border-red-500/30">
+                      <div className="absolute -top-0 -right-14 bg-red-500/20 text-red-400 text-xs px-2 py-1 rounded-full border border-red-500/30">
                         Lento
                       </div>
                     </div>
-                    <div className="w-full bg-gradient-to-t from-slate-600 to-slate-500 rounded-t-xl h-70 relative overflow-hidden shadow-lg">
+                    <div className="w-full bg-gradient-to-t from-slate-600 to-slate-500 rounded-t-xl h-72 relative overflow-hidden shadow-lg">
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-700/50 to-transparent"></div>
                     </div>
                     <span className="text-xs text-slate-400 text-center font-medium">
@@ -222,16 +228,19 @@ export default function LandingPage() {
                   {/* Platform Bar */}
                   <div className="flex flex-col items-center gap-4 w-28 group cursor-default">
                     <div className="relative">
-                      <span className="text-4xl font-bold text-green-400 group-hover:text-green-300 transition-colors">
+                      {/* Updated text to turquoise */}
+                      <span className="text-4xl font-bold text-[#25D9B8] group-hover:text-[#24BFB0] transition-colors">
                         14 dias
                       </span>
-                      <div className="absolute -top-1 -right-10 bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full border border-green-500/30 animate-pulse">
+                      {/* Updated badge to turquoise */}
+                      <div className="absolute -top-1 -right-10 bg-[#24BFB0]/20 text-[#25D9B8] text-xs px-2 py-1 rounded-full border border-[#24BFB0]/30 animate-pulse">
                         -57%
                       </div>
                     </div>
-                    <div className="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t-xl h-36 relative shadow-[0_0_30px_rgba(34,197,94,0.4)] animate-pulse">
-                      <div className="absolute top-0 left-0 right-0 h-2 bg-green-300/50 rounded-t-xl"></div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-green-700/30 to-transparent"></div>
+                    {/* Updated bar gradient to turquoise colors */}
+                    <div className="w-full bg-gradient-to-t from-[#24BFB0] to-[#25D9B8] rounded-t-xl h-36 relative shadow-[0_0_30px_rgba(36,191,176,0.4)] animate-pulse">
+                      <div className="absolute top-0 left-0 right-0 h-2 bg-[#25D9B8]/50 rounded-t-xl"></div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#03565C]/30 to-transparent"></div>
                     </div>
                     <span className="text-xs font-bold text-white text-center">
                       Nossa
@@ -252,7 +261,8 @@ export default function LandingPage() {
         <section id="solucoes" className="py-24 bg-white">
           <div className="container mx-auto px-4">
             <div className="text-center max-w-3xl mx-auto mb-16">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold border border-primary/20 mb-6">
+              {/* Updated badge to turquoise */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#24BFB0]/10 text-[#03565C] text-sm font-semibold border border-[#24BFB0]/20 mb-6">
                 <Factory className="w-4 h-4" />
                 Especialidades Verticais
               </div>
@@ -266,10 +276,10 @@ export default function LandingPage() {
 
             <div className="grid md:grid-cols-2 gap-12 max-w-6xl mx-auto">
               {/* Industrial Side */}
-              <div className="space-y-6 p-8 bg-gradient-to-br from-primary/5 to-blue-500/5 rounded-3xl border border-primary/10">
+              <div className="space-y-6 p-8 bg-gradient-to-br from-[#24BFB0]/5 to-[#25D9B8]/5 rounded-3xl border border-[#24BFB0]/10">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <Factory className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 bg-[#24BFB0]/10 rounded-xl flex items-center justify-center">
+                    <Factory className="w-6 h-6 text-[#24BFB0]" />
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900">Especialidades Industriais</h3>
                 </div>
@@ -284,10 +294,10 @@ export default function LandingPage() {
                   ].map((item, idx) => (
                     <div
                       key={item}
-                      className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-primary/30 hover:shadow-md transition-all cursor-default group"
+                      className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-[#24BFB0]/30 hover:shadow-md transition-all cursor-default group"
                       style={{ animationDelay: `${idx * 100}ms` }}
                     >
-                      <span className="font-semibold text-slate-700 group-hover:text-primary transition-colors">
+                      <span className="font-semibold text-slate-700 group-hover:text-[#24BFB0] transition-colors">
                         {item}
                       </span>
                       <CheckCircle2 className="w-5 h-5 text-green-500 group-hover:scale-110 transition-transform" />
@@ -297,10 +307,10 @@ export default function LandingPage() {
               </div>
 
               {/* Corporate Side */}
-              <div className="space-y-6 p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl border border-purple-100">
+              <div className="space-y-6 p-8 bg-gradient-to-br from-[#03565C]/5 to-[#024850]/5 rounded-3xl border border-[#03565C]/10">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                    <Briefcase className="w-6 h-6 text-purple-600" />
+                  <div className="w-12 h-12 bg-[#03565C]/10 rounded-xl flex items-center justify-center">
+                    <Briefcase className="w-6 h-6 text-[#03565C]" />
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900">Especialidades Corporativas</h3>
                 </div>
@@ -315,13 +325,13 @@ export default function LandingPage() {
                   ].map((item, idx) => (
                     <div
                       key={item}
-                      className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-purple-300 hover:shadow-md transition-all cursor-default group"
+                      className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-[#03565C]/30 hover:shadow-md transition-all cursor-default group"
                       style={{ animationDelay: `${idx * 100}ms` }}
                     >
-                      <span className="font-semibold text-slate-700 group-hover:text-purple-600 transition-colors">
+                      <span className="font-semibold text-slate-700 group-hover:text-[#03565C] transition-colors">
                         {item}
                       </span>
-                      <CheckCircle2 className="w-5 h-5 text-purple-500 group-hover:scale-110 transition-transform" />
+                      <CheckCircle2 className="w-5 h-5 text-[#24BFB0] group-hover:scale-110 transition-transform" />
                     </div>
                   ))}
                 </div>
@@ -343,10 +353,12 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {/* Card 1 */}
               <div className="p-8 rounded-3xl bg-white border-2 border-slate-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-lg">
+                {/* Updated icon background to turquoise gradient */}
+                <div className="w-16 h-16 bg-gradient-to-br from-[#24BFB0] to-[#25D9B8] rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-lg">
                   <BarChart3 className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4 group-hover:text-primary transition-colors">
+                {/* Updated hover text to turquoise */}
+                <h3 className="text-2xl font-bold mb-4 group-hover:text-[#24BFB0] transition-colors">
                   Software de Recrutamento
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-6">
@@ -371,10 +383,12 @@ export default function LandingPage() {
 
               {/* Card 2 */}
               <div className="p-8 rounded-3xl bg-white border-2 border-slate-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-lg">
+                {/* Updated icon background to dark teal gradient */}
+                <div className="w-16 h-16 bg-gradient-to-br from-[#03565C] to-[#024850] rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-lg">
                   <UserCheck className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4 group-hover:text-purple-600 transition-colors">
+                {/* Updated hover text to dark teal */}
+                <h3 className="text-2xl font-bold mb-4 group-hover:text-[#03565C] transition-colors">
                   Serviço de Recrutamento
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-6">
@@ -399,10 +413,12 @@ export default function LandingPage() {
 
               {/* Card 3 */}
               <div className="p-8 rounded-3xl bg-white border-2 border-slate-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-lg">
+                {/* Updated icon background to accent turquoise */}
+                <div className="w-16 h-16 bg-gradient-to-br from-[#25D9B8] to-[#24BFB0] rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-lg">
                   <Users className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4 group-hover:text-green-600 transition-colors">
+                {/* Updated hover text to turquoise */}
+                <h3 className="text-2xl font-bold mb-4 group-hover:text-[#25D9B8] transition-colors">
                   Base de Talentos
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-6">
@@ -442,13 +458,15 @@ export default function LandingPage() {
 
             <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               <div className="bg-gradient-to-br from-white to-slate-50 p-10 rounded-3xl shadow-lg border-2 border-slate-100 relative hover:shadow-xl hover:-translate-y-1 transition-all">
-                <div className="text-7xl text-primary/20 absolute top-6 left-8 font-serif">"</div>
+                {/* Updated quote mark to turquoise */}
+                <div className="text-7xl text-[#24BFB0]/20 absolute top-6 left-8 font-serif">"</div>
                 <p className="text-slate-700 text-lg relative z-10 mb-8 pt-8 leading-relaxed">
                   Tive uma experiência ótima e eficiente. Em poucos dias, conseguimos fechar uma posição que estava em
                   aberto há algum tempo. O processo foi extremamente prático e objetivo.
                 </p>
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                  {/* Updated avatar gradient to turquoise */}
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#24BFB0] to-[#25D9B8] flex items-center justify-center text-white font-bold text-xl shadow-md">
                     LF
                   </div>
                   <div>
@@ -459,13 +477,15 @@ export default function LandingPage() {
               </div>
 
               <div className="bg-gradient-to-br from-white to-slate-50 p-10 rounded-3xl shadow-lg border-2 border-slate-100 relative hover:shadow-xl hover:-translate-y-1 transition-all">
-                <div className="text-7xl text-primary/20 absolute top-6 left-8 font-serif">"</div>
+                {/* Updated quote mark to turquoise */}
+                <div className="text-7xl text-[#24BFB0]/20 absolute top-6 left-8 font-serif">"</div>
                 <p className="text-slate-700 text-lg relative z-10 mb-8 pt-8 leading-relaxed">
                   Avalio como excelente a experiência. A praticidade e rapidez na triagem e seleção dos candidatos mais
                   alinhados à empresa são grandes diferenciais.
                 </p>
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                  {/* Updated avatar gradient to dark teal */}
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#03565C] to-[#024850] flex items-center justify-center text-white font-bold text-xl shadow-md">
                     MP
                   </div>
                   <div>
@@ -496,14 +516,16 @@ export default function LandingPage() {
 
             <div className="grid md:grid-cols-3 gap-6">
               {/* Vaga 1 */}
-              <div className="border-2 border-slate-200 rounded-2xl p-6 bg-white hover:border-primary hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer group">
+              {/* Updated hover border to turquoise */}
+              <div className="border-2 border-slate-200 rounded-2xl p-6 bg-white hover:border-[#24BFB0] hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer group">
                 <div className="flex justify-between items-start mb-5">
                   <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full">
                     PRESENCIAL
                   </span>
                   <span className="text-slate-400 text-xs">Há 2 horas</span>
                 </div>
-                <h3 className="font-bold text-xl mb-2 group-hover:text-primary transition-colors">
+                {/* Updated title hover to turquoise */}
+                <h3 className="font-bold text-xl mb-2 group-hover:text-[#24BFB0] transition-colors">
                   Engenheiro Mecânico Pleno
                 </h3>
                 <p className="text-sm text-slate-500 mb-5 flex items-center gap-1">
@@ -523,7 +545,7 @@ export default function LandingPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-primary hover:text-primary/80 hover:bg-primary/10 font-semibold"
+                    className="text-[#24BFB0] hover:text-[#24BFB0]/80 hover:bg-[#24BFB0]/10 font-semibold"
                   >
                     Ver vaga →
                   </Button>
@@ -531,14 +553,14 @@ export default function LandingPage() {
               </div>
 
               {/* Vaga 2 */}
-              <div className="border-2 border-slate-200 rounded-2xl p-6 bg-white hover:border-primary hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer group">
+              <div className="border-2 border-slate-200 rounded-2xl p-6 bg-white hover:border-[#24BFB0] hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer group">
                 <div className="flex justify-between items-start mb-5">
                   <span className="bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-full">
                     HÍBRIDO
                   </span>
                   <span className="text-slate-400 text-xs">Há 5 horas</span>
                 </div>
-                <h3 className="font-bold text-xl mb-2 group-hover:text-primary transition-colors">
+                <h3 className="font-bold text-xl mb-2 group-hover:text-[#24BFB0] transition-colors">
                   Técnico em Automação
                 </h3>
                 <p className="text-sm text-slate-500 mb-5 flex items-center gap-1">
@@ -556,7 +578,7 @@ export default function LandingPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-primary hover:text-primary/80 hover:bg-primary/10 font-semibold"
+                    className="text-[#24BFB0] hover:text-[#24BFB0]/80 hover:bg-[#24BFB0]/10 font-semibold"
                   >
                     Ver vaga →
                   </Button>
@@ -564,14 +586,14 @@ export default function LandingPage() {
               </div>
 
               {/* Vaga 3 */}
-              <div className="border-2 border-slate-200 rounded-2xl p-6 bg-white hover:border-primary hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer group">
+              <div className="border-2 border-slate-200 rounded-2xl p-6 bg-white hover:border-[#24BFB0] hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer group">
                 <div className="flex justify-between items-start mb-5">
                   <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full">
                     PRESENCIAL
                   </span>
                   <span className="text-slate-400 text-xs">Há 1 dia</span>
                 </div>
-                <h3 className="font-bold text-xl mb-2 group-hover:text-primary transition-colors">
+                <h3 className="font-bold text-xl mb-2 group-hover:text-[#24BFB0] transition-colors">
                   Gerente de Manutenção
                 </h3>
                 <p className="text-sm text-slate-500 mb-5 flex items-center gap-1">
@@ -589,7 +611,7 @@ export default function LandingPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-primary hover:text-primary/80 hover:bg-primary/10 font-semibold"
+                    className="text-[#24BFB0] hover:text-[#24BFB0]/80 hover:bg-[#24BFB0]/10 font-semibold"
                   >
                     Ver vaga →
                   </Button>
@@ -600,7 +622,8 @@ export default function LandingPage() {
         </section>
 
         {/* --- CTA SECTION --- */}
-        <section className="py-24 bg-gradient-to-br from-primary to-blue-600 text-white relative overflow-hidden">
+        {/* Updated CTA section to use turquoise gradient */}
+        <section className="py-24 bg-gradient-to-br from-[#24BFB0] to-[#25D9B8] text-white relative overflow-hidden">
           {/* Background decoration */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
@@ -624,7 +647,7 @@ export default function LandingPage() {
                   <Button
                     size="lg"
                     variant="secondary"
-                    className="w-full sm:w-auto text-lg h-14 px-10 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-0.5 group bg-white text-primary hover:bg-white/90"
+                    className="w-full sm:w-auto text-lg h-14 px-10 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-0.5 group bg-white text-[#03565C] hover:bg-white/90"
                   >
                     Começar agora
                     <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -660,7 +683,8 @@ export default function LandingPage() {
       </main>
 
       {/* --- FOOTER --- */}
-      <footer className="border-t py-16 bg-slate-900 text-slate-300">
+      {/* Updated footer to use dark teal background */}
+      <footer className="border-t py-16 bg-[#03565C] text-slate-300">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div className="space-y-4">
