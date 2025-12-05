@@ -212,10 +212,10 @@ export default function LandingPage() {
               {/* Enhanced Chart */}
               {/* Updated chart bar colors to dark teal and turquoise */}
               <div className="bg-[#024850]/50 p-10 rounded-3xl border border-[#03565C]/50 shadow-2xl backdrop-blur-sm">
-                <h3 className="text-center mb-10 text-sm text-slate-400 font-semibold uppercase tracking-widest">
+                <h3 className="text-center mb-10 text-sm text-slate-300 font-semibold uppercase tracking-widest">
                   Tempo médio para contratação
                 </h3>
-                <div className="flex justify-center items-end gap-16 h-72">
+                <div className="flex justify-center items-end gap-16 h-90">
                   {/* Market Standard Bar */}
                   <div className="flex flex-col items-center gap-4 w-28 group cursor-default">
                     <div className="relative">
