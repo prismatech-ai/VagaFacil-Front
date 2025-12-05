@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -22,7 +21,9 @@ export default function CadastroPage() {
   const { register } = useAuth()
 
   const tipoParam = searchParams.get("tipo")
-  const [activeTab, setActiveTab] = useState<"empresa" | "candidato">(tipoParam === "empresa" ? "empresa" : "candidato")
+  const [activeTab, setActiveTab] = useState<"empresa" | "candidato">(
+    tipoParam === "empresa" ? "empresa" : "candidato"
+  )
 
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -77,85 +78,70 @@ export default function CadastroPage() {
     }
 
     if (activeTab === "empresa" && (!razaoSocial || !cnpj)) {
-      setError("Preencha todos os campos obrigatórios")
+      setError("Razão Social e CNPJ são obrigatórios")
+      return
+    }
+
+    if (activeTab === "candidato" && !nome) {
+      setError("Nome completo é obrigatório")
       return
     }
 
     setIsLoading(true)
 
     try {
-      // --- 3. Monta o Objeto de Registro ---
       let registerData: any = {
         email,
         password,
-        nome,
         role: activeTab,
-        confirmPassword: confirmPassword, // Necessário apenas para validação, será removido no final
       }
 
       if (activeTab === "empresa") {
-        // Adiciona campos de empresa
-        registerData = {
-          ...registerData,
-          razaoSocial: razaoSocial || undefined,
-          cnpj: cnpj || undefined,
-          setor: setor || undefined,
-          cepEmpresa: cepEmpresa || undefined,
-          pessoaDeContato: pessoaDeContato || undefined,
-          foneEmpresa: foneEmpresa || undefined,
-        }
+        // Dados da empresa
+        registerData.razaoSocial = razaoSocial
+        registerData.cnpj = cnpj.replace(/\D/g, "") // Remove formatação
+
+        if (setor) registerData.setor = setor
+        if (cepEmpresa) registerData.cepEmpresa = cepEmpresa
+        if (pessoaDeContato) registerData.pessoaDeContato = pessoaDeContato
+        if (foneEmpresa) registerData.foneEmpresa = foneEmpresa
       } else if (activeTab === "candidato") {
+        // Dados do candidato
+        registerData.nome = nome
 
-        // 3.1 Monta sub-objeto Endereço (com limpeza interna)
-        const enderecoData: any = {
-          cep: cep || undefined,
-          logradouro: logradouro || undefined,
-          numero: numero || undefined,
-          complemento: complemento || undefined,
-          bairro: bairro || undefined,
-          cidade: cidade || undefined,
-          estado: estado || undefined,
-        }
+        // Campos opcionais
+        if (telefone) registerData.telefone = telefone
+        if (cpf) registerData.cpf = cpf.replace(/\D/g, "") // Remove formatação
+        if (rg) registerData.rg = rg
+        if (dataNascimento) registerData.dataNascimento = dataNascimento
+        if (genero) registerData.genero = genero
+        if (estadoCivil) registerData.estadoCivil = estadoCivil
 
-        // Remove chaves 'undefined' de DENTRO do objeto endereco
-        Object.keys(enderecoData).forEach(key => {
-          if (enderecoData[key] === undefined) {
-            delete enderecoData[key];
-          }
-        });
-
-        // 3.2 Adiciona campos de candidato e o sub-objeto Endereço
-        registerData = {
-          ...registerData,
-          telefone: telefone || undefined,
-          cpf: cpf || undefined,
-          rg: rg || undefined,
-          dataNascimento: dataNascimento || undefined,
-          genero: genero || undefined,
-          estadoCivil: estadoCivil || undefined,
-          endereco: enderecoData, // Inclui a sub-estrutura de endereço (que já foi limpa)
+        // Endereço (apenas se pelo menos um campo estiver preenchido)
+        if (cep || logradouro || numero || bairro || cidade || estado) {
+          registerData.endereco = {}
+          if (cep) registerData.endereco.cep = cep
+          if (logradouro) registerData.endereco.logradouro = logradouro
+          if (numero) registerData.endereco.numero = numero
+          if (complemento) registerData.endereco.complemento = complemento
+          if (bairro) registerData.endereco.bairro = bairro
+          if (cidade) registerData.endereco.cidade = cidade
+          if (estado) registerData.endereco.estado = estado
         }
       }
 
-      // --- 4. Filtro Final (Remove todas as chaves com valor undefined ou chaves irrelevantes como confirmPassword) ---
-      const finalRegisterData: any = {}
-      Object.keys(registerData).forEach(key => {
-        if (registerData[key] !== undefined && key !== 'confirmPassword') {
-          finalRegisterData[key] = registerData[key];
-        }
-      });
+      console.log("Dados enviados ao backend:", registerData)
 
-      console.log("Dados enviados ao backend:", finalRegisterData)
-
-      const success = await register(finalRegisterData) // Usa o objeto final limpo
+      const success = await register(registerData)
 
       if (success) {
         router.push("/dashboard")
       } else {
-        setError("Erro ao criar conta. Tente novamente.")
+        setError("Erro ao criar conta. Verifique os dados e tente novamente.")
       }
-    } catch (err) {
-      setError("Erro ao criar conta. Tente novamente.")
+    } catch (err: any) {
+      console.error("Erro no cadastro:", err)
+      setError(err?.message || "Erro ao criar conta. Tente novamente.")
     } finally {
       setIsLoading(false)
     }
@@ -190,9 +176,9 @@ export default function CadastroPage() {
                   </Alert>
                 )}
 
-                {/* Campos comuns */}
+                {/* Email - Campo comum */}
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
                     type="email"
@@ -206,7 +192,7 @@ export default function CadastroPage() {
                 {/* Campos específicos da empresa */}
                 <TabsContent value="empresa" className="space-y-4 mt-0">
                   <div className="space-y-2">
-                    <Label htmlFor="razaoSocial">Razão Social</Label>
+                    <Label htmlFor="razaoSocial">Razão Social *</Label>
                     <Input
                       id="razaoSocial"
                       type="text"
@@ -218,7 +204,7 @@ export default function CadastroPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="cnpj">CNPJ</Label>
+                    <Label htmlFor="cnpj">CNPJ *</Label>
                     <Input
                       id="cnpj"
                       type="text"
@@ -228,17 +214,18 @@ export default function CadastroPage() {
                       required={activeTab === "empresa"}
                     />
                   </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="setor">Setor</Label>
                     <Input
                       id="setor"
-                      type="setor"
-                      placeholder="Celulose"
+                      type="text"
+                      placeholder="Ex: Tecnologia, Saúde, Educação"
                       value={setor}
                       onChange={(e) => setSetor(e.target.value)}
-                      required={activeTab === "empresa"}
                     />
                   </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="cepEmpresa">CEP</Label>
                     <Input
@@ -249,22 +236,24 @@ export default function CadastroPage() {
                       onChange={(e) => setCepEmpresa(e.target.value)}
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="pessoadecontato">Pessoa de Contato</Label>
+                    <Label htmlFor="pessoaDeContato">Pessoa de Contato</Label>
                     <Input
-                      id="pessoadecontato"
+                      id="pessoaDeContato"
                       type="text"
-                      placeholder="00000-000"
+                      placeholder="Nome do responsável"
                       value={pessoaDeContato}
                       onChange={(e) => setPessoaDeContato(e.target.value)}
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="fone">Fone</Label>
+                    <Label htmlFor="foneEmpresa">Telefone</Label>
                     <Input
-                      id="fone"
+                      id="foneEmpresa"
                       type="text"
-                      placeholder="00000-000"
+                      placeholder="(00) 00000-0000"
                       value={foneEmpresa}
                       onChange={(e) => setFoneEmpresa(e.target.value)}
                     />
@@ -273,31 +262,30 @@ export default function CadastroPage() {
 
                 {/* Campos específicos do candidato */}
                 <TabsContent value="candidato" className="space-y-4 mt-0">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome Completo *</Label>
+                    <Input
+                      id="nome"
+                      type="text"
+                      placeholder="Seu nome completo"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      required={activeTab === "candidato"}
+                    />
+                  </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="nome">Nome Completo</Label>
-                      <Input
-                        id="nome"
-                        type="text"
-                        placeholder="Seu nome completo"
-                        value={nome}
-                        onChange={(e) => setNome(e.target.value)}
-                        required={activeTab === "candidato"}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="cpf">CPF *</Label>
+                      <Label htmlFor="cpf">CPF</Label>
                       <Input
                         id="cpf"
                         type="text"
                         placeholder="000.000.000-00"
                         value={cpf}
                         onChange={(e) => setCpf(e.target.value)}
-                        required={activeTab === "candidato"}
                       />
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="rg">RG</Label>
                       <Input
@@ -312,24 +300,23 @@ export default function CadastroPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="dataNascimento">Data de Nascimento *</Label>
+                      <Label htmlFor="dataNascimento">Data de Nascimento</Label>
                       <Input
                         id="dataNascimento"
                         type="date"
                         value={dataNascimento}
                         onChange={(e) => setDataNascimento(e.target.value)}
-                        required={activeTab === "candidato"}
                       />
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="telefone">Telefone *</Label>
+                      <Label htmlFor="telefone">Telefone</Label>
                       <Input
                         id="telefone"
                         type="tel"
                         placeholder="(00) 00000-0000"
                         value={telefone}
                         onChange={(e) => setTelefone(e.target.value)}
-                        required={activeTab === "candidato"}
                       />
                     </div>
                   </div>
@@ -349,6 +336,7 @@ export default function CadastroPage() {
                         </SelectContent>
                       </Select>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="estadoCivil">Estado Civil</Label>
                       <Select value={estadoCivil} onValueChange={setEstadoCivil}>
@@ -367,7 +355,8 @@ export default function CadastroPage() {
                   </div>
 
                   <div className="space-y-4 pt-2 border-t">
-                    <h4 className="font-semibold text-sm">Endereço</h4>
+                    <h4 className="font-semibold text-sm">Endereço (Opcional)</h4>
+
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="cep">CEP</Label>
@@ -379,6 +368,7 @@ export default function CadastroPage() {
                           onChange={(e) => setCep(e.target.value)}
                         />
                       </div>
+
                       <div className="space-y-2 col-span-2">
                         <Label htmlFor="logradouro">Logradouro</Label>
                         <Input
@@ -390,6 +380,7 @@ export default function CadastroPage() {
                         />
                       </div>
                     </div>
+
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="numero">Número</Label>
@@ -401,6 +392,7 @@ export default function CadastroPage() {
                           onChange={(e) => setNumero(e.target.value)}
                         />
                       </div>
+
                       <div className="space-y-2 col-span-2">
                         <Label htmlFor="complemento">Complemento</Label>
                         <Input
@@ -412,6 +404,7 @@ export default function CadastroPage() {
                         />
                       </div>
                     </div>
+
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="bairro">Bairro</Label>
@@ -423,6 +416,7 @@ export default function CadastroPage() {
                           onChange={(e) => setBairro(e.target.value)}
                         />
                       </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="cidade">Cidade</Label>
                         <Input
@@ -433,6 +427,7 @@ export default function CadastroPage() {
                           onChange={(e) => setCidade(e.target.value)}
                         />
                       </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="estado">Estado</Label>
                         <Input
@@ -448,8 +443,9 @@ export default function CadastroPage() {
                   </div>
                 </TabsContent>
 
+                {/* Senha - Campo comum */}
                 <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password">Senha *</Label>
                   <Input
                     id="password"
                     type="password"
@@ -461,7 +457,7 @@ export default function CadastroPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                  <Label htmlFor="confirmPassword">Confirmar Senha *</Label>
                   <Input
                     id="confirmPassword"
                     type="password"
