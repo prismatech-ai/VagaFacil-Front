@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   CheckCircle2,
   Factory,
@@ -129,21 +130,31 @@ export default function LandingPage() {
               <Award className="w-4 h-4" />A solução escolhida por empresas que levam o recrutamento a sério
             </p>
             <div className="flex flex-wrap justify-center gap-12 md:gap-16 items-center">
-              <span className="text-2xl font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-default">
-                amazon
-              </span>
-              <span className="text-2xl font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-default">
-                mercado livre
-              </span>
-              <span className="text-2xl font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-default">
-                HostGator
-              </span>
-              <span className="text-2xl font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-default">
-                ZUP
-              </span>
-              <span className="text-2xl font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-default">
-                Future Secure AI
-              </span>
+              <img
+                src="/amazon-logo.png"
+                alt="Amazon"
+                className="h-8 md:h-40 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+              />
+              <img
+                src="/generic-online-marketplace-logo.png"
+                alt="Mercado Livre"
+                className="h-8 md:h-15 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+              />
+              <img
+                src="/hostgator-logo.jpg"
+                alt="HostGator"
+                className="h-8 md:h-30 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+              />
+              <img
+                src="/generic-abstract-logo.png"
+                alt="ZUP"
+                className="h-8 md:h-20 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+              />
+              <img
+                src="/future-secure-ai-logo.jpg"
+                alt="Future Secure AI"
+                className="h-8 md:h-20 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+              />
             </div>
           </div>
         </section>
@@ -204,14 +215,14 @@ export default function LandingPage() {
                 <h3 className="text-center mb-10 text-sm text-slate-400 font-semibold uppercase tracking-widest">
                   Tempo médio para contratação
                 </h3>
-                <div className="flex justify-center items-end gap-16 h-74">
+                <div className="flex justify-center items-end gap-16 h-72">
                   {/* Market Standard Bar */}
                   <div className="flex flex-col items-center gap-4 w-28 group cursor-default">
                     <div className="relative">
                       <span className="text-3xl font-bold text-slate-400 group-hover:text-slate-300 transition-colors">
                         33 dias
                       </span>
-                      <div className="absolute -top-0 -right-14 bg-red-500/20 text-red-400 text-xs px-2 py-1 rounded-full border border-red-500/30">
+                      <div className="absolute top-0 -right-14 bg-red-500/20 text-red-400 text-xs px-2 py-1 rounded-full border border-red-500/30">
                         Lento
                       </div>
                     </div>
@@ -294,7 +305,7 @@ export default function LandingPage() {
                   ].map((item, idx) => (
                     <div
                       key={item}
-                      className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-[#24BFB0]/30 hover:shadow-md transition-all cursor-default group"
+                      className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-[#24BFB0] hover:shadow-md transition-all cursor-default group"
                       style={{ animationDelay: `${idx * 100}ms` }}
                     >
                       <span className="font-semibold text-slate-700 group-hover:text-[#24BFB0] transition-colors">
@@ -464,14 +475,15 @@ export default function LandingPage() {
                   Tive uma experiência ótima e eficiente. Em poucos dias, conseguimos fechar uma posição que estava em
                   aberto há algum tempo. O processo foi extremamente prático e objetivo.
                 </p>
-                <div className="flex items-center gap-4">
-                  {/* Updated avatar gradient to turquoise */}
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#24BFB0] to-[#25D9B8] flex items-center justify-center text-white font-bold text-xl shadow-md">
-                    LF
-                  </div>
-                  <div>
-                    <p className="font-bold text-base text-slate-900">Liliane Figueiredo</p>
-                    <p className="text-sm text-slate-500">YDUQS</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="w-12 h-12 border-2 border-primary">
+                      <AvatarFallback className="bg-primary/10 text-primary font-bold">LF</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-slate-900">Liliane Figueiredo</p>
+                      <p className="text-sm text-slate-600">Gerente de Recrutamento e Seleção</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -483,14 +495,15 @@ export default function LandingPage() {
                   Avalio como excelente a experiência. A praticidade e rapidez na triagem e seleção dos candidatos mais
                   alinhados à empresa são grandes diferenciais.
                 </p>
-                <div className="flex items-center gap-4">
-                  {/* Updated avatar gradient to dark teal */}
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#03565C] to-[#024850] flex items-center justify-center text-white font-bold text-xl shadow-md">
-                    MP
-                  </div>
-                  <div>
-                    <p className="font-bold text-base text-slate-900">Michelle Pelosini</p>
-                    <p className="text-sm text-slate-500">Gerente de Sucesso</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="w-12 h-12 border-2 border-primary">
+                      <AvatarFallback className="bg-primary/10 text-primary font-bold">MP</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-slate-900">Michelle Pelosini</p>
+                      <p className="text-sm text-slate-600">Diretora de RH</p>
+                    </div>
                   </div>
                 </div>
               </div>

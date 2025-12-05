@@ -60,7 +60,7 @@ export default function AdminEmpresasPage() {
   })
   const [novoAcesso, setNovoAcesso] = useState({ nome: "", email: "" })
 
-  const vagasPorEmpresa = {
+  const vagasPorEmpresa: Record<string, number> = {
     "1": 5,
     "2": 3,
     "3": 8,
