@@ -131,29 +131,29 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-wrap justify-center gap-12 md:gap-16 items-center">
               <img
-                src="/amazon-logo.png"
-                alt="Amazon"
-                className="h-8 md:h-40 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
-              />
-              <img
-                src="/generic-online-marketplace-logo.png"
-                alt="Mercado Livre"
-                className="h-8 md:h-15 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
-              />
-              <img
-                src="/hostgator-logo.jpg"
-                alt="HostGator"
+                src="/embraer.png"
+                alt="Embraer"
                 className="h-8 md:h-30 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
               />
               <img
-                src="/generic-abstract-logo.png"
-                alt="ZUP"
+                src="/Gerdau.png"
+                alt="Gerdau"
                 className="h-8 md:h-20 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
               />
               <img
-                src="/future-secure-ai-logo.jpg"
-                alt="Future Secure AI"
+                src="/Klabin.png"
+                alt="Klabin"
                 className="h-8 md:h-20 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+              />
+              <img
+                src="/suzano.png"
+                alt="Suzano"
+                className="h-8 md:h-15 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+              />
+              <img
+                src="/Toyota.png"
+                alt="Toyota"
+                className="h-8 md:h-10 w-auto opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
               />
             </div>
           </div>
