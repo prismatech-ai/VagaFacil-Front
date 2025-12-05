@@ -44,12 +44,12 @@ export default function LandingPage() {
             <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">
               Login
             </Link>
-            <Link href="/candidato/registro">
+            <Link href="/cadastro">
               <Button variant="outline" size="sm" className="hidden sm:flex hover:bg-primary/5 bg-transparent">
                 Sou candidato
               </Button>
             </Link>
-            <Link href="/empresa/registro">
+            <Link href="/cadastro">
               <Button size="sm" className="shadow-sm hover:shadow-md transition-shadow">
                 Sou empresa
               </Button>
@@ -85,7 +85,7 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
-              <Link href="/empresa/registro">
+              <Link href="/cadastro">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto text-lg h-14 px-10 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 group"
@@ -94,7 +94,7 @@ export default function LandingPage() {
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link href="/candidato/registro">
+              <Link href="/cadastro">
                 <Button
                   variant="outline"
                   size="lg"
@@ -643,7 +643,7 @@ export default function LandingPage() {
                 Junte-se a centenas de empresas que já encontraram seus melhores talentos através da nossa plataforma.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                <Link href="/empresa/registro">
+                <Link href="/cadastro">
                   <Button
                     size="lg"
                     variant="secondary"
@@ -653,7 +653,7 @@ export default function LandingPage() {
                     <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
-                <Link href="/candidato/registro">
+                <Link href="/cadastro">
                   <Button
                     size="lg"
                     variant="outline"
