@@ -16,18 +16,16 @@ type RegisterData = {
   password: string
   nome: string
   role: string
-  // Campos da empresa
   razaoSocial?: string
   cnpj?: string
   setor?: string
   cepEmpresa?: string
   pessoaDeContato?: string
   foneEmpresa?: string
-  // Campos do candidato
   telefone?: string
   cpf?: string
   rg?: string
-  dataNascimento?: string // Formato ISO: "YYYY-MM-DD"
+  dataNascimento?: string
   genero?: string
   estadoCivil?: string
   endereco?: {
@@ -56,7 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is already logged in
     const storedUser = localStorage.getItem("user")
     if (storedUser) {
       setUser(JSON.parse(storedUser))
@@ -64,116 +61,111 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      // #colocarRota - Substitua "/auth/login" pela rota correta do seu backend
-      const response = await api.post<any>("/api/v1/auth/login", {
-        email,
-        password,
-      })
-
-      console.log("Resposta completa do login:", response)
-
-      // Tratar resposta do backend: { access_token, refresh_token, token_type }
-      const accessToken = response.access_token || response.token
-      
-      if (accessToken) {
-        // Decodificar o JWT para extrair as informações do usuário
-        try {
-          const decoded = JSON.parse(atob(accessToken.split('.')[1]))
-          console.log("Token decodificado:", decoded)
-          
-          const userData: User = {
-            id: String(decoded.sub || email),
-            email: decoded.email || email,
-            nome: decoded.nome || decoded.name || email.split("@")[0],
-            role: mapUserType(decoded.user_type),
-          }
-          
-          setUser(userData)
-          localStorage.setItem("user", JSON.stringify(userData))
-          localStorage.setItem("token", accessToken)
-          if (response.refresh_token) {
-            localStorage.setItem("refresh_token", response.refresh_token)
-          }
-          console.log("Login bem-sucedido:", userData)
-          return true
-        } catch (decodeError) {
-          console.error("Erro ao decodificar token:", decodeError)
-          return false
-        }
-      }
-
-      console.warn("Resposta sem access_token:", response)
-      return false
-    } catch (error) {
-      console.error("Erro ao fazer login:", error)
-      // Fallback para mock em caso de erro (desenvolvimento)
-      const mockUsers = [
-        { id: "1", email: "admin@jobboard.com", nome: "Admin", role: "admin" as const },
-        { id: "2", email: "empresa@tech.com", nome: "Tech Corp", role: "empresa" as const },
-        { id: "3", email: "candidato@email.com", nome: "João Silva", role: "candidato" as const },
-      ]
-
-      const foundUser = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase())
-
-      if (foundUser) {
-        setUser(foundUser)
-        localStorage.setItem("user", JSON.stringify(foundUser))
-        return true
-      }
-
-      return false
-    }
-  }
-
-  // Função auxiliar para mapear user_type do backend para role da aplicação
   const mapUserType = (userType: string): "admin" | "empresa" | "candidato" => {
     const typeMap: Record<string, "admin" | "empresa" | "candidato"> = {
       admin: "admin",
       empresa: "empresa",
-      company: "empresa",
       candidato: "candidato",
-      candidate: "candidato",
       user: "candidato",
     }
     return typeMap[userType?.toLowerCase()] || "candidato"
   }
 
-  const register = async (data: RegisterData): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend (sem a URL base, apenas o endpoint)
-      // O utilitário api já adiciona a URL base automaticamente
-      console.log("Enviando dados de registro:", data)
-      const response = await api.post<{ user: User; token: string }>("/api/v1/auth/register", data)
+      const response = await api.post<{
+        access_token: string
+        refresh_token?: string
+        user: any
+      }>("/api/v1/auth/login", { email, password })
+
       console.log("Resposta do backend:", response)
 
+      const { access_token, refresh_token, user } = response
+
+      if (!access_token) return false
+
+      // Salvar tokens
+      localStorage.setItem("token", access_token)
+      if (refresh_token) {
+        localStorage.setItem("refresh_token", refresh_token)
+      }
+
+      // Se o backend não retornar `user`, decodificamos o JWT
+      let resolvedUser: any = user
+      if (!resolvedUser) {
+        try {
+          const payload = JSON.parse(atob(access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+          console.log("JWT payload decodificado:", payload)
+          resolvedUser = {
+            id: payload.sub || payload.id || payload.user_id,
+            email: payload.email,
+            nome: payload.nome || payload.name,
+            user_type: payload.user_type || payload.role || payload.type,
+          }
+        } catch (decodeErr) {
+          console.warn("Não foi possível decodificar access_token:", decodeErr)
+        }
+      }
+
+      if (!resolvedUser) {
+        console.error("Nenhum dado de usuário disponível no login response")
+        return false
+      }
+
+      // Criar userData a partir do objeto resolvido
+      const userData: User = {
+        id: String(resolvedUser.id ?? email),
+        email: resolvedUser.email ?? email,
+        nome: resolvedUser.nome ?? (resolvedUser.email ? resolvedUser.email.split("@")[0] : email.split("@")[0]),
+        role: mapUserType(resolvedUser.user_type ?? resolvedUser.role ?? "candidato"),
+      }
+
+      setUser(userData)
+      localStorage.setItem("user", JSON.stringify(userData))
+
+      console.log("Login OK → usuário:", userData)
+
+      return true
+    } catch (error) {
+      console.error("Erro no login:", error)
+      return false
+    }
+  }
+
+  const register = async (data: RegisterData): Promise<boolean> => {
+    try {
+      const response = await api.post<{ user: User; token: string }>(
+        "/api/v1/auth/register",
+        data
+      )
+
       if (response.user && response.token) {
+        localStorage.setItem("token", response.token)
         setUser(response.user)
         localStorage.setItem("user", JSON.stringify(response.user))
-        localStorage.setItem("token", response.token)
         return true
       }
 
       return false
     } catch (error) {
       console.error("Erro ao registrar:", error)
-      // Log mais detalhado do erro
-      if (error instanceof Error) {
-        console.error("Mensagem de erro:", error.message)
-      }
       return false
     }
   }
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem("user")
     localStorage.removeItem("token")
-    // #colocarRota - Se necessário, adicione uma chamada para logout no backend: api.post("/auth/logout")
+    localStorage.removeItem("refresh_token")
+    localStorage.removeItem("user")
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

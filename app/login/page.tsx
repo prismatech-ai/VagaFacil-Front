@@ -34,20 +34,24 @@ export default function LoginPage() {
       if (success) {
         const storedUser = localStorage.getItem("user")
         console.log("Usuário armazenado:", storedUser)
-        
+
         if (storedUser) {
           const user = JSON.parse(storedUser)
           console.log("Usuário parseado:", user)
 
-          if (user.role === "admin") {
+          // suportar diferentes formatos: `role` (novo), `user_type` (backend) ou `type`
+          const role = user.user_type
+
+          if (role === "admin") {
             router.push("/admin/dashboard")
-          } else if (user.role === "candidato") {
+          } else if (role === "candidato" || role === "candidate") {
             router.push("/dashboard/candidato")
-          } else if (user.role === "empresa") {
+          } else if (role === "empresa" || role === "company") {
             router.push("/dashboard/empresa")
           } else {
             router.push("/dashboard")
           }
+
         }
       } else {
         setError("Email ou senha incorretos")
