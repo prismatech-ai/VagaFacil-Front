@@ -69,12 +69,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   if (typeof window !== "undefined") {
     token = localStorage.getItem("token")
     if (isTokenExpired(token)) token = await tryRefreshToken()
-    if (token) {
-      defaultHeaders["Authorization"] = `Bearer ${token}`
-      console.log('[API] Authorization header set ->', `Bearer ${token}`)
-    } else {
-      console.log('[API] No token found for request to', url)
-    }
+    if (token) defaultHeaders["Authorization"] = `Bearer ${token}`
   }
 
   const config: RequestInit = {
