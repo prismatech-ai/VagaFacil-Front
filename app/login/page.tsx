@@ -122,14 +122,7 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              {/* Dica para teste */}
-              <div className="mt-4 p-3 bg-muted rounded-lg text-xs text-muted-foreground">
-                <p className="font-medium mb-1">Para testar:</p>
-                <p>Admin: admin@jobboard.com</p>
-                <p>Empresa: empresa@tech.com</p>
-                <p>Candidato: candidato@email.com</p>
-                <p className="mt-1 italic">Qualquer senha funciona</p>
-              </div>
+              
             </form>
           </CardContent>
         </Card>

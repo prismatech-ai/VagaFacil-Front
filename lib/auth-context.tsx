@@ -135,19 +135,91 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (data: RegisterData): Promise<boolean> => {
     try {
-      const response = await api.post<{ user: User; token: string }>(
+      console.log("Iniciando registro, enviando para backend...")
+
+      const response = await api.post<any>(
         "/api/v1/auth/register",
         data
       )
 
-      if (response.user && response.token) {
-        localStorage.setItem("token", response.token)
-        setUser(response.user)
-        localStorage.setItem("user", JSON.stringify(response.user))
+      console.log("Resposta do backend no registro (tipo):", typeof response)
+      console.log("Resposta do backend no registro (conteúdo):", response)
+
+      const responseKeys = response ? Object.keys(response) : []
+      console.log("Chaves disponíveis na resposta:", responseKeys)
+      console.log("Número de chaves:", responseKeys.length)
+
+      // Checar primeiro se a resposta está vazia (201 Created sem corpo)
+      if (!response || responseKeys.length === 0) {
+        console.warn("⚠️ Backend retornou 201 Created mas sem corpo JSON")
+        console.warn("Criando usuário localmente a partir dos dados enviados...")
+
+        const userData: User = {
+          id: data.email,
+          email: data.email,
+          nome: data.nome || data.email.split("@")[0],
+          role: mapUserType(data.role),
+        }
+
+        setUser(userData)
+        localStorage.setItem("user", JSON.stringify(userData))
+
+        console.log("✅ Usuário criado localmente com sucesso:", userData)
         return true
       }
 
-      return false
+      const token = response?.access_token || response?.token
+      const refresh_token = response?.refresh_token
+
+      console.log("Token extraído:", token ? "presente" : "ausente")
+      console.log("Refresh token:", refresh_token ? "presente" : "ausente")
+
+      if (!token) {
+        console.error("❌ Token não encontrado na resposta")
+        console.error("Resposta completa:", JSON.stringify(response))
+        return false
+      }
+
+      localStorage.setItem("token", token)
+      if (refresh_token) {
+        localStorage.setItem("refresh_token", refresh_token)
+      }
+
+      let resolvedUser: any = response.user
+
+      if (!resolvedUser) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+          console.log("JWT payload decodificado no registro:", payload)
+          resolvedUser = {
+            id: payload.sub || payload.id || payload.user_id,
+            email: payload.email || data.email,
+            nome: payload.nome || payload.name || data.nome,
+            user_type: payload.user_type || payload.role || payload.type || data.role,
+          }
+        } catch (decodeErr) {
+          console.warn("Não foi possível decodificar access_token:", decodeErr)
+        }
+      }
+
+      if (!resolvedUser) {
+        console.error("Nenhum dado de usuário disponível no registro")
+        return false
+      }
+
+      const userData: User = {
+        id: String(resolvedUser.id ?? data.email),
+        email: resolvedUser.email ?? data.email,
+        nome: resolvedUser.nome ?? data.nome ?? data.email.split("@")[0],
+        role: mapUserType(resolvedUser.user_type ?? resolvedUser.role ?? data.role),
+      }
+
+      setUser(userData)
+      localStorage.setItem("user", JSON.stringify(userData))
+
+      console.log("Registro OK → usuário:", userData)
+
+      return true
     } catch (error) {
       console.error("Erro ao registrar:", error)
       return false
