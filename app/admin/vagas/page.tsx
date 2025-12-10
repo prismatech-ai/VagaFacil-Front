@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,13 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Eye, Trash2, Search, Briefcase, Building2, MapPin, Plus, X, Target } from "lucide-react"
-import { mockUsers, mockVagas, mockCandidaturas } from "@/lib/mock-data"
 import type { Vaga, Candidatura, Candidato } from "@/lib/types"
 import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
 
 export default function AdminVagasPage() {
-  const [vagas, setVagas] = useState<Vaga[]>(mockVagas.map((v) => ({ ...v })))
+  const [vagas, setVagas] = useState<Vaga[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [busca, setBusca] = useState("")
   const [statusFiltro, setStatusFiltro] = useState<"" | "aberta" | "fechada">("")
   const [empresaFiltro, setEmpresaFiltro] = useState<string>("")
@@ -40,9 +41,61 @@ export default function AdminVagasPage() {
   const [salarioMinForm, setSalarioMinForm] = useState<number | undefined>()
   const [salarioMaxForm, setSalarioMaxForm] = useState<number | undefined>()
 
-  const empresas = useMemo(() => mockUsers.filter((u) => u.role === "empresa"), [])
+  useEffect(() => {
+    fetchVagas()
+  }, [])
 
-  const candidatos = useMemo(() => mockUsers.filter((u) => u.role === "candidato") as Candidato[], [])
+  const fetchVagas = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      if (typeof window === 'undefined') {
+        console.warn('localStorage não disponível no servidor')
+        return
+      }
+      
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.warn('Token não encontrado no localStorage')
+        setError('Token não encontrado. Faça login novamente.')
+        setLoading(false)
+        return
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      })
+      console.log('GET /api/v1/admin/vagas', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: Falha ao carregar vagas`)
+      }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Resposta inválida do servidor (não é JSON)')
+      }
+
+      const data = await response.json()
+      setVagas(Array.isArray(data) ? data : (data.vagas || data.data || []))
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar vagas'
+      setError(errorMessage)
+      setVagas([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const empresas = useMemo<Array<{ id: string; nome?: string; nomeEmpresa?: string; email?: string }>>(() => [], [])
+
+  const candidatos = useMemo<Candidato[]>(() => [], [])
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -106,12 +159,8 @@ export default function AdminVagasPage() {
     return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0
   }
 
-  const candidaturasPorVaga = useMemo(() => {
-    const map: Record<string, Candidatura[]> = {}
-    vagas.forEach((v) => {
-      map[v.id] = mockCandidaturas.filter((c) => c.vagaId === v.id)
-    })
-    return map
+  const candidaturasPorVaga = useMemo<Record<string, Candidatura[]>>(() => {
+    return {}
   }, [vagas])
 
   const vagasFiltradas = useMemo(() => {
@@ -471,7 +520,6 @@ export default function AdminVagasPage() {
                     salarioMax: salarioMaxForm,
                   }
                   setVagas((prev) => [novaVaga, ...prev])
-                  mockVagas.push(novaVaga)
                   setCreateOpen(false)
                   resetForm()
                 }}
@@ -490,6 +538,11 @@ export default function AdminVagasPage() {
           <CardDescription>{vagasFiltradas.length} resultados</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+              {error}
+            </div>
+          )}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -504,7 +557,13 @@ export default function AdminVagasPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {vagasFiltradas.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Carregando vagas...
+                    </TableCell>
+                  </TableRow>
+                ) : vagasFiltradas.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Nenhuma vaga encontrada

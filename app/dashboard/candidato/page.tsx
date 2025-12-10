@@ -25,7 +25,6 @@ import {
   Clock,
   XCircle,
 } from "lucide-react"
-import { mockVagas, mockCandidaturas, mockUsers } from "@/lib/mock-data"
 import type { Vaga, Candidatura } from "@/lib/types"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -63,25 +62,41 @@ export default function CandidatoDashboardPage() {
 
     try {
       setLoadingData(true)
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const [vagasData, candidaturasData] = await Promise.all([
-        api.get<Vaga[]>("/vagas/abertas").catch(() => {
-          console.warn("Erro ao carregar vagas, usando dados mockados")
-          return mockVagas
-        }),
-        api.get<Candidatura[]>(`/candidaturas?candidatoId=${user.id}`).catch(() => {
-          console.warn("Erro ao carregar candidaturas, usando dados mockados")
-          return mockCandidaturas.filter((c) => c.candidatoId === user.id)
-        }),
-      ])
 
-      setVagas(Array.isArray(vagasData) ? vagasData : mockVagas)
-      setCandidaturas(Array.isArray(candidaturasData) ? candidaturasData : [])
+      const vagasData = await api.get<any[]>("/api/v1/jobs/")
+
+      const formattedVagas: Vaga[] = (vagasData || []).map((v: any) => ({
+        id: v.id,
+        empresaId: v.empresa_id || v.empresaId,
+        empresaNome: v.empresa_nome || v.empresaNome || 'Empresa',
+        titulo: v.titulo,
+        descricao: v.descricao,
+        requisitos: v.requisitos,
+        tipo: v.tipo,
+        localizacao: v.localizacao,
+        salario: v.salario,
+        status: v.status,
+        createdAt: v.created_at ? new Date(v.created_at) : new Date(),
+      }))
+
+      setVagas(formattedVagas.filter(v => v.status === 'aberta'))
+
+      const candidaturasData = await api.get<any[]>("/api/v1/candidaturas/minhas")
+
+      const formattedCandidaturas: Candidatura[] = (candidaturasData || []).map((c: any) => ({
+        id: c.id,
+        vagaId: c.vaga_id || c.vagaId,
+        candidatoId: c.candidato_id || c.candidatoId,
+        mensagem: c.mensagem,
+        status: c.status,
+        createdAt: c.created_at ? new Date(c.created_at) : new Date(),
+      }))
+
+      setCandidaturas(formattedCandidaturas)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
-      // Fallback para dados mockados em caso de erro
-      setVagas(mockVagas)
-      setCandidaturas(mockCandidaturas.filter((c) => c.candidatoId === user?.id))
+      setVagas([])
+      setCandidaturas([])
     } finally {
       setLoadingData(false)
     }
@@ -117,20 +132,31 @@ export default function CandidatoDashboardPage() {
     if (!selectedVaga || !user) return
 
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const novaCandidatura = await api.post<Candidatura>("/candidaturas", {
-        vagaId: selectedVaga.id,
-        candidatoId: user.id,
+      const novaCandidatura = await api.post<any>("/api/v1/candidaturas", {
+        vaga_id: selectedVaga.id,
         mensagem: mensagem || undefined,
       })
 
-      setCandidaturas([...candidaturas, novaCandidatura])
+      const formattedCandidatura: Candidatura = {
+        id: novaCandidatura.id,
+        vagaId: novaCandidatura.vaga_id || novaCandidatura.vagaId,
+        candidatoId: novaCandidatura.candidato_id || novaCandidatura.candidatoId,
+        mensagem: novaCandidatura.mensagem,
+        status: novaCandidatura.status,
+        createdAt: novaCandidatura.created_at ? new Date(novaCandidatura.created_at) : new Date(),
+      }
+
+      setCandidaturas([...candidaturas, formattedCandidatura])
       setMensagem("")
       setSelectedVaga(null)
       setIsDialogOpen(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao candidatar-se:", error)
-      alert("Erro ao enviar candidatura. Tente novamente.")
+      if (error.message?.includes("já")) {
+        alert("Você já se candidatou a esta vaga.")
+      } else {
+        alert("Erro ao enviar candidatura. Tente novamente.")
+      }
     }
   }
 
@@ -274,7 +300,6 @@ export default function CandidatoDashboardPage() {
             ) : (
               <div className="grid gap-4">
                 {filteredVagas.map((vaga) => {
-                  const empresa = mockUsers.find((u) => u.id === vaga.empresaId)
                   return (
                     <Card key={vaga.id} className="hover:shadow-md transition-shadow">
                       <CardHeader>
@@ -287,16 +312,16 @@ export default function CandidatoDashboardPage() {
                             <CardDescription className="flex flex-wrap gap-3 text-sm">
                               <span className="flex items-center gap-1">
                                 <Building2 className="h-3 w-3" />
-                                {empresa?.nome}
+                                {(vaga as any).empresaNome || 'Empresa'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
                                 {vaga.localizacao}
                               </span>
-                              {vaga.salario && (
+                              {(vaga as any).salario && (
                                 <span className="flex items-center gap-1">
                                   <DollarSign className="h-3 w-3" />
-                                  {vaga.salario}
+                                  {(vaga as any).salario}
                                 </span>
                               )}
                             </CardDescription>
@@ -348,14 +373,13 @@ export default function CandidatoDashboardPage() {
               <div className="space-y-4">
                 {minhasCandidaturas.map((candidatura) => {
                   const vaga = vagas.find((v) => v.id === candidatura.vagaId)
-                  const empresa = mockUsers.find((u) => u.id === vaga?.empresaId)
                   return (
                     <Card key={candidatura.id}>
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <CardTitle className="text-lg">{vaga?.titulo}</CardTitle>
+                              <CardTitle className="text-lg">{vaga?.titulo || 'Vaga'}</CardTitle>
                               <Badge variant={getStatusBadge(candidatura.status)}>
                                 <span className="flex items-center gap-1">
                                   {getStatusIcon(candidatura.status)}
@@ -366,11 +390,11 @@ export default function CandidatoDashboardPage() {
                             <CardDescription className="flex flex-wrap gap-3 text-sm">
                               <span className="flex items-center gap-1">
                                 <Building2 className="h-3 w-3" />
-                                {empresa?.nome}
+                                {(vaga as any)?.empresaNome || 'Empresa'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
-                                {vaga?.localizacao}
+                                {vaga?.localizacao || '-'}
                               </span>
                               <span className="text-muted-foreground">
                                 Candidatura enviada em {candidatura.createdAt.toLocaleDateString("pt-BR")}

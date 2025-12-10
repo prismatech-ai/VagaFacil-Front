@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Logo } from "@/components/logo"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { api } from "@/lib/api"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,6 +23,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [resetEmail, setResetEmail] = useState("")
+  const [resetSuccess, setResetSuccess] = useState(false)
+  const [resetError, setResetError] = useState("")
+  const [isResetting, setIsResetting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,6 +71,24 @@ export default function LoginPage() {
     }
   }
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setResetError("")
+    setResetSuccess(false)
+    setIsResetting(true)
+
+    try {
+      await api.post("/api/v1/auth/forgot-password", { email: resetEmail })
+      setResetSuccess(true)
+      setResetEmail("")
+    } catch (err: any) {
+      console.error("Erro ao enviar email:", err)
+      setResetError(err.message || "Erro ao enviar email de recuperação")
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-secondary/30">
       <div className="w-full max-w-md">
@@ -100,7 +125,16 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Senha</Label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Esqueceu a senha?
+                  </button>
+                </div>
                 <Input
                   id="password"
                   type="password"
@@ -133,6 +167,71 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Recuperar Senha</DialogTitle>
+            <DialogDescription>
+              Digite seu email para receber as instruções de redefinição de senha
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            {resetSuccess && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Email enviado com sucesso! Verifique sua caixa de entrada.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {resetError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{resetError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="reset-email">Email</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="seu@email.com"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                required
+                disabled={resetSuccess}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowForgotPassword(false)
+                  setResetEmail("")
+                  setResetSuccess(false)
+                  setResetError("")
+                }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isResetting || resetSuccess}
+                className="flex-1"
+              >
+                {isResetting ? "Enviando..." : resetSuccess ? "Enviado" : "Enviar"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

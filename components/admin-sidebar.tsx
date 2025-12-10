@@ -10,6 +10,7 @@ import {
   FileText,
   Bell,
   HeadphonesIcon,
+  ShieldCheck,
 } from "lucide-react"
 import {
   Sidebar,
@@ -49,6 +50,11 @@ const menuItems = [
     title: "Testes",
     icon: FileText,
     href: "/admin/testes",
+  },
+  {
+    title: "Administradores",
+    icon: ShieldCheck,
+    href: "/admin/administradores",
   },
   {
     title: "Notificações",

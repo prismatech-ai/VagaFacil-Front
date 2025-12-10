@@ -1,7 +1,7 @@
 // Copied from old candidatos page
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,16 +11,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Eye, Pencil, Search, Trash2, MapPin, LinkIcon, Mail, Filter, Award } from "lucide-react"
-import { mockUsers } from "@/lib/mock-data"
 import type { Candidato } from "@/lib/types"
 import { Slider } from "@/components/ui/slider"
 
 export default function AdminCandidatosPage() {
-  const initialCandidatos = useMemo(
-    () => (mockUsers.filter((u) => u.role === "candidato") as Candidato[]).map((c) => ({ ...c })),
-    [],
-  )
-  const [candidatos, setCandidatos] = useState<Candidato[]>(initialCandidatos)
+  const [candidatos, setCandidatos] = useState<Candidato[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [filtros, setFiltros] = useState({
     busca: "",
     localizacao: "",
@@ -45,7 +42,64 @@ export default function AdminCandidatosPage() {
     anosExperiencia: 0,
   })
 
+  useEffect(() => {
+    fetchCandidatos()
+  }, [])
+
+  const fetchCandidatos = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      if (typeof window === 'undefined') {
+        console.warn('localStorage não disponível no servidor')
+        return
+      }
+      
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.warn('Token não encontrado no localStorage')
+        setError('Token não encontrado. Faça login novamente.')
+        setLoading(false)
+        return
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidatos`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      })
+      console.log('GET /api/v1/admin/candidatos', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: Falha ao carregar candidatos`)
+      }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Resposta inválida do servidor (não é JSON)')
+      }
+
+      const data = await response.json()
+      console.log('Dados recebidos:', data)
+      const candidatosArray = Array.isArray(data) ? data : (data.candidatos || data.usuarios || data.data || [])
+      console.log('Candidatos processados:', candidatosArray)
+      setCandidatos(candidatosArray)
+      setLoading(false)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar candidatos'
+      setError(errorMessage)
+      setCandidatos([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getInitials = (name: string) => {
+    if (!name) return "?"
     return name
       .split(" ")
       .map((n) => n[0])
@@ -85,7 +139,7 @@ export default function AdminCandidatosPage() {
       telefone: cand.telefone ?? "",
       localizacao: cand.localizacao ?? "",
       linkedin: cand.linkedin ?? "",
-      habilidades: cand.habilidades?.join(", ") ?? "",
+      habilidades: Array.isArray(cand.habilidades) ? cand.habilidades.join(", ") : (typeof cand.habilidades === 'string' ? cand.habilidades : ""),
       anosExperiencia: cand.anosExperiencia ?? 0,
     })
     setDialogEditarOpen(true)
@@ -93,7 +147,7 @@ export default function AdminCandidatosPage() {
 
   const salvarEdicao = () => {
     if (!candidatoSelecionado) return
-    const habilidades = formEdicao.habilidades
+    const habilidades = (formEdicao.habilidades ?? "")
       .split(",")
       .map((h) => h.trim())
       .filter(Boolean)
@@ -287,6 +341,11 @@ export default function AdminCandidatosPage() {
           <CardDescription>{candidatosFiltrados.length} resultados encontrados</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+              {error}
+            </div>
+          )}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -300,7 +359,13 @@ export default function AdminCandidatosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {candidatosFiltrados.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Carregando candidatos...
+                    </TableCell>
+                  </TableRow>
+                ) : candidatosFiltrados.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground">
                       Nenhum candidato encontrado com os filtros aplicados

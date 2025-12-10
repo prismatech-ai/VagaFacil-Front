@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Building2, Search, Plus, Mail, X, Briefcase, User, Globe, FileText } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { Empresa } from "@/lib/types"
-import { mockUsers } from "@/lib/mock-data"
 
 type EmpresaAcesso = {
   id: string
@@ -22,12 +21,65 @@ type EmpresaAcesso = {
 }
 
 export default function AdminEmpresasPage() {
-  const initialEmpresas = mockUsers.filter((u) => u.role === "empresa") as Empresa[]
-  const [empresas, setEmpresas] = useState<Empresa[]>(initialEmpresas)
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [filtros, setFiltros] = useState({
     busca: "",
     status: "",
   })
+
+  useEffect(() => {
+    fetchEmpresas()
+  }, [])
+
+  const fetchEmpresas = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      if (typeof window === 'undefined') {
+        console.warn('localStorage não disponível no servidor')
+        return
+      }
+      
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.warn('Token não encontrado no localStorage')
+        setError('Token não encontrado. Faça login novamente.')
+        setLoading(false)
+        return
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/empresas`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` || ''
+        }
+      })
+      console.log('GET /api/v1/admin/empresas', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: Falha ao carregar empresas`)
+      }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Resposta inválida do servidor (não é JSON)')
+      }
+
+      const data = await response.json()
+      setEmpresas(Array.isArray(data) ? data : (data.empresas || data.data || []))
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar empresas'
+      setError(errorMessage)
+      setEmpresas([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const [dialogVerOpen, setDialogVerOpen] = useState(false)
   const [modoEdicao, setModoEdicao] = useState<"create" | "edit" | null>(null)
@@ -43,28 +95,9 @@ export default function AdminEmpresasPage() {
   })
 
   // Gestão de acesso (usuários da empresa) - estado local apenas para protótipo
-  const [acessosPorEmpresa, setAcessosPorEmpresa] = useState<Record<string, EmpresaAcesso[]>>(() => {
-    const map: Record<string, EmpresaAcesso[]> = {}
-    initialEmpresas.forEach((e) => {
-      map[e.id] = [
-        {
-          id: `${e.id}-owner`,
-          nome: e.nome,
-          email: e.email,
-          createdAt: e.createdAt,
-          conviteEnviado: true,
-        },
-      ]
-    })
-    return map
-  })
+  const [acessosPorEmpresa, setAcessosPorEmpresa] = useState<Record<string, EmpresaAcesso[]>>({})
   const [novoAcesso, setNovoAcesso] = useState({ nome: "", email: "" })
-
-  const vagasPorEmpresa: Record<string, number> = {
-    "1": 5,
-    "2": 3,
-    "3": 8,
-  }
+  const [vagasPorEmpresa, setVagasPorEmpresa] = useState<Record<string, number>>({})
 
   const empresasFiltradas = empresas.filter((e) => {
     const busca = filtros.busca.trim().toLowerCase()
@@ -256,6 +289,11 @@ export default function AdminEmpresasPage() {
           <CardDescription>{empresasFiltradas.length} resultados</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+              {error}
+            </div>
+          )}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -263,14 +301,19 @@ export default function AdminEmpresasPage() {
                   <TableHead>Empresa</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>CNPJ</TableHead>
-                  <TableHead>Vagas</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {empresasFiltradas.length === 0 ? (
+                {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      Carregando empresas...
+                    </TableCell>
+                  </TableRow>
+                ) : empresasFiltradas.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                       Nenhuma empresa encontrada
                     </TableCell>
                   </TableRow>
@@ -295,9 +338,6 @@ export default function AdminEmpresasPage() {
                       <TableCell className="align-top">{e.email}</TableCell>
                       <TableCell className="align-top">
                         <span className="text-sm text-muted-foreground">{e.cnpj || "-"}</span>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <Badge variant="outline">{vagasPorEmpresa[e.id] ?? 0}</Badge>
                       </TableCell>
                       <TableCell className="align-top text-right">
                         <div className="flex justify-end gap-1">
