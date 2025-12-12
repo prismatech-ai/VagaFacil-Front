@@ -7,76 +7,138 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users, Building2, Briefcase, FileText, UserCircle, Eye, Trash2, TrendingUp, TrendingDown } from "lucide-react"
-import { mockUsers, mockVagas, mockCandidaturas } from "@/lib/mock-data"
-import { api } from "@/lib/api"
 import { useEffect } from "react"
 import type { User, Vaga, Candidatura } from "@/lib/types"
 
 export default function AdminDashboardPage() {
   const [users, setUsers] = useState<User[]>([])
+  const [candidatos, setCandidatos] = useState<any[]>([])
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
+  const [empresas, setEmpresas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadData()
+    
+    // Recarregar dados quando a página ficar visível novamente
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   const loadData = async () => {
     try {
       setLoading(true)
-      // #colocarRota - Ajuste as rotas conforme seu backend
-      const [usersData, vagasData, candidaturasData] = await Promise.all([
-        api.get<User[]>("/api/v1/admin/usuarios").catch(() => {
-          console.warn("Erro ao carregar usuários, usando dados mockados")
-          return mockUsers
+      
+      if (typeof window === 'undefined') {
+        console.warn('localStorage não disponível no servidor')
+        return
+      }
+      
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.warn('Token não encontrado no localStorage')
+        return
+      }
+      
+      console.log('Dashboard - Loading data', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
+      const [usersResponse, candidatosResponse, vagasResponse, candidaturasResponse, empresasResponse] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/usuarios`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
         }),
-        api.get<Vaga[]>("/api/v1/admin/vagas").catch(() => {
-          console.warn("Erro ao carregar vagas, usando dados mockados")
-          return mockVagas
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidatos`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
         }),
-        api.get<Candidatura[]>("/api/v1/admin/candidaturas").catch(() => {
-          console.warn("Erro ao carregar candidaturas, usando dados mockados")
-          return mockCandidaturas
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
         }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidaturas`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/empresas`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        })
       ])
 
-      setUsers(Array.isArray(usersData) ? usersData : mockUsers)
-      setVagas(Array.isArray(vagasData) ? vagasData : mockVagas)
-      setCandidaturas(Array.isArray(candidaturasData) ? candidaturasData : mockCandidaturas)
+      console.log('Dashboard responses:', { usuarios: usersResponse.ok, candidatos: candidatosResponse.ok, vagas: vagasResponse.ok, candidaturas: candidaturasResponse.ok, empresas: empresasResponse.ok })
+      const usersData = usersResponse.ok ? await usersResponse.json() : []
+      const candidatosData = candidatosResponse.ok ? await candidatosResponse.json() : []
+      const vagasData = vagasResponse.ok ? await vagasResponse.json() : []
+      const candidaturasData = candidaturasResponse.ok ? await candidaturasResponse.json() : []
+      const empresasData = empresasResponse.ok ? await empresasResponse.json() : []
+
+      setUsers(Array.isArray(usersData) ? usersData : usersData.usuarios || usersData.data || [])
+      setCandidatos(Array.isArray(candidatosData) ? candidatosData : candidatosData.candidatos || candidatosData.data || [])
+      setVagas(Array.isArray(vagasData) ? vagasData : vagasData.vagas || vagasData.data || [])
+      setCandidaturas(Array.isArray(candidaturasData) ? candidaturasData : candidaturasData.candidaturas || candidaturasData.data || [])
+      setEmpresas(Array.isArray(empresasData) ? empresasData : empresasData.empresas || empresasData.data || [])
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
-      // Fallback para dados mockados
-      setUsers(mockUsers)
-      setVagas(mockVagas)
-      setCandidaturas(mockCandidaturas)
+      setUsers([])
+      setCandidatos([])
+      setVagas([])
+      setCandidaturas([])
+      setEmpresas([])
     } finally {
       setLoading(false)
     }
   }
 
-  const empresas = users.filter((u) => u.role === "empresa")
-  const candidatos = users.filter((u) => u.role === "candidato")
   const vagasAbertas = vagas.filter((v) => v.status === "aberta")
 
-  const { novosUsuarios, comparativoUsuarios, comparativoEmpresas, comparativoVagas } = useMemo(() => {
+  const { novosCandidatos, comparativoCandidatos, comparativoEmpresas, comparativoVagas } = useMemo(() => {
     const hoje = new Date()
     const trintaDiasAtras = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000)
     const sessentaDiasAtras = new Date(hoje.getTime() - 60 * 24 * 60 * 60 * 1000)
 
-    // Novos usuários últimos 30 dias
-    const novosUsuarios = users.filter((u) => u.createdAt >= trintaDiasAtras).length
+    // Novos candidatos últimos 30 dias
+    const novosCandidatos = candidatos.filter((c) => {
+      const createdAt = c.created_at ? new Date(c.created_at) : null
+      return createdAt && createdAt >= trintaDiasAtras
+    }).length
 
-    // Usuários do período anterior (30-60 dias atrás)
-    const usuariosPeriodoAnterior = users.filter(
-      (u) => u.createdAt >= sessentaDiasAtras && u.createdAt < trintaDiasAtras,
-    ).length
+    // Candidatos do período anterior (30-60 dias atrás)
+    const candidatosPeriodoAnterior = candidatos.filter((c) => {
+      const createdAt = c.created_at ? new Date(c.created_at) : null
+      return createdAt && createdAt >= sessentaDiasAtras && createdAt < trintaDiasAtras
+    }).length
 
-    // Comparativo de usuários
-    const comparativoUsuarios =
-      usuariosPeriodoAnterior > 0
-        ? (((novosUsuarios - usuariosPeriodoAnterior) / usuariosPeriodoAnterior) * 100).toFixed(1)
-        : novosUsuarios > 0
+    // Comparativo de candidatos
+    const comparativoCandidatos =
+      candidatosPeriodoAnterior > 0
+        ? (((novosCandidatos - candidatosPeriodoAnterior) / candidatosPeriodoAnterior) * 100).toFixed(1)
+        : novosCandidatos > 0
           ? "100"
           : "0"
 
@@ -104,8 +166,8 @@ export default function AdminDashboardPage() {
           ? "100"
           : "0"
 
-    return { novosUsuarios, comparativoUsuarios, comparativoEmpresas, comparativoVagas }
-  }, [users, empresas, vagas])
+    return { novosCandidatos, comparativoCandidatos, comparativoEmpresas, comparativoVagas }
+  }, [candidatos, empresas, vagas])
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -154,14 +216,14 @@ export default function AdminDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Candidatos</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
+            <div className="text-2xl font-bold">{candidatos.length}</div>
             <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">{novosUsuarios} novos últimos 30 dias</p>
-              <TrendIndicator value={comparativoUsuarios} />
+              <p className="text-xs text-muted-foreground">{novosCandidatos} novos últimos 30 dias</p>
+              <TrendIndicator value={comparativoCandidatos} />
             </div>
           </CardContent>
         </Card>

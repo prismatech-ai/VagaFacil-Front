@@ -13,10 +13,12 @@ import { Search, Eye, Pencil, Trash2, Plus, X, GraduationCap } from "lucide-reac
 import type { Teste } from "@/lib/types"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { mockTestes } from "@/lib/mock-data"
+import { toast } from "sonner"
+import { useEffect } from "react"
 
 export default function AdminTestesPage() {
-  const [testes, setTestes] = useState<Teste[]>(mockTestes)
+  const [testes, setTestes] = useState<Teste[]>([])
+  const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
   const [nivelFiltro, setNivelFiltro] = useState<"" | "1" | "2" | "3" | "4" | "5">("")
   const [habilidadeFiltro, setHabilidadeFiltro] = useState("")
@@ -25,6 +27,123 @@ export default function AdminTestesPage() {
   const [dialogVerOpen, setDialogVerOpen] = useState(false)
   const [modoEdicao, setModoEdicao] = useState<"create" | "edit">("create")
   const [testeSelecionado, setTesteSelecionado] = useState<Teste | null>(null)
+
+  useEffect(() => {
+    fetchTestes()
+  }, [])
+
+  const fetchTestes = async () => {
+    try {
+      setLoading(true)
+      
+      if (typeof window === 'undefined') {
+        console.warn('localStorage não disponível no servidor')
+        return
+      }
+      
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.warn('Token não encontrado no localStorage')
+        toast.error('Token não encontrado', {
+          description: 'Faça login novamente.',
+          duration: 4000,
+        })
+        setLoading(false)
+        return
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/testes`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      })
+      console.log('GET /api/v1/admin/testes', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada', {
+          description: 'Sua sessão expirou. Por favor, faça login novamente.',
+          duration: 5000,
+        })
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 2000)
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: Falha ao carregar testes`)
+      }
+
+      const data = await response.json()
+      console.log('Testes recebidos:', data)
+      
+      // Mapear os dados da API para o formato esperado
+      const testesData = Array.isArray(data) ? data : (data.testes || data.data || [])
+      
+      const testesMapeados = testesData.map((t: any) => {
+        // Extrair o número do nível da string (ex: "Nível 3 - Intermediário" -> 3)
+        let nivelNum = 1
+        if (typeof t.nivel === 'string') {
+          const nivelMatch = t.nivel.match(/Nível (\d+)/)
+          nivelNum = nivelMatch ? parseInt(nivelMatch[1]) : 1
+        } else if (typeof t.nivel === 'number') {
+          nivelNum = t.nivel
+        }
+        
+        return {
+          id: t.id.toString(),
+          nome: t.nome || '',
+          descricao: t.descricao || '',
+          nivel: nivelNum as 1 | 2 | 3 | 4 | 5,
+          habilidade: t.habilidade || '',
+          questoes: (t.questions || t.questoes || []).map((q: any) => {
+            // Mapear alternativas da API (podem vir como 'alternatives' ou 'alternativas')
+            const alternativasAPI = q.alternatives || q.alternativas || []
+            const alternativasTexto = alternativasAPI.map((a: any) => {
+              // Se for string, usa direto; se for objeto, pega a propriedade texto
+              return typeof a === 'string' ? a : (a.texto || a.text || '')
+            })
+            
+            // Encontrar índice da resposta correta
+            const respostaCorretaIdx = alternativasAPI.findIndex((a: any) => 
+              typeof a === 'object' ? a.is_correct === true : false
+            )
+            
+            console.log(`Questão "${q.texto_questao || q.pergunta}":`, {
+              alternativasAPI,
+              alternativasTexto,
+              respostaCorretaIdx
+            })
+            
+            return {
+              id: q.id?.toString() || `${Date.now()}-${Math.random()}`,
+              pergunta: q.texto_questao || q.pergunta || '',
+              alternativas: alternativasTexto,
+              respostaCorreta: respostaCorretaIdx >= 0 ? respostaCorretaIdx : 0,
+              nivel: nivelNum as 1 | 2 | 3 | 4 | 5,
+            }
+          }),
+          createdAt: t.created_at ? new Date(t.created_at) : new Date(),
+          createdBy: t.created_by?.toString() || '1',
+        }
+      })
+      
+      setTestes(testesMapeados)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar testes'
+      console.error('Erro ao carregar testes:', errorMessage)
+      toast.error('Erro ao carregar testes', {
+        description: errorMessage,
+        duration: 4000,
+      })
+      setTestes([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const [form, setForm] = useState({
     nome: "",
@@ -140,44 +259,335 @@ export default function AdminTestesPage() {
     }))
   }
 
-  const salvar = () => {
+  const salvar = async () => {
     if (!form.nome || !form.habilidade) return
 
-    const questoesValidas = form.questoes.filter((q) => q.pergunta.trim() && q.alternativas.every((a) => a.trim()))
+    // Validar que há questões
+    if (form.questoes.length === 0) {
+      toast.error('Adicione questões ao teste', {
+        description: 'O teste precisa ter pelo menos uma questão.',
+        duration: 4000,
+      })
+      return
+    }
+
+    // Filtrar questões válidas (com pergunta e todas as alternativas preenchidas)
+    const questoesValidas = form.questoes.filter((q) => {
+      const temPergunta = q.pergunta.trim().length > 0
+      const temTodasAlternativas = q.alternativas.length >= 2 && q.alternativas.every((a) => a.trim().length > 0)
+      return temPergunta && temTodasAlternativas
+    })
+
+    console.log('Questões no form:', form.questoes.length)
+    console.log('Questões válidas:', questoesValidas.length)
+    
+    // Validar que há pelo menos uma questão válida
+    if (questoesValidas.length === 0) {
+      toast.error('Preencha todas as questões corretamente', {
+        description: 'Cada questão precisa ter uma pergunta e pelo menos 2 alternativas preenchidas.',
+        duration: 5000,
+      })
+      return
+    }
 
     if (modoEdicao === "create") {
-      const novo: Teste = {
-        id: Date.now().toString(),
-        nome: form.nome,
-        descricao: form.descricao || "",
-        nivel: form.nivel,
-        habilidade: form.habilidade,
-        questoes: questoesValidas,
-        createdAt: new Date(),
-        createdBy: "1", // Admin ID
+      try {
+        const token = localStorage.getItem('token')
+        
+        if (!token) {
+          alert('Token não encontrado. Faça login novamente.')
+          return
+        }
+
+        // Formatar dados para a API
+        const payload = {
+          nome: form.nome,
+          habilidade: form.habilidade,
+          nivel: `Nível ${form.nivel} - ${getNivelLabel(form.nivel)}`,
+          descricao: form.descricao || "",
+          questions: questoesValidas.map((q, idx) => {
+            const alternatives = q.alternativas
+              .filter(a => a.trim().length > 0) // Remove alternativas vazias
+              .map((texto, altIdx) => ({
+                texto: texto.trim(),
+                is_correct: altIdx === q.respostaCorreta,
+                ordem: altIdx
+              }))
+            
+            console.log(`Questão ${idx + 1}: ${alternatives.length} alternativas`, alternatives)
+            
+            return {
+              texto_questao: q.pergunta,
+              ordem: idx + 1,
+              alternatives: alternatives
+            }
+          })
+        }
+
+        console.log('POST /api/v1/admin/testes - Payload completo:', JSON.stringify(payload, null, 2))
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/testes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        })
+
+        if (response.status === 401) {
+          toast.error('Sessão expirada', {
+            description: 'Sua sessão expirou. Por favor, faça login novamente.',
+            duration: 5000,
+          })
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 2000)
+          return
+        }
+
+        if (!response.ok) {
+          const responseText = await response.text()
+          console.error('Erro ao criar teste - Status:', response.status, response.statusText)
+          console.error('Erro ao criar teste - Response:', responseText)
+          
+          let errorMessage = `Erro ${response.status}: ${response.statusText}`
+          try {
+            const errorData = JSON.parse(responseText)
+            if (errorData.detail) {
+              errorMessage = typeof errorData.detail === 'string' 
+                ? errorData.detail 
+                : JSON.stringify(errorData.detail)
+            }
+          } catch (e) {
+            // Se não for JSON válido, usa o responseText
+            if (responseText) errorMessage = responseText
+          }
+          
+          toast.error('Erro ao criar teste', {
+            description: errorMessage,
+            duration: 5000,
+          })
+          return
+        }
+
+        const novoTeste = await response.json()
+        console.log('Teste criado com sucesso:', novoTeste)
+
+        // Fechar o modal
+        setDialogCriarEditarOpen(false)
+        
+        // Recarregar lista de testes
+        await fetchTestes()
+        
+        // Mostrar toast de sucesso
+        toast.success('Teste criado com sucesso!', {
+          description: `O teste "${novoTeste.nome}" foi criado e está disponível para uso.`,
+          duration: 4000,
+        })
+        return
+      } catch (error) {
+        console.error('Erro ao criar teste:', error)
+        toast.error('Erro ao criar teste', {
+          description: 'Não foi possível criar o teste. Tente novamente.',
+          duration: 4000,
+        })
+        return
       }
-      setTestes((prev) => [novo, ...prev])
     } else if (testeSelecionado) {
-      setTestes((prev) =>
-        prev.map((t) =>
-          t.id === testeSelecionado.id
-            ? {
-                ...t,
-                nome: form.nome,
-                descricao: form.descricao,
-                nivel: form.nivel,
-                habilidade: form.habilidade,
-                questoes: questoesValidas,
+      try {
+        const token = localStorage.getItem('token')
+        
+        if (!token) {
+          toast.error('Token não encontrado', {
+            description: 'Faça login novamente.',
+            duration: 4000,
+          })
+          return
+        }
+
+        // Formatar dados para a API
+        const payload = {
+          nome: form.nome,
+          habilidade: form.habilidade,
+          nivel: `Nível ${form.nivel} - ${getNivelLabel(form.nivel)}`,
+          descricao: form.descricao || "",
+          questions: questoesValidas.map((q, idx) => {
+            const alternatives = q.alternativas
+              .filter(a => a.trim().length > 0) // Remove alternativas vazias
+              .map((texto, altIdx) => ({
+                texto: texto.trim(),
+                is_correct: altIdx === q.respostaCorreta,
+                ordem: altIdx
+              }))
+            
+            console.log(`Questão ${idx + 1}: ${alternatives.length} alternativas`, alternatives)
+            
+            return {
+              texto_questao: q.pergunta,
+              ordem: idx + 1,
+              alternatives: alternatives
+            }
+          })
+        }
+
+        console.log(`PUT /api/v1/admin/testes/${testeSelecionado.id} - Payload completo:`, JSON.stringify(payload, null, 2))
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/testes/${testeSelecionado.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        })
+
+        if (response.status === 401) {
+          toast.error('Sessão expirada', {
+            description: 'Sua sessão expirou. Por favor, faça login novamente.',
+            duration: 5000,
+          })
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 2000)
+          return
+        }
+
+        if (!response.ok) {
+          const responseText = await response.text()
+          console.error('Erro ao atualizar teste - Status:', response.status, response.statusText)
+          console.error('Erro ao atualizar teste - Response:', responseText)
+          
+          let errorMessage = `Erro ${response.status}: ${response.statusText}`
+          let isConstraintError = false
+          
+          try {
+            const errorData = JSON.parse(responseText)
+            if (errorData.detail) {
+              const detail = typeof errorData.detail === 'string' 
+                ? errorData.detail 
+                : JSON.stringify(errorData.detail)
+              
+              // Detectar erro de foreign key constraint
+              if (detail.includes('ForeignKeyViolation') || detail.includes('foreign key constraint')) {
+                isConstraintError = true
+                errorMessage = 'Não é possível atualizar este teste devido a restrições do banco de dados.'
+              } else {
+                errorMessage = detail
               }
-            : t,
-        ),
-      )
+            }
+          } catch (e) {
+            // Se não for JSON válido, usa o responseText
+            if (responseText) errorMessage = responseText
+          }
+          
+          toast.error('Erro ao atualizar teste', {
+            description: errorMessage,
+            duration: isConstraintError ? 8000 : 5000,
+            action: isConstraintError ? {
+              label: 'Workaround',
+              onClick: () => {
+                toast.info('Solução alternativa', {
+                  description: 'Por favor, delete este teste e crie um novo com as alterações desejadas.',
+                  duration: 6000,
+                })
+              }
+            } : undefined
+          })
+          return
+        }
+
+        const testeAtualizado = await response.json()
+        console.log('Teste atualizado com sucesso:', testeAtualizado)
+
+        // Fechar o modal
+        setDialogCriarEditarOpen(false)
+        
+        // Recarregar lista de testes
+        await fetchTestes()
+        
+        // Mostrar toast de sucesso
+        toast.success('Teste atualizado com sucesso!', {
+          description: `O teste "${form.nome}" foi atualizado.`,
+          duration: 4000,
+        })
+      } catch (error) {
+        console.error('Erro ao atualizar teste:', error)
+        toast.error('Erro ao atualizar teste', {
+          description: 'Não foi possível atualizar o teste. Tente novamente.',
+          duration: 4000,
+        })
+      }
     }
-    setDialogCriarEditarOpen(false)
   }
 
-  const remover = (id: string) => {
-    setTestes((prev) => prev.filter((t) => t.id !== id))
+  const remover = async (id: string) => {
+    // Confirmar antes de excluir
+    const teste = testes.find(t => t.id === id)
+    if (!teste) return
+    
+    const confirmacao = window.confirm(`Tem certeza que deseja excluir o teste "${teste.nome}"? Esta ação não pode ser desfeita.`)
+    if (!confirmacao) return
+
+    try {
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        toast.error('Token não encontrado', {
+          description: 'Faça login novamente.',
+          duration: 4000,
+        })
+        return
+      }
+
+      console.log(`DELETE /api/v1/admin/testes/${id}`)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/testes/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada', {
+          description: 'Sua sessão expirou. Por favor, faça login novamente.',
+          duration: 5000,
+        })
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 2000)
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Erro ao excluir teste:', errorData)
+        toast.error('Erro ao excluir teste', {
+          description: errorData.detail || 'Não foi possível excluir o teste.',
+          duration: 4000,
+        })
+        return
+      }
+
+      console.log('Teste excluído com sucesso')
+
+      // Recarregar lista de testes
+      await fetchTestes()
+      
+      // Mostrar toast de sucesso
+      toast.success('Teste excluído com sucesso!', {
+        description: `O teste "${teste.nome}" foi removido.`,
+        duration: 4000,
+      })
+    } catch (error) {
+      console.error('Erro ao excluir teste:', error)
+      toast.error('Erro ao excluir teste', {
+        description: 'Não foi possível excluir o teste. Tente novamente.',
+        duration: 4000,
+      })
+    }
   }
 
   const getNivelLabel = (nivel: number) => {
@@ -293,7 +703,16 @@ export default function AdminTestesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {testesFiltrados.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center space-y-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                        <p className="text-muted-foreground">Carregando testes...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : testesFiltrados.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground">
                       Nenhum teste cadastrado
