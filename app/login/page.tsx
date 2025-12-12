@@ -63,9 +63,10 @@ export default function LoginPage() {
       } else {
         setError("Email ou senha incorretos")
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro no handleSubmit:", err)
-      setError("Erro ao fazer login. Tente novamente.")
+      const errorMessage = err?.message || "Erro ao fazer login. Tente novamente."
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }

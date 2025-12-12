@@ -73,17 +73,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("Tentando login com:", { email })
       const response = await api.post<{
         access_token: string
         refresh_token?: string
         user: any
       }>("/api/v1/auth/login", { email, password })
 
-      console.log("Resposta do backend:", response)
+      console.log("Resposta do backend (completa):", response)
+      console.log("Tipo da resposta:", typeof response)
+      console.log("Chaves da resposta:", Object.keys(response))
 
       const { access_token, refresh_token, user } = response
 
-      if (!access_token) return false
+      if (!access_token) {
+        console.error("access_token não encontrado na resposta")
+        return false
+      }
+      
+      console.log("Token recebido:", access_token.substring(0, 20) + "...")
 
       // Salvar tokens
       localStorage.setItem("token", access_token)

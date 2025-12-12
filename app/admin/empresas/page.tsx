@@ -37,21 +37,21 @@ export default function AdminEmpresasPage() {
     try {
       setLoading(true)
       setError('')
-      
+
       if (typeof window === 'undefined') {
         console.warn('localStorage não disponível no servidor')
         return
       }
-      
+
       const token = localStorage.getItem('token')
-      
+
       if (!token) {
         console.warn('Token não encontrado no localStorage')
         setError('Token não encontrado. Faça login novamente.')
         setLoading(false)
         return
       }
-      
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/empresas`, {
         method: 'GET',
         headers: {
@@ -71,7 +71,25 @@ export default function AdminEmpresasPage() {
       }
 
       const data = await response.json()
-      setEmpresas(Array.isArray(data) ? data : (data.empresas || data.data || []))
+      console.log('Empresas recebidas da API:', data)
+
+      const empresasData = Array.isArray(data) ? data : (data.empresas || data.data || [])
+
+      // Mapear os dados da API para o formato esperado
+      const empresasMapeadas = empresasData.map((e: any) => ({
+        id: e.id,
+        nome: e.razao_social || '',
+        email: e.email || '',
+        nomeEmpresa: e.razao_social || '',
+        razaoSocial: e.razao_social || e.razaoSocial || '',
+        nomeFantasia: e.nome_fantasia || e.nomeFantasia || '',
+        cnpj: e.cnpj || '',
+        site: e.site || '',
+        descricao: e.descricao || e.description || '',
+        createdAt: e.created_at ? new Date(e.created_at) : (e.createdAt || new Date()),
+      }))
+
+      setEmpresas(empresasMapeadas)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar empresas'
       setError(errorMessage)
@@ -110,13 +128,15 @@ export default function AdminEmpresasPage() {
     )
   })
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name || typeof name !== 'string') return '??'
     return name
       .split(" ")
       .map((n) => n[0])
+      .filter(Boolean)
       .join("")
       .toUpperCase()
-      .slice(0, 2)
+      .slice(0, 2) || '??'
   }
 
   const abrirVer = (empresa: Empresa) => {
@@ -176,14 +196,14 @@ export default function AdminEmpresasPage() {
         prev.map((e) =>
           e.id === empresaSelecionada.id
             ? {
-                ...e,
-                nomeEmpresa: formEmpresa.nomeEmpresa || e.nomeEmpresa,
-                razaoSocial: formEmpresa.razaoSocial || undefined,
-                nomeFantasia: formEmpresa.nomeFantasia || undefined,
-                cnpj: formEmpresa.cnpj || e.cnpj,
-                site: formEmpresa.site || undefined,
-                descricao: formEmpresa.descricao || undefined,
-              }
+              ...e,
+              nomeEmpresa: formEmpresa.nomeEmpresa || e.nomeEmpresa,
+              razaoSocial: formEmpresa.razaoSocial || undefined,
+              nomeFantasia: formEmpresa.nomeFantasia || undefined,
+              cnpj: formEmpresa.cnpj || e.cnpj,
+              site: formEmpresa.site || undefined,
+              descricao: formEmpresa.descricao || undefined,
+            }
             : e,
         ),
       )
@@ -286,7 +306,9 @@ export default function AdminEmpresasPage() {
       <Card>
         <CardHeader>
           <CardTitle>Empresas</CardTitle>
-          <CardDescription>{empresasFiltradas.length} resultados</CardDescription>
+          <CardDescription>
+            {loading ? "Carregando..." : `${empresasFiltradas.length} resultados`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -294,6 +316,12 @@ export default function AdminEmpresasPage() {
               {error}
             </div>
           )}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              <p className="text-muted-foreground">Carregando empresas...</p>
+            </div>
+          ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -305,13 +333,7 @@ export default function AdminEmpresasPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Carregando empresas...
-                    </TableCell>
-                  </TableRow>
-                ) : empresasFiltradas.length === 0 ? (
+                {empresasFiltradas.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
                       Nenhuma empresa encontrada
@@ -358,6 +380,7 @@ export default function AdminEmpresasPage() {
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
 

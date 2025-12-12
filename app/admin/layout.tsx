@@ -22,6 +22,7 @@ import { LogOut, Bell } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Badge } from "@/components/ui/badge"
 import { mockNotificacoes } from "@/lib/mock-data"
+import { Toaster } from "sonner"
 
 export default function AdminLayout({
   children,
@@ -136,6 +137,7 @@ export default function AdminLayout({
           <div className="container mx-auto p-6">{children}</div>
         </main>
       </SidebarInset>
+      <Toaster position="top-right" richColors />
     </SidebarProvider>
   )
 }

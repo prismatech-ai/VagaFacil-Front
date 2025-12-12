@@ -7,13 +7,22 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { EmpresaSidebar } from "@/components/empresa-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Briefcase, Users, Eye, Edit, Trash2, MapPin, DollarSign, CheckCircle2, X } from "lucide-react"
 import { mockVagas, mockCandidaturas, mockUsers } from "@/lib/mock-data"
-import type { Vaga } from "@/lib/types"
+import type { Vaga as OriginalVaga } from "@/lib/types"
+
+// Extende o tipo Vaga para incluir 'remote' e 'benefits'
+type Vaga = OriginalVaga & {
+  remote?: boolean
+  salaryCurrency?: string
+  benefits?: string
+}
 import {
   Dialog,
   DialogContent,
@@ -32,27 +41,26 @@ export default function EmpresaDashboardPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const [vagas, setVagas] = useState<Vaga[]>([])
-  const [candidaturas, setCandidaturas] = useState(mockCandidaturas)
+  const [candidaturas, setCandidaturas] = useState<any[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
 
   // Form state
   const [titulo, setTitulo] = useState("")
-  const [senha, setSenha] = useState("")
   const [descricao, setDescricao] = useState("")
   const [requisitos, setRequisitos] = useState("")
-  const [tipoVaga, setTipoVaga] = useState("")
-  const [disciplina, setDisciplina] = useState("")
-  const [nivel, setNivel] = useState<"Júnior" | "Pleno" | "Sênior" | "Especialista" | "">("")
-  const [escolaridade, setEscolaridade] = useState<"Ensino Fundamental" | "Ensino Médio" | "Nível técnico" | "Superior" | "Pós-graduação" | "">("")
-  const [experienciaMinima, setExperienciaMinima] = useState("")
-  const [salario, setSalario] = useState("")
-  const [localizacao, setLocalizacao] = useState("")
-  const [tipo, setTipo] = useState<"CLT" | "PJ" | "Estágio" | "Temporário">("CLT")
   const [beneficios, setBeneficios] = useState<string[]>([])
   const [beneficioInput, setBeneficioInput] = useState("")
+  const [localizacao, setLocalizacao] = useState("")
+  const [remote, setRemote] = useState(false)
+  const [jobType, setJobType] = useState("CLT")
+  const [salaryMin, setSalaryMin] = useState("")
+  const [salaryMax, setSalaryMax] = useState("")
+  const [salaryCurrency, setSalaryCurrency] = useState("BRL")
+  const [screeningQuestions, setScreeningQuestions] = useState<any[]>([])
   const [vagaCriada, setVagaCriada] = useState<Vaga | null>(null)
   const [showConfirmacao, setShowConfirmacao] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -75,23 +83,120 @@ export default function EmpresaDashboardPage() {
 
     try {
       setLoadingData(true)
-      // #colocarRota - Ajuste as rotas conforme seu backend
-      const [vagasData, candidaturasData] = await Promise.all([
-        api.get<Vaga[]>(`/vagas?empresaId=${user.id}`).catch(() => {
-          console.warn("Erro ao carregar vagas, usando dados mockados")
-          return mockVagas.filter((v) => v.empresaId === user.id)
-        }),
-        api.get(`/candidaturas?empresaId=${user.id}`).catch(() => {
-          console.warn("Erro ao carregar candidaturas, usando dados mockados")
-          return mockCandidaturas.filter((c) => {
-            const vaga = mockVagas.find((v) => v.id === c.vagaId)
-            return vaga?.empresaId === user.id
-          })
-        }),
-      ])
+      
+      // GET /api/v1/jobs/ - Busca todas as vagas
+      const vagasResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/jobs/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      }).catch((err) => {
+        console.warn("Erro ao carregar vagas:", err)
+        return null
+      })
 
-      setVagas(Array.isArray(vagasData) ? vagasData : [])
-      setCandidaturas(Array.isArray(candidaturasData) ? candidaturasData : [])
+      let vagasData: Vaga[] = []
+      if (vagasResponse?.ok) {
+        const allVagas = await vagasResponse.json()
+        console.log("GET /api/v1/jobs/ - Todas as vagas recebidas:", allVagas)
+        console.log("User ID:", user.id, "Tipo:", typeof user.id)
+        console.log("User completo:", user)
+        
+        // Verifica se allVagas é um array
+        if (Array.isArray(allVagas)) {
+          // Mostra os company_ids das vagas
+          console.log("Company IDs das vagas:", allVagas.map(v => ({ id: v.company_id, type: typeof v.company_id })))
+          
+          // Converte IDs para número para comparação
+          const userIdNum = Number(user.id)
+          
+          // Mapeia e filtra as vagas da empresa atual
+          vagasData = allVagas
+            .filter((v) => {
+              const companyIdNum = Number(v.company_id)
+              const match = companyIdNum === userIdNum
+              console.log(`Comparando company_id ${v.company_id} (${companyIdNum}) com user.id ${user.id} (${userIdNum}): ${match}`)
+              return match
+            })
+            .map((v: any) => ({
+              id: v.id,
+              empresaId: v.company_id,
+              titulo: v.title || '',
+              descricao: v.description || '',
+              requisitos: v.requirements || '',
+              tipo: v.job_type || 'CLT',
+              localizacao: v.location || '',
+              salario: v.salary_min && v.salary_max ? `${v.salary_min} - ${v.salary_max}` : '',
+              salarioMin: v.salary_min || '',
+              salarioMax: v.salary_max || '',
+              salaryCurrency: v.salary_currency || 'BRL',
+              status: v.status || 'rascunho',
+              remote: v.remote || false,
+              benefits: v.benefits || '',
+              createdAt: v.created_at ? new Date(v.created_at) : new Date(),
+            }))
+          
+          console.log("Vagas mapeadas e filtradas:", vagasData)
+          
+          // Se não houver vagas filtradas, mostra todas para debug
+          if (vagasData.length === 0 && allVagas.length > 0) {
+            console.warn("ATENÇÃO: Nenhuma vaga filtrada! Mostrando todas as vagas para debug")
+            vagasData = allVagas.map((v: any) => ({
+              id: v.id,
+              empresaId: v.company_id,
+              titulo: v.title || '',
+              descricao: v.description || '',
+              requisitos: v.requirements || '',
+              tipo: v.job_type || 'CLT',
+              localizacao: v.location || '',
+              salario: v.salary_min && v.salary_max ? `${v.salary_min} - ${v.salary_max}` : '',
+              salarioMin: v.salary_min || '',
+              salarioMax: v.salary_max || '',
+              salaryCurrency: v.salary_currency || 'BRL',
+              status: v.status || 'rascunho',
+              remote: v.remote || false,
+              benefits: v.benefits || '',
+              createdAt: v.created_at ? new Date(v.created_at) : new Date(),
+            }))
+          }
+        } else {
+          console.warn("allVagas não é um array:", typeof allVagas)
+          vagasData = []
+        }
+      } else {
+        console.warn("Erro ao carregar vagas, usando dados mockados")
+        vagasData = mockVagas.filter((v) => v.empresaId === user.id)
+      }
+
+      // GET /api/v1/candidaturas - Busca estatísticas de candidaturas
+      const candidaturasResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/jobs`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      }).catch((err) => {
+        console.warn("Erro ao carregar candidaturas:", err)
+        return null
+      })
+
+      let candidaturasData: any[] = []
+      if (candidaturasResponse?.ok) {
+        const candidaturasStats = await candidaturasResponse.json()
+        console.log("GET /api/v1/candidaturas - Estatísticas recebidas:", candidaturasStats)
+        // Extrai os top_candidates do response
+        candidaturasData = Array.isArray(candidaturasStats.top_candidates) ? candidaturasStats.top_candidates : []
+      } else {
+        console.warn("Erro ao carregar candidaturas, usando dados mockados")
+        candidaturasData = mockCandidaturas.filter((c) => {
+          const vaga = mockVagas.find((v) => v.id === c.vagaId)
+          return vaga?.empresaId === user.id
+        })
+      }
+
+      setVagas(vagasData)
+      setCandidaturas(candidaturasData)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
       // Fallback para dados mockados
@@ -116,8 +221,8 @@ export default function EmpresaDashboardPage() {
     )
   }
 
-  const minhasVagas = vagas.filter((v) => v.empresaId === user.id)
-  const vagasAbertas = minhasVagas.filter((v) => v.status === "aberta")
+  const minhasVagas = vagas.filter((v) => (v.status === "aberta" ))
+  const vagasAbertas = minhasVagas
 
   const minhasCandidaturas = candidaturas.filter((c) => {
     const vaga = vagas.find((v) => v.id === c.vagaId)
@@ -137,28 +242,94 @@ export default function EmpresaDashboardPage() {
 
   const handleCreateVaga = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
 
     if (!user) return
 
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const novaVaga = await api.post<Vaga>("/vagas", {
-        empresaId: user.id,
-        senha: senha || undefined,
-        titulo,
-        descricao,
-        requisitos,
-        tipoVaga: tipoVaga || undefined,
-        disciplina: disciplina || undefined,
-        nivel: nivel || undefined,
-        escolaridade: escolaridade || undefined,
-        experienciaMinima: experienciaMinima || undefined,
-        salario: salario || undefined,
-        localizacao,
-        tipo,
-        beneficios: beneficios.length > 0 ? beneficios : undefined,
-        status: "aberta",
+      // Validação básica
+      if (!titulo || !descricao || !requisitos || !localizacao) {
+        setError("Preencha todos os campos obrigatórios (*, título, descrição, requisitos, localização)")
+        return
+      }
+
+      // Validação de comprimento mínimo
+      if (titulo.length < 3) {
+        setError("O título deve ter pelo menos 3 caracteres")
+        return
+      }
+
+      if (descricao.length < 10) {
+        setError("A descrição deve ter pelo menos 10 caracteres")
+        return
+      }
+
+      if (requisitos.length < 10) {
+        setError("Os requisitos devem ter pelo menos 10 caracteres")
+        return
+      }
+
+      if (localizacao.length < 3) {
+        setError("A localização deve ter pelo menos 3 caracteres")
+        return
+      }
+
+      const jobData = {
+        title: titulo,
+        description: descricao,
+        requirements: requisitos,
+        benefits: beneficios.length > 0 ? beneficios.join(", ") : "",
+        location: localizacao,
+        remote: remote,
+        job_type: jobType,
+        salary_min: salaryMin ? parseInt(salaryMin) : 0,
+        salary_max: salaryMax ? parseInt(salaryMax) : 0,
+        salary_currency: salaryCurrency,
+        screening_questions: screeningQuestions.map((q, idx) => ({
+          question: q.question,
+          question_type: q.question_type,
+          is_required: q.is_required,
+          order: idx,
+        })),
+      }
+      
+      console.log("POST /api/v1/jobs/ - Criando vaga (RASCUNHO):", jobData)
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/jobs/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+        body: JSON.stringify(jobData),
       })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("Erro ao criar vaga - Status:", response.status)
+        console.error("Erro ao criar vaga - Response completa:", JSON.stringify(errorData, null, 2))
+        console.error("Erro ao criar vaga - jobData enviado:", jobData)
+        
+        let errorMessage = `Erro ${response.status} ao criar vaga`
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map((err: any) => {
+              if (typeof err === 'string') return err
+              if (err.msg) return err.msg
+              return JSON.stringify(err)
+            }).join('; ')
+          } else if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail
+          }
+        } else if (errorData.message) {
+          errorMessage = errorData.message
+        }
+        
+        throw new Error(errorMessage)
+      }
+
+      const novaVaga = await response.json()
+      console.log("Vaga criada com sucesso:", novaVaga)
 
       setVagas([...vagas, novaVaga])
 
@@ -169,21 +340,20 @@ export default function EmpresaDashboardPage() {
 
       // Reset form
       setTitulo("")
-      setSenha("")
       setDescricao("")
       setRequisitos("")
-      setTipoVaga("")
-      setDisciplina("")
-      setNivel("")
-      setEscolaridade("")
-      setExperienciaMinima("")
-      setSalario("")
       setLocalizacao("")
-      setTipo("CLT")
+      setSalaryMin("")
+      setSalaryMax("")
+      setJobType("CLT")
+      setRemote(false)
       setBeneficios([])
       setBeneficioInput("")
-    } catch (error) {
-      console.error("Erro ao criar vaga:", error)
+      setScreeningQuestions([])
+    } catch (err: any) {
+      console.error("Erro ao criar vaga:", err)
+      console.error("Detalhes do erro:", err.message)
+      setError(err?.message || "Erro ao criar vaga. Tente novamente.")
     }
   }
 
@@ -212,16 +382,19 @@ export default function EmpresaDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <DashboardHeader />
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-secondary/30">
+        <EmpresaSidebar />
+        <div className="flex flex-col flex-1 min-w-0 overflow-x-hidden">
+          <DashboardHeader />
 
-      {/* Dialog de Confirmação */}
+          {/* Dialog de Confirmação */}
       {showConfirmacao && vagaCriada && (
         <Dialog open={showConfirmacao} onOpenChange={setShowConfirmacao}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
             <DialogHeader>
               <div className="flex items-center justify-between">
-                <DialogTitle className="text-2xl">EMPRESA – DADOS DA VAGA</DialogTitle>
+                <DialogTitle className="text-xl sm:text-2xl">Vaga Criada com Sucesso!</DialogTitle>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -233,121 +406,123 @@ export default function EmpresaDashboardPage() {
               </div>
             </DialogHeader>
 
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Grid com os dados da vaga */}
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {/* Coluna Esquerda */}
                 <div className="space-y-4">
                   <Card className="border-2">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">ID</p>
-                        <p className="text-lg font-bold">{vagaCriada.id}</p>
+                        <p className="text-base sm:text-lg font-bold">{vagaCriada.id}</p>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {vagaCriada.senha && (
-                    <Card className="border-2">
-                      <CardContent className="p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Senha</p>
-                          <p className="text-lg font-bold">{vagaCriada.senha}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                  <Card className="border-2">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Título</p>
+                        <p className="text-base sm:text-lg font-bold break-words">{vagaCriada.titulo}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                  {vagaCriada.tipoVaga && (
-                    <Card className="border-2">
-                      <CardContent className="p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Tipo de vaga</p>
-                          <p className="text-lg font-bold">{vagaCriada.tipoVaga}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                  <Card className="border-2">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Status</p>
+                        <p className="text-base sm:text-lg font-bold">{vagaCriada.status}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                  {vagaCriada.disciplina && (
-                    <Card className="border-2">
-                      <CardContent className="p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Disciplina</p>
-                          <p className="text-lg font-bold">{vagaCriada.disciplina}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {vagaCriada.nivel && (
-                    <Card className="border-2">
-                      <CardContent className="p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Nível</p>
-                          <p className="text-lg font-bold">{vagaCriada.nivel}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {vagaCriada.escolaridade && (
-                    <Card className="border-2">
-                      <CardContent className="p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Escolaridade</p>
-                          <p className="text-lg font-bold">{vagaCriada.escolaridade}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                  <Card className="border-2">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Tipo de Vaga</p>
+                        <p className="text-base sm:text-lg font-bold">{vagaCriada.tipo}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 {/* Coluna Direita */}
                 <div className="space-y-4">
-                  {vagaCriada.experienciaMinima && (
-                    <Card className="border-2">
-                      <CardContent className="p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Experiência</p>
-                          <p className="text-lg font-bold">{vagaCriada.experienciaMinima}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
                   <Card className="border-2">
                     <CardContent className="p-4">
                       <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Local da vaga</p>
+                        <p className="text-xs text-muted-foreground">Localização</p>
                         <p className="text-lg font-bold">{vagaCriada.localizacao}</p>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {vagaCriada.salario && (
-                    <Card className="border-2">
-                      <CardContent className="p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Faixa salarial</p>
-                          <p className="text-lg font-bold">{vagaCriada.salario}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                  <Card className="border-2">
+                    <CardContent className="p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Trabalho Remoto</p>
+                        <p className="text-lg font-bold">{vagaCriada.remote ? "Sim" : "Não"}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                  {vagaCriada.beneficios && vagaCriada.beneficios.length > 0 && (
-                    <Card className="border-2">
-                      <CardContent className="p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Benefícios</p>
-                          <p className="text-lg font-bold">{vagaCriada.beneficios.join(", ")}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                  <Card className="border-2">
+                    <CardContent className="p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Faixa Salarial</p>
+                        <p className="text-lg font-bold">
+                          {vagaCriada.salarioMin} - {vagaCriada.salarioMax} {vagaCriada.salaryCurrency}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2">
+                    <CardContent className="p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Data de Criação</p>
+                        <p className="text-lg font-bold">
+                          {new Date(vagaCriada.createdAt).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
+
+              {/* Descrição */}
+              <Card className="border-2">
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-muted-foreground">Descrição</p>
+                    <p className="text-sm">{vagaCriada.descricao}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Requisitos */}
+              <Card className="border-2">
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-muted-foreground">Requisitos</p>
+                    <p className="text-sm">{vagaCriada.requisitos}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Benefícios */}
+              {vagaCriada.benefits && (
+                <Card className="border-2">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-muted-foreground">Benefícios</p>
+                      <p className="text-sm">{vagaCriada.benefits}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Mensagem de Confirmação */}
               <Card className="border-2 border-primary bg-primary/5">
@@ -372,19 +547,11 @@ export default function EmpresaDashboardPage() {
         </Dialog>
       )}
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+      <main className="flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h2 className="text-3xl font-bold mb-2">Painel da Empresa</h2>
-            <p className="text-muted-foreground">Gerencie suas vagas e candidatos</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href="/dashboard/empresa/pipeline">Pipeline</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/dashboard/empresa/banco-talentos">Banco de Talentos</Link>
-            </Button>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Painel da Empresa</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">Gerencie suas vagas e candidatos</p>
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -394,162 +561,173 @@ export default function EmpresaDashboardPage() {
                 Nova Vaga
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
               <DialogHeader>
-                <DialogTitle>Cadastrar Nova Vaga</DialogTitle>
-                <DialogDescription>Preencha os dados da vaga conforme solicitado</DialogDescription>
+                <DialogTitle className="text-lg sm:text-xl">Criar Nova Vaga</DialogTitle>
+                <DialogDescription className="text-sm">
+                  A vaga será criada em modo RASCUNHO e poderá ser publicada depois
+                </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleCreateVaga} className="space-y-6">
-                {/* Linha 1: Título e Senha */}
-                <div className="grid md:grid-cols-2 gap-4">
+              <form onSubmit={handleCreateVaga} className="space-y-4 sm:space-y-6">
+                {error && (
+                  <div className="bg-destructive/10 border border-destructive text-destructive text-sm p-3 rounded-md">
+                    {error}
+                  </div>
+                )}
+                {/* Seção 1: Informações Básicas */}
+                <div className="space-y-4 border-b pb-6">
+                  <h3 className="text-lg font-semibold">Informações Básicas</h3>
+
                   <div className="space-y-2">
                     <Label htmlFor="titulo">Título da Vaga *</Label>
                     <Input
                       id="titulo"
-                      placeholder="Ex: Técnico em Manutenção"
+                      placeholder="Ex: Desenvolvedor Full Stack"
                       value={titulo}
                       onChange={(e) => setTitulo(e.target.value)}
                       required
                     />
+                    <div className="flex justify-between items-center">
+                      <p className={`text-xs ${titulo.length < 3 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {titulo.length}/3 caracteres mínimos
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="senha">Senha</Label>
-                    <Input
-                      id="senha"
-                      type="text"
-                      placeholder="Ex: CMPC@2025"
-                      value={senha}
-                      onChange={(e) => setSenha(e.target.value)}
-                    />
-                  </div>
-                </div>
 
-                {/* Linha 2: Tipo de Vaga e Disciplina */}
-                <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="tipoVaga">Tipo de Vaga</Label>
-                    <Select value={tipoVaga} onValueChange={setTipoVaga}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Manutenção">Manutenção</SelectItem>
-                        <SelectItem value="Operação">Operação</SelectItem>
-                        <SelectItem value="Projeto">Projeto</SelectItem>
-                        <SelectItem value="Administrativo">Administrativo</SelectItem>
-                        <SelectItem value="Outro">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="disciplina">Disciplina</Label>
-                    <Select value={disciplina} onValueChange={setDisciplina}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Mecânica">Mecânica</SelectItem>
-                        <SelectItem value="Elétrica">Elétrica</SelectItem>
-                        <SelectItem value="Automação">Automação</SelectItem>
-                        <SelectItem value="Instrumentação">Instrumentação</SelectItem>
-                        <SelectItem value="Caldeiraria e Solda">Caldeiraria e Solda</SelectItem>
-                        <SelectItem value="Civil">Civil</SelectItem>
-                        <SelectItem value="Outra">Outra</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Linha 3: Nível e Escolaridade */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nivel">Nível</Label>
-                    <Select value={nivel} onValueChange={(v) => setNivel(v as any)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Júnior">Júnior</SelectItem>
-                        <SelectItem value="Pleno">Pleno</SelectItem>
-                        <SelectItem value="Sênior">Sênior</SelectItem>
-                        <SelectItem value="Especialista">Especialista</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="escolaridade">Escolaridade</Label>
-                    <Select value={escolaridade} onValueChange={(v) => setEscolaridade(v as any)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Ensino Fundamental">Ensino Fundamental</SelectItem>
-                        <SelectItem value="Ensino Médio">Ensino Médio</SelectItem>
-                        <SelectItem value="Nível técnico">Nível técnico</SelectItem>
-                        <SelectItem value="Superior">Superior</SelectItem>
-                        <SelectItem value="Pós-graduação">Pós-graduação</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Linha 4: Experiência e Localização */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="experienciaMinima">Experiência Mínima</Label>
-                    <Input
-                      id="experienciaMinima"
-                      placeholder="Ex: mínima 2 anos"
-                      value={experienciaMinima}
-                      onChange={(e) => setExperienciaMinima(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="localizacao">Local da Vaga *</Label>
-                    <Input
-                      id="localizacao"
-                      placeholder="Ex: Guaíba/RS"
-                      value={localizacao}
-                      onChange={(e) => setLocalizacao(e.target.value)}
+                    <Label htmlFor="descricao">Descrição *</Label>
+                    <Textarea
+                      id="descricao"
+                      placeholder="Descreva o dia a dia, responsabilidades..."
+                      value={descricao}
+                      onChange={(e) => setDescricao(e.target.value)}
+                      rows={4}
                       required
                     />
+                    <div className="flex justify-between items-center">
+                      <p className={`text-xs ${descricao.length < 10 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {descricao.length}/10 caracteres mínimos
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Linha 5: Faixa Salarial e Tipo de Contrato */}
-                <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="salario">Faixa Salarial</Label>
-                    <Input
-                      id="salario"
-                      placeholder="Ex: R$ 7.000,00"
-                      value={salario}
-                      onChange={(e) => setSalario(e.target.value)}
+                    <Label htmlFor="requisitos">Requisitos *</Label>
+                    <Textarea
+                      id="requisitos"
+                      placeholder="Lista de requisitos necessários..."
+                      value={requisitos}
+                      onChange={(e) => setRequisitos(e.target.value)}
+                      rows={3}
+                      required
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tipo">Tipo de Contrato *</Label>
-                    <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CLT">CLT</SelectItem>
-                        <SelectItem value="PJ">PJ</SelectItem>
-                        <SelectItem value="Estágio">Estágio</SelectItem>
-                        <SelectItem value="Temporário">Temporário</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex justify-between items-center">
+                      <p className={`text-xs ${requisitos.length < 10 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {requisitos.length}/10 caracteres mínimos
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Benefícios */}
-                <div className="space-y-2">
-                  <Label htmlFor="beneficios">Benefícios</Label>
+                {/* Seção 2: Detalhes da Vaga */}
+                <div className="space-y-4 border-b pb-6">
+                  <h3 className="text-lg font-semibold">Detalhes da Vaga</h3>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="localizacao">Localização *</Label>
+                      <Input
+                        id="localizacao"
+                        placeholder="Ex: São Paulo, SP"
+                        value={localizacao}
+                        onChange={(e) => setLocalizacao(e.target.value)}
+                        required
+                      />
+                      <div className="flex justify-between items-center">
+                        <p className={`text-xs ${localizacao.length < 3 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          {localizacao.length}/3 caracteres mínimos
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="jobType">Tipo de Contrato *</Label>
+                      <Select value={jobType} onValueChange={setJobType}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CLT">CLT</SelectItem>
+                          <SelectItem value="PJ">PJ</SelectItem>
+                          <SelectItem value="Estágio">Estágio</SelectItem>
+                          <SelectItem value="Temporário">Temporário</SelectItem>
+                          <SelectItem value="Aprendiz">Aprendiz</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 border rounded-md p-3">
+                    <input
+                      id="remote"
+                      type="checkbox"
+                      checked={remote}
+                      onChange={(e) => setRemote(e.target.checked)}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                    <Label htmlFor="remote" className="cursor-pointer">
+                      Trabalho Remoto - {remote ? "Sim" : "Não"}
+                    </Label>
+                  </div>
+                </div>
+
+                {/* Seção 3: Salário */}
+                <div className="space-y-4 border-b pb-6">
+                  <h3 className="text-lg font-semibold">Faixa Salarial</h3>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="salaryMin">Salário Mínimo</Label>
+                      <Input
+                        id="salaryMin"
+                        type="text"
+                        placeholder="Ex: 3000"
+                        value={salaryMin}
+                        onChange={(e) => setSalaryMin(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="salaryMax">Salário Máximo</Label>
+                      <Input
+                        id="salaryMax"
+                        type="text"
+                        placeholder="Ex: 8000"
+                        value={salaryMax}
+                        onChange={(e) => setSalaryMax(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="salaryCurrency">Moeda</Label>
+                      <Select value={salaryCurrency} onValueChange={setSalaryCurrency}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BRL">BRL (Real)</SelectItem>
+                          <SelectItem value="USD">USD (Dólar)</SelectItem>
+                          <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção 4: Benefícios */}
+                <div className="space-y-4 pb-6">
+                  <h3 className="text-lg font-semibold">Benefícios</h3>
+
                   <div className="flex gap-2 mb-2">
                     <Input
-                      id="beneficios"
-                      placeholder="Ex: Plano de saúde, Transporte"
+                      placeholder="Ex: Plano de saúde"
                       value={beneficioInput}
                       onChange={(e) => setBeneficioInput(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addBeneficio())}
@@ -579,36 +757,11 @@ export default function EmpresaDashboardPage() {
                   )}
                 </div>
 
-                {/* Descrição e Requisitos */}
-                <div className="space-y-2">
-                  <Label htmlFor="descricao">Descrição *</Label>
-                  <Textarea
-                    id="descricao"
-                    placeholder="Descreva as responsabilidades e o que a pessoa fará no dia a dia..."
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    rows={4}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="requisitos">Requisitos *</Label>
-                  <Textarea
-                    id="requisitos"
-                    placeholder="Liste os requisitos necessários para a vaga..."
-                    value={requisitos}
-                    onChange={(e) => setRequisitos(e.target.value)}
-                    rows={3}
-                    required
-                  />
-                </div>
-
                 <div className="flex gap-2 justify-end pt-4 border-t">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Cadastrar Vaga</Button>
+                  <Button type="submit">Criar em Rascunho</Button>
                 </div>
               </form>
             </DialogContent>
@@ -616,7 +769,7 @@ export default function EmpresaDashboardPage() {
         </div>
 
         {/* Cards de Estatísticas */}
-        <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6 sm:mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Vagas Publicadas</CardTitle>
@@ -624,7 +777,7 @@ export default function EmpresaDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{minhasVagas.length}</div>
-              <p className="text-xs text-muted-foreground">{vagasAbertas.length} abertas</p>
+              <p className="text-xs text-muted-foreground">Ativas no momento</p>
             </CardContent>
           </Card>
 
@@ -681,22 +834,22 @@ export default function EmpresaDashboardPage() {
                   return (
                     <Card key={vaga.id} className="hover:shadow-md transition-shadow">
                       <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CardTitle>{vaga.titulo}</CardTitle>
-                              <Badge variant={getStatusBadge(vaga.status)}>{getStatusLabel(vaga.status)}</Badge>
-                              <Badge variant="outline">{vaga.tipo}</Badge>
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <CardTitle className="text-base sm:text-lg truncate">{vaga.titulo}</CardTitle>
+                              <Badge variant={getStatusBadge(vaga.status)} className="text-xs">{getStatusLabel(vaga.status)}</Badge>
+                              <Badge variant="outline" className="text-xs">{vaga.tipo}</Badge>
                             </div>
-                            <CardDescription className="flex flex-wrap gap-3 text-sm">
+                            <CardDescription className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm">
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
-                                {vaga.localizacao}
+                                <span className="truncate">{vaga.localizacao}</span>
                               </span>
-                              {vaga.salario && (
+                              {(vaga.salarioMin || vaga.salarioMax) && (
                                 <span className="flex items-center gap-1">
                                   <DollarSign className="h-3 w-3" />
-                                  {vaga.salario}
+                                  {vaga.salarioMin} - {vaga.salarioMax} {vaga.salaryCurrency}
                                 </span>
                               )}
                               <span className="flex items-center gap-1">
@@ -705,7 +858,7 @@ export default function EmpresaDashboardPage() {
                               </span>
                             </CardDescription>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 self-start">
                             <Button variant="ghost" size="sm">
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -778,7 +931,9 @@ export default function EmpresaDashboardPage() {
             )}
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+        </main>
+        </div>
+      </div>
+    </SidebarProvider>
   )
 }

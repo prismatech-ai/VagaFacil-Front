@@ -5,7 +5,7 @@ import React from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { LogOut } from "lucide-react"
+import { LogOut, Menu } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,9 +17,19 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Logo } from "@/components/logo"
 
+function useSidebarSafe() {
+  try {
+    const { useSidebar } = require("@/components/ui/sidebar")
+    return useSidebar()
+  } catch {
+    return null
+  }
+}
+
 export function DashboardHeader() {
   const { user, logout } = useAuth()
   const router = useRouter()
+  const sidebar = useSidebarSafe()
 
   const handleLogout = () => {
     logout()
@@ -45,10 +55,21 @@ export function DashboardHeader() {
   }
 
   return (
-    <header className="border-b bg-card">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <header className="border-b bg-card w-full">
+      <div className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Logo width={140} />
+          {sidebar && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={sidebar.toggleSidebar}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          <Logo width={140} className="hidden sm:block" />
+          <Logo width={100} className="sm:hidden" />
         </div>
 
         <div className="flex items-center gap-4">

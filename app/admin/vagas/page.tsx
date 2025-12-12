@@ -83,7 +83,27 @@ export default function AdminVagasPage() {
       }
 
       const data = await response.json()
-      setVagas(Array.isArray(data) ? data : (data.vagas || data.data || []))
+      const vagasData = Array.isArray(data) ? data : (data.vagas || data.data || [])
+      
+      // Mapear os dados da API para o formato esperado
+      const vagasMapeadas = vagasData.map((v: any) => ({
+        id: v.id,
+        empresaId: v.company_id || v.empresaId,
+        titulo: v.title || v.titulo || '',
+        descricao: v.description || v.descricao || '',
+        requisitos: v.requirements || v.requisitos || '',
+        localizacao: v.location || v.localizacao || '',
+        tipo: v.job_type || v.tipo || 'CLT',
+        salarioMin: v.salary_min || v.salarioMin,
+        salarioMax: v.salary_max || v.salarioMax,
+        status: v.status || 'aberta',
+        createdAt: v.created_at ? new Date(v.created_at) : (v.createdAt || new Date()),
+        habilidadesRequeridas: v.required_skills || v.habilidadesRequeridas || [],
+        anosExperienciaMin: v.years_experience_min || v.anosExperienciaMin,
+        anosExperienciaMax: v.years_experience_max || v.anosExperienciaMax,
+      }))
+      
+      setVagas(vagasMapeadas)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar vagas'
       setError(errorMessage)

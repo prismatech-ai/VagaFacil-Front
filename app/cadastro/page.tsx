@@ -48,11 +48,11 @@ export default function CadastroPage() {
 
   // Dados da empresa
   const [razaoSocial, setRazaoSocial] = useState("");
+  const [nomeFantasia, setNomeFantasia] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [setor, setSetor] = useState("");
-  const [cepEmpresa, setCepEmpresa] = useState("");
-  const [pessoaDeContato, setPessoaDeContato] = useState("");
-  const [foneEmpresa, setFoneEmpresa] = useState("");
+  const [site, setSite] = useState("");
+  const [descricao, setDescricao] = useState("");
 
   // Dados do candidato
   const [cpf, setCpf] = useState("");
@@ -73,6 +73,42 @@ export default function CadastroPage() {
       setActiveTab(tipoParam);
     }
   }, [tipoParam]);
+
+  const formatCNPJ = (value: string) => {
+    const cnpjNumbers = value.replace(/\D/g, "");
+    if (cnpjNumbers.length <= 2) return cnpjNumbers;
+    if (cnpjNumbers.length <= 5)
+      return cnpjNumbers.slice(0, 2) + "." + cnpjNumbers.slice(2);
+    if (cnpjNumbers.length <= 8)
+      return (
+        cnpjNumbers.slice(0, 2) +
+        "." +
+        cnpjNumbers.slice(2, 5) +
+        "." +
+        cnpjNumbers.slice(5)
+      );
+    if (cnpjNumbers.length <= 12)
+      return (
+        cnpjNumbers.slice(0, 2) +
+        "." +
+        cnpjNumbers.slice(2, 5) +
+        "." +
+        cnpjNumbers.slice(5, 8) +
+        "/" +
+        cnpjNumbers.slice(8)
+      );
+    return (
+      cnpjNumbers.slice(0, 2) +
+      "." +
+      cnpjNumbers.slice(2, 5) +
+      "." +
+      cnpjNumbers.slice(5, 8) +
+      "/" +
+      cnpjNumbers.slice(8, 12) +
+      "-" +
+      cnpjNumbers.slice(12, 14)
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,13 +146,57 @@ export default function CadastroPage() {
       //  CADASTRO DE EMPRESA
       // =============================
       if (activeTab === "empresa") {
-        registerData.role = "empresa";
-        registerData.razaoSocial = razaoSocial;
-        registerData.cnpj = cnpj.replace(/\D/g, "");
-        if (setor) registerData.setor = setor;
-        if (cepEmpresa) registerData.cepEmpresa = cepEmpresa;
-        if (pessoaDeContato) registerData.pessoaDeContato = pessoaDeContato;
-        if (foneEmpresa) registerData.foneEmpresa = foneEmpresa;
+        const companyData = {
+          email,
+          password,
+          cnpj: cnpj.replace(/\D/g, ""),
+          razao_social: razaoSocial,
+          nome_fantasia: nomeFantasia,
+          setor: setor || undefined,
+          site: site || undefined,
+          descricao: descricao || undefined,
+        };
+
+        console.log("ENVIADO PARA BACKEND (EMPRESA):", companyData);
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/companies/register`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(companyData),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("Erro da API:", response.status, errorData);
+          
+          // Extrair mensagem detalhada do erro
+          let errorMessage = `Erro ${response.status} ao registrar empresa`;
+          
+          if (errorData.detail) {
+            if (typeof errorData.detail === "string") {
+              errorMessage = errorData.detail;
+            } else if (Array.isArray(errorData.detail)) {
+              errorMessage = errorData.detail
+                .map((err: any) => {
+                  if (err.msg) return `${err.loc?.join(" > ") || "Campo"}: ${err.msg}`;
+                  return String(err);
+                })
+                .join("; ");
+            }
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        router.push("/login");
+        return;
       }
 
       // =============================
@@ -146,7 +226,7 @@ export default function CadastroPage() {
         }
       }
 
-      console.log("ENVIADO PARA BACKEND:", registerData);
+      console.log("ENVIADO PARA BACKEND (CANDIDATO):", registerData);
 
       const success = await register(registerData);
 
@@ -220,42 +300,47 @@ export default function CadastroPage() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label>Nome Fantasia</Label>
+                    <Input
+                      value={nomeFantasia}
+                      onChange={(e) => setNomeFantasia(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <Label>CNPJ *</Label>
                     <Input
+                      placeholder="00.000.000/0000-00"
                       value={cnpj}
-                      onChange={(e) => setCnpj(e.target.value)}
+                      onChange={(e) => setCnpj(formatCNPJ(e.target.value))}
+                      maxLength={18}
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Setor</Label>
                     <Input
+                      placeholder="Ex: Tecnologia, Varejo, Saúde, Educação"
                       value={setor}
                       onChange={(e) => setSetor(e.target.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>CEP</Label>
+                    <Label>Site</Label>
                     <Input
-                      value={cepEmpresa}
-                      onChange={(e) => setCepEmpresa(e.target.value)}
+                      placeholder="https://www.seusite.com.br"
+                      value={site}
+                      onChange={(e) => setSite(e.target.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Pessoa de Contato</Label>
+                    <Label>Descrição</Label>
                     <Input
-                      value={pessoaDeContato}
-                      onChange={(e) => setPessoaDeContato(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Telefone</Label>
-                    <Input
-                      value={foneEmpresa}
-                      onChange={(e) => setFoneEmpresa(e.target.value)}
+                      placeholder="Breve descrição da empresa"
+                      value={descricao}
+                      onChange={(e) => setDescricao(e.target.value)}
                     />
                   </div>
                 </TabsContent>
@@ -274,6 +359,7 @@ export default function CadastroPage() {
                     <div className="space-y-2">
                       <Label>CPF</Label>
                       <Input
+                        placeholder="000.000.000-00"
                         value={cpf}
                         onChange={(e) => setCpf(e.target.value)}
                       />
@@ -335,7 +421,7 @@ export default function CadastroPage() {
 
                     <div className="space-y-2">
                       <Label>CEP</Label>
-                      <Input value={cep} onChange={(e) => setCep(e.target.value)} />
+                      <Input placeholder="00000-000" value={cep} onChange={(e) => setCep(e.target.value)} />
                     </div>
 
                     <div className="space-y-2">
@@ -380,13 +466,40 @@ export default function CadastroPage() {
 
                     <div className="space-y-2">
                       <Label>Estado</Label>
-                      <Input
-                        maxLength={2}
-                        value={estado}
-                        onChange={(e) =>
-                          setEstado(e.target.value.toUpperCase())
-                        }
-                      />
+                      <Select value={estado} onValueChange={setEstado}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="AC">Acre</SelectItem>
+                          <SelectItem value="AL">Alagoas</SelectItem>
+                          <SelectItem value="AP">Amapá</SelectItem>
+                          <SelectItem value="AM">Amazonas</SelectItem>
+                          <SelectItem value="BA">Bahia</SelectItem>
+                          <SelectItem value="CE">Ceará</SelectItem>
+                          <SelectItem value="DF">Distrito Federal</SelectItem>
+                          <SelectItem value="ES">Espírito Santo</SelectItem>
+                          <SelectItem value="GO">Goiás</SelectItem>
+                          <SelectItem value="MA">Maranhão</SelectItem>
+                          <SelectItem value="MT">Mato Grosso</SelectItem>
+                          <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
+                          <SelectItem value="MG">Minas Gerais</SelectItem>
+                          <SelectItem value="PA">Pará</SelectItem>
+                          <SelectItem value="PB">Paraíba</SelectItem>
+                          <SelectItem value="PR">Paraná</SelectItem>
+                          <SelectItem value="PE">Pernambuco</SelectItem>
+                          <SelectItem value="PI">Piauí</SelectItem>
+                          <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                          <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                          <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                          <SelectItem value="RO">Rondônia</SelectItem>
+                          <SelectItem value="RR">Roraima</SelectItem>
+                          <SelectItem value="SC">Santa Catarina</SelectItem>
+                          <SelectItem value="SP">São Paulo</SelectItem>
+                          <SelectItem value="SE">Sergipe</SelectItem>
+                          <SelectItem value="TO">Tocantins</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </TabsContent>
@@ -401,6 +514,14 @@ export default function CadastroPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  {password && (
+                    <div className="flex items-center gap-2 text-xs mt-1">
+                      <div className={`h-1.5 flex-1 rounded-full ${password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password) ? 'bg-green-500' : password.length >= 6 ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                      <span className={password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password) ? 'text-green-600' : password.length >= 6 ? 'text-yellow-600' : 'text-red-600'}>
+                        {password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password) ? 'Forte' : password.length >= 6 ? 'Média' : 'Fraca'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -411,6 +532,14 @@ export default function CadastroPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
+                  {confirmPassword && (
+                    <div className="flex items-center gap-2 text-xs mt-1">
+                      <div className={`h-1.5 w-4 rounded-full ${password === confirmPassword ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <span className={password === confirmPassword ? 'text-green-600' : 'text-red-600'}>
+                        {password === confirmPassword ? 'Senhas correspondem' : 'Senhas não correspondem'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <Button type="submit" disabled={isLoading} className="w-full">

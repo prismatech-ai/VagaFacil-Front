@@ -61,6 +61,8 @@ async function tryRefreshToken(): Promise<string | null> {
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`
 
+  console.log(`[API] ${options.method || 'GET'} ${url}`)
+
   const defaultHeaders: HeadersInit = {
     "Content-Type": "application/json",
   }
@@ -78,6 +80,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   }
 
   const response = await fetch(url, config)
+  console.log(`[API] Response status: ${response.status}`)
 
   if (!response.ok) {
     // Se desautorizado → tentar refresh
@@ -100,7 +103,9 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     }
 
     const errorData = await response.json().catch(() => ({ message: "Erro na requisição" }))
-    throw new Error(errorData.message || "Erro desconhecido")
+    console.error(`Erro API [${response.status}] ${url}:`, errorData)
+    const errorMessage = errorData.detail || errorData.message || errorData.error || `Erro ${response.status}`
+    throw new Error(errorMessage)
   }
 
   return response.json()

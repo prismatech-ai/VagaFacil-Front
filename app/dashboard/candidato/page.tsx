@@ -63,36 +63,73 @@ export default function CandidatoDashboardPage() {
     try {
       setLoadingData(true)
 
-      const vagasData = await api.get<any[]>("/api/v1/jobs/")
+      // Fetch vagas públicas
+      const vagasResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/jobs-public/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      let vagasData: any[] = []
+      if (vagasResponse.ok) {
+        vagasData = await vagasResponse.json()
+        console.log("Vagas recebidas:", vagasData)
+      } else {
+        const errorText = await vagasResponse.text()
+        console.error("Erro ao carregar vagas:", vagasResponse.status, errorText)
+      }
 
       const formattedVagas: Vaga[] = (vagasData || []).map((v: any) => ({
         id: v.id,
-        empresaId: v.empresa_id || v.empresaId,
-        empresaNome: v.empresa_nome || v.empresaNome || 'Empresa',
-        titulo: v.titulo,
-        descricao: v.descricao,
-        requisitos: v.requisitos,
-        tipo: v.tipo,
-        localizacao: v.localizacao,
-        salario: v.salario,
+        empresaId: v.company_id,
+        empresaNome: v.company_name || 'Empresa',
+        titulo: v.title || '',
+        descricao: v.description || '',
+        requisitos: v.requirements || '',
+        tipo: v.job_type || 'CLT',
+        localizacao: v.location || '',
+        salario: v.salary_min && v.salary_max ? `${v.salary_min} - ${v.salary_max} ${v.salary_currency || 'BRL'}` : '',
         status: v.status,
         createdAt: v.created_at ? new Date(v.created_at) : new Date(),
       }))
 
       setVagas(formattedVagas.filter(v => v.status === 'aberta'))
 
-      const candidaturasData = await api.get<any[]>("/api/v1/candidaturas/minhas")
+      // Fetch candidaturas do candidato (requer autenticação)
+      const token = localStorage.getItem("token")
+      
+      if (token) {
+        const candidaturasResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/applications/my-applications`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        })
 
-      const formattedCandidaturas: Candidatura[] = (candidaturasData || []).map((c: any) => ({
-        id: c.id,
-        vagaId: c.vaga_id || c.vagaId,
-        candidatoId: c.candidato_id || c.candidatoId,
-        mensagem: c.mensagem,
-        status: c.status,
-        createdAt: c.created_at ? new Date(c.created_at) : new Date(),
-      }))
+        let candidaturasData: any[] = []
+        if (candidaturasResponse.ok) {
+          candidaturasData = await candidaturasResponse.json()
+          console.log("Candidaturas recebidas:", candidaturasData)
+        } else {
+          const errorText = await candidaturasResponse.text()
+          console.error("Erro ao carregar candidaturas:", candidaturasResponse.status, errorText)
+        }
 
-      setCandidaturas(formattedCandidaturas)
+        const formattedCandidaturas: Candidatura[] = (candidaturasData || []).map((c: any) => ({
+          id: c.id,
+          vagaId: c.job_id || c.vaga_id || c.vagaId,
+          candidatoId: c.candidate_id || c.candidato_id || c.candidatoId,
+          mensagem: c.message || c.mensagem || '',
+          status: c.status || 'pendente',
+          createdAt: c.created_at ? new Date(c.created_at) : new Date(),
+        }))
+
+        setCandidaturas(formattedCandidaturas)
+      } else {
+        setCandidaturas([])
+      }
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
       setVagas([])
@@ -121,9 +158,9 @@ export default function CandidatoDashboardPage() {
 
   const filteredVagas = vagasDisponiveis.filter(
     (vaga) =>
-      vaga.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vaga.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vaga.localizacao.toLowerCase().includes(searchTerm.toLowerCase()),
+      (vaga.titulo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (vaga.descricao || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (vaga.localizacao || '').toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const handleCandidatar = async (e: React.FormEvent) => {
@@ -132,17 +169,33 @@ export default function CandidatoDashboardPage() {
     if (!selectedVaga || !user) return
 
     try {
-      const novaCandidatura = await api.post<any>("/api/v1/candidaturas", {
-        vaga_id: selectedVaga.id,
-        mensagem: mensagem || undefined,
+      const token = localStorage.getItem("token")
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/applications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token || ""}`,
+        },
+        body: JSON.stringify({
+          job_id: selectedVaga.id,
+          message: mensagem || undefined,
+        }),
       })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || errorData.detail || "Erro ao enviar candidatura")
+      }
+
+      const novaCandidatura = await response.json()
 
       const formattedCandidatura: Candidatura = {
         id: novaCandidatura.id,
-        vagaId: novaCandidatura.vaga_id || novaCandidatura.vagaId,
-        candidatoId: novaCandidatura.candidato_id || novaCandidatura.candidatoId,
-        mensagem: novaCandidatura.mensagem,
-        status: novaCandidatura.status,
+        vagaId: novaCandidatura.job_id || novaCandidatura.vaga_id || novaCandidatura.vagaId,
+        candidatoId: novaCandidatura.candidate_id || novaCandidatura.candidato_id || novaCandidatura.candidatoId || user.id,
+        mensagem: novaCandidatura.message || novaCandidatura.mensagem || '',
+        status: novaCandidatura.status || 'pendente',
         createdAt: novaCandidatura.created_at ? new Date(novaCandidatura.created_at) : new Date(),
       }
 
