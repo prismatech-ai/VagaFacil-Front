@@ -65,7 +65,7 @@ export type Vaga = {
   anosExperienciaMax?: number
   localizacao: string
   tipo: "CLT" | "PJ" | "Estágio" | "Temporário"
-  status: "aberta" | "fechada"
+  status: "rascunho" | "aberta" | "fechada"
   createdAt: Date
   salarioMin?: number
   salarioMax?: number
