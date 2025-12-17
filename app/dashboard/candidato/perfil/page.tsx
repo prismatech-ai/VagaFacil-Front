@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Save } from "lucide-react"
+import { Plus, Edit, Save, Upload, X } from "lucide-react"
 import { UploadCurriculo } from "@/components/upload-curriculo"
 import type { Candidato } from "@/lib/types"
 import { api } from "@/lib/api"
@@ -35,12 +35,30 @@ export default function PerfilPage() {
   // Estados para formulários
   const [formData, setFormData] = useState({
     telefone: "",
+    cpf: "",
+    rg: "",
+    dataNascimento: "",
+    genero: "",
     cidade: "",
     estado: "",
+    cep: "",
+    logradouro: "",
+    numero: "",
+    bairro: "",
     curriculo: "",
     linkedin: "",
+    portfolio: "",
+    bio: "",
+    isPCD: false,
+    tipoPCD: "",
+    necessidadesAdaptacao: "",
+    experienciaProfissional: "",
+    formacaoEscolaridade: "",
   })
   const [habilidadeInput, setHabilidadeInput] = useState("")
+  const [curriculoFile, setCurriculoFile] = useState<File | null>(null)
+  const [uploadingCurriculo, setUploadingCurriculo] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
 
   // Estados para diálogos
   const [educacaoDialogOpen, setEducacaoDialogOpen] = useState(false)
@@ -76,14 +94,51 @@ export default function PerfilPage() {
     if (!user) return
 
     try {
-      const candidatoData = await api.get<Candidato>(`/api/v1/candidates/me`)
-      setCandidato(candidatoData)
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      // Buscar dados completos do onboarding que já retorna tudo
+      const responseOnboarding = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/status`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!responseOnboarding.ok) {
+        throw new Error('Falha ao carregar perfil do onboarding')
+      }
+
+      const onboardingData = await responseOnboarding.json()
+      console.log('Dados do candidato (onboarding):', onboardingData)
+      
+      setCandidato({
+        ...onboardingData,
+        habilidades: onboardingData.habilidades || []
+      })
+      
       setFormData({
-        telefone: candidatoData.telefone || "",
-        cidade: candidatoData.cidade || "",
-        estado: candidatoData.estado || "",
-        curriculo: candidatoData.curriculo || "",
-        linkedin: candidatoData.linkedin || "",
+        telefone: onboardingData.phone || "",
+        cpf: onboardingData.cpf || "",
+        rg: onboardingData.rg || "",
+        dataNascimento: onboardingData.birth_date || "",
+        genero: onboardingData.genero || "",
+        cidade: onboardingData.cidade || "",
+        estado: onboardingData.estado || "",
+        cep: onboardingData.cep || "",
+        logradouro: onboardingData.logradouro || "",
+        numero: onboardingData.numero || "",
+        bairro: onboardingData.bairro || "",
+        curriculo: onboardingData.curriculo_url || "",
+        linkedin: onboardingData.linkedin_url || "",
+        portfolio: onboardingData.portfolio_url || "",
+        bio: onboardingData.bio || "",
+        isPCD: onboardingData.is_pcd || false,
+        tipoPCD: onboardingData.tipo_pcd || "",
+        necessidadesAdaptacao: onboardingData.necessidades_adaptacao || "",
+        experienciaProfissional: onboardingData.experiencia_profissional || "",
+        formacaoEscolaridade: onboardingData.formacao_escolaridade || "",
       })
     } catch (error) {
       console.error("Erro ao carregar perfil:", error)
@@ -91,16 +146,6 @@ export default function PerfilPage() {
         variant: "destructive",
         title: "Erro",
         description: "Não foi possível carregar seu perfil. Tente novamente."
-      })
-      // Fallback para dados do user atual
-      const candidatoData = user as Candidato
-      setCandidato(candidatoData)
-      setFormData({
-        telefone: candidatoData.telefone || "",
-        cidade: candidatoData.cidade || "",
-        estado: candidatoData.estado || "",
-        curriculo: candidatoData.curriculo || "",
-        linkedin: candidatoData.linkedin || "",
       })
     }
   }
@@ -110,16 +155,46 @@ export default function PerfilPage() {
 
     setIsLoadingOnboarding(true)
     try {
-      // Carregar status do onboarding
-      const status = await api.get(`/api/v1/candidates/onboarding/status`)
-      setOnboardingStatus(status)
+      const token = localStorage.getItem('token')
+      if (!token) return
 
-      // Carregar progresso do onboarding
-      const progresso = await api.get(`/api/v1/candidates/onboarding/progresso`)
-      setOnboardingProgresso(progresso)
+      // Carregar status completo do onboarding que retorna todos os dados do perfil
+      const responseStatus = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/status`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (responseStatus.ok) {
+        const statusData = await responseStatus.json()
+        console.log('Status completo do onboarding:', statusData)
+        
+        // Extrair progresso do status completo
+        const progresso = {
+          percentual_completude: statusData.percentual_completude,
+          dados_pessoais_completo: !!statusData.full_name && !!statusData.email && !!statusData.phone,
+          dados_profissionais_completo: !!statusData.experiencia_profissional && !!statusData.formacao_escolaridade && statusData.habilidades?.length > 0,
+          teste_habilidades_completo: statusData.teste_habilidades_completado,
+          onboarding_completo: statusData.onboarding_completo
+        }
+        
+        setOnboardingProgresso(progresso)
+        setOnboardingStatus(statusData)
+        
+        // Atualizar candidato com dados do status se necessário
+        if (statusData.habilidades) {
+          setCandidato(prev => prev ? {
+            ...prev,
+            habilidades: statusData.habilidades,
+            teste_habilidades_completado: statusData.teste_habilidades_completado,
+            score_teste_habilidades: statusData.score_teste_habilidades
+          } : null)
+        }
+      }
     } catch (error) {
       console.error("Erro ao carregar onboarding:", error)
-      // Não mostrar toast de erro, pois é opcional
     } finally {
       setIsLoadingOnboarding(false)
     }
@@ -141,10 +216,54 @@ export default function PerfilPage() {
 
     setIsSaving(true)
     try {
-      const updatedCandidato = await api.put<Candidato>(`/api/v1/candidates/me`, formData)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert("Token não encontrado")
+        return
+      }
+
+      // Mapear formData para o formato esperado pela API
+      const dataToSend = {
+        phone: formData.telefone,
+        cpf: formData.cpf,
+        rg: formData.rg,
+        birth_date: formData.dataNascimento,
+        genero: formData.genero,
+        cidade: formData.cidade,
+        estado: formData.estado,
+        cep: formData.cep,
+        logradouro: formData.logradouro,
+        numero: formData.numero,
+        bairro: formData.bairro,
+        bio: formData.bio,
+        linkedin_url: formData.linkedin,
+        portfolio_url: formData.portfolio,
+        is_pcd: formData.isPCD,
+        tipo_pcd: formData.tipoPCD,
+        necessidades_adaptacao: formData.necessidadesAdaptacao,
+        experiencia_profissional: formData.experienciaProfissional,
+        formacao_escolaridade: formData.formacaoEscolaridade,
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(dataToSend)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error('Erro na resposta:', response.status, errorData)
+        throw new Error(`Erro ao salvar: ${response.status}`)
+      }
+
+      const updatedCandidato = await response.json()
+      console.log('Candidato atualizado:', updatedCandidato)
 
       setCandidato(updatedCandidato)
-      localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
       setIsEditing(false)
       toast({
         title: "Sucesso",
@@ -155,7 +274,7 @@ export default function PerfilPage() {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Erro ao salvar perfil. Tente novamente."
+        description: `Erro ao salvar perfil: ${error instanceof Error ? error.message : 'Desconhecido'}`
       })
     } finally {
       setIsSaving(false)
@@ -198,6 +317,128 @@ export default function PerfilPage() {
       habilidades: candidato.habilidades?.filter((h) => h.habilidade !== habilidade) || [],
     }
     setCandidato(updatedCandidato)
+  }
+
+  // Handlers para upload de currículo
+  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true)
+    } else if (e.type === "dragleave") {
+      setDragActive(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0]
+      if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+        setCurriculoFile(file)
+        uploadCurriculo(file)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Arquivo inválido",
+          description: "Por favor, envie um arquivo PDF"
+        })
+      }
+    }
+  }
+
+  const handleCurriculoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+        setCurriculoFile(file)
+        uploadCurriculo(file)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Arquivo inválido",
+          description: "Por favor, envie um arquivo PDF"
+        })
+      }
+    }
+  }
+
+  const uploadCurriculo = async (file: File) => {
+    if (!file) return
+
+    setUploadingCurriculo(true)
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Token não encontrado"
+        })
+        return
+      }
+
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/upload-curriculo`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao fazer upload do currículo")
+      }
+
+      const data = await response.json()
+      
+      // Atualizar o perfil com a URL do currículo
+      setFormData(prev => ({
+        ...prev,
+        curriculo: data.curriculo_url || file.name
+      }))
+      
+      if (candidato) {
+        setCandidato({
+          ...candidato,
+          curriculo_url: data.curriculo_url || file.name
+        })
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Currículo enviado com sucesso"
+      })
+    } catch (error) {
+      console.error("Erro ao fazer upload:", error)
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível enviar o currículo. Tente novamente."
+      })
+    } finally {
+      setUploadingCurriculo(false)
+    }
+  }
+
+  const removeCurriculo = () => {
+    setCurriculoFile(null)
+    setFormData(prev => ({
+      ...prev,
+      curriculo: ""
+    }))
+    if (candidato) {
+      setCandidato({
+        ...candidato,
+        curriculo_url: undefined
+      })
+    }
   }
 
   const handleAddEducacao = () => {
@@ -358,6 +599,7 @@ export default function PerfilPage() {
           <TabsList>
             <TabsTrigger value="dados">Dados Pessoais</TabsTrigger>
             <TabsTrigger value="profissional">Profissional</TabsTrigger>
+            <TabsTrigger value="pcd">PCD</TabsTrigger>
             <TabsTrigger value="educacao">Educação</TabsTrigger>
             <TabsTrigger value="experiencia">Experiência</TabsTrigger>
           </TabsList>
@@ -372,7 +614,7 @@ export default function PerfilPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="nome">Nome Completo</Label>
-                  <Input id="nome" value={candidato?.nome || ""} disabled />
+                  <Input id="nome" value={candidato?.full_name || candidato?.nome || ""} disabled />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -388,9 +630,9 @@ export default function PerfilPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="localizacao">Cidade</Label>
+                  <Label htmlFor="cidade">Cidade</Label>
                   <Input
-                    id="localizacao"
+                    id="cidade"
                     value={formData.cidade}
                     onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
                     disabled={!isEditing}
@@ -405,6 +647,87 @@ export default function PerfilPage() {
                     disabled={!isEditing}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input
+                      id="cpf"
+                      value={formData.cpf}
+                      onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                      disabled={!isEditing}
+                      placeholder="000.000.000-00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rg">RG</Label>
+                    <Input
+                      id="rg"
+                      value={formData.rg}
+                      onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dataNascimento">Data de Nascimento</Label>
+                    <Input
+                      id="dataNascimento"
+                      type="date"
+                      value={formData.dataNascimento}
+                      onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="genero">Gênero</Label>
+                    <Input
+                      id="genero"
+                      value={formData.genero}
+                      onChange={(e) => setFormData({ ...formData, genero: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cep">CEP</Label>
+                  <Input
+                    id="cep"
+                    value={formData.cep}
+                    onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="00000-000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="logradouro">Logradouro</Label>
+                  <Input
+                    id="logradouro"
+                    value={formData.logradouro}
+                    onChange={(e) => setFormData({ ...formData, logradouro: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numero">Número</Label>
+                    <Input
+                      id="numero"
+                      value={formData.numero}
+                      onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="bairro">Bairro</Label>
+                    <Input
+                      id="bairro"
+                      value={formData.bairro}
+                      onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -418,14 +741,36 @@ export default function PerfilPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="curriculo">Resumo Profissional</Label>
+                  <Label htmlFor="bio">Bio / Resumo Profissional</Label>
                   <Textarea
-                    id="curriculo"
-                    value={formData.curriculo}
-                    onChange={(e) => setFormData({ ...formData, curriculo: e.target.value })}
+                    id="bio"
+                    value={formData.bio}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                     disabled={!isEditing}
                     rows={6}
                     placeholder="Conte um pouco sobre você, suas experiências e objetivos profissionais..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin">URL LinkedIn</Label>
+                  <Input
+                    id="linkedin"
+                    type="url"
+                    value={formData.linkedin}
+                    onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="https://linkedin.com/in/seu-perfil"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portfolio">URL Portfólio</Label>
+                  <Input
+                    id="portfolio"
+                    type="url"
+                    value={formData.portfolio}
+                    onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="https://seuportifolio.com"
                   />
                 </div>
                 <div className="space-y-2">
@@ -464,16 +809,128 @@ export default function PerfilPage() {
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="linkedin">LinkedIn</Label>
-                  <Input
-                    id="linkedin"
-                    type="url"
-                    value={formData.linkedin}
-                    onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+
+                {/* Seção de Upload de Currículo */}
+                <div className="space-y-2 mt-8 pt-8 border-t">
+                  <Label htmlFor="curriculo">Currículo (PDF)</Label>
+                  
+                  {candidato?.curriculo_url || formData.curriculo ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Upload className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="font-semibold text-green-900">
+                            {curriculoFile?.name || formData.curriculo || "Currículo enviado"}
+                          </p>
+                          <p className="text-xs text-green-700">Arquivo carregado com sucesso</p>
+                        </div>
+                      </div>
+                      {isEditing && (
+                        <button
+                          onClick={removeCurriculo}
+                          className="text-green-600 hover:text-red-600"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
+                        dragActive
+                          ? "border-primary bg-primary/5"
+                          : "border-gray-300 hover:border-primary/50"
+                      } ${!isEditing ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <input
+                        type="file"
+                        id="curriculo"
+                        accept=".pdf"
+                        onChange={handleCurriculoChange}
+                        disabled={!isEditing || uploadingCurriculo}
+                        className="hidden"
+                      />
+                      
+                      {uploadingCurriculo ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                          <p className="text-sm text-muted-foreground">Enviando currículo...</p>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="curriculo"
+                          className={`flex flex-col items-center gap-2 ${isEditing ? "cursor-pointer" : ""}`}
+                        >
+                          <Upload className="h-8 w-8 text-muted-foreground" />
+                          <p className="font-semibold text-foreground">
+                            Arraste seu currículo aqui
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            ou clique para selecionar um arquivo PDF
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Máximo 10MB • Apenas PDF
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab PCD */}
+          <TabsContent value="pcd" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Informações de Acessibilidade</CardTitle>
+                <CardDescription>Dados sobre deficiência e necessidades de adaptação</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isPCD"
+                    checked={formData.isPCD}
+                    onChange={(e) => setFormData({ ...formData, isPCD: e.target.checked })}
                     disabled={!isEditing}
                   />
+                  <Label htmlFor="isPCD" className="cursor-pointer">
+                    Sou uma Pessoa com Deficiência (PCD)
+                  </Label>
                 </div>
+
+                {formData.isPCD && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="tipoPCD">Tipo de Deficiência</Label>
+                      <Input
+                        id="tipoPCD"
+                        value={formData.tipoPCD}
+                        onChange={(e) => setFormData({ ...formData, tipoPCD: e.target.value })}
+                        disabled={!isEditing}
+                        placeholder="Ex: Mobilidade Reduzida, Visual, Auditiva, etc."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="necessidadesAdaptacao">Necessidades de Adaptação</Label>
+                      <Textarea
+                        id="necessidadesAdaptacao"
+                        value={formData.necessidadesAdaptacao}
+                        onChange={(e) => setFormData({ ...formData, necessidadesAdaptacao: e.target.value })}
+                        disabled={!isEditing}
+                        rows={4}
+                        placeholder="Descreva as adaptações que você necessita no ambiente de trabalho..."
+                      />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
