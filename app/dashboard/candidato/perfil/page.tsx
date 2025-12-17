@@ -5,6 +5,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { CandidatoSidebar } from "@/components/candidato-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,39 +15,68 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2, Save } from "lucide-react"
+import { Plus, Edit, Save, Upload, X } from "lucide-react"
 import { UploadCurriculo } from "@/components/upload-curriculo"
-import type { Candidato, Educacao, Experiencia, Curso } from "@/lib/types"
+import type { Candidato } from "@/lib/types"
 import { api } from "@/lib/api"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function PerfilPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
+  const { toast } = useToast()
   const [candidato, setCandidato] = useState<Candidato | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [onboardingProgresso, setOnboardingProgresso] = useState<any>(null)
+  const [onboardingStatus, setOnboardingStatus] = useState<any>(null)
+  const [isLoadingOnboarding, setIsLoadingOnboarding] = useState(false)
 
   // Estados para formulários
   const [formData, setFormData] = useState({
     telefone: "",
-    localizacao: "",
+    cpf: "",
+    rg: "",
+    dataNascimento: "",
+    genero: "",
+    cidade: "",
+    estado: "",
+    cep: "",
+    logradouro: "",
+    numero: "",
+    bairro: "",
     curriculo: "",
-    curriculoArquivo: null as string | null,
-    curriculoNome: null as string | null,
     linkedin: "",
     portfolio: "",
-    habilidades: [] as string[],
+    bio: "",
+    isPCD: false,
+    tipoPCD: "",
+    necessidadesAdaptacao: "",
+    experienciaProfissional: "",
+    formacaoEscolaridade: "",
   })
   const [habilidadeInput, setHabilidadeInput] = useState("")
+  const [curriculoFile, setCurriculoFile] = useState<File | null>(null)
+  const [uploadingCurriculo, setUploadingCurriculo] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
 
   // Estados para diálogos
   const [educacaoDialogOpen, setEducacaoDialogOpen] = useState(false)
   const [experienciaDialogOpen, setExperienciaDialogOpen] = useState(false)
-  const [cursoDialogOpen, setCursoDialogOpen] = useState(false)
 
   // Estados para formulários de adição
-  const [novaEducacao, setNovaEducacao] = useState<Partial<Educacao>>({})
-  const [novaExperiencia, setNovaExperiencia] = useState<Partial<Experiencia>>({})
-  const [novoCurso, setNovoCurso] = useState<Partial<Curso>>({})
+  const [novaEducacao, setNovaEducacao] = useState<{ instituicao: string; curso: string; nivel: string; status: string }>({
+    instituicao: "",
+    curso: "",
+    nivel: "Superior",
+    status: "Completo",
+  })
+  const [novaExperiencia, setNovaExperiencia] = useState<{ empresa: string; cargo: string; descricao: string; atual: boolean }>({
+    empresa: "",
+    cargo: "",
+    descricao: "",
+    atual: false,
+  })
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -55,6 +86,7 @@ export default function PerfilPage() {
 
     if (user && user.role === "candidato") {
       loadPerfil()
+      loadOnboarding()
     }
   }, [user, isLoading, router])
 
@@ -62,34 +94,109 @@ export default function PerfilPage() {
     if (!user) return
 
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const candidatoData = await api.get<Candidato>(`/candidatos/${user.id}`)
-      setCandidato(candidatoData)
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      // Buscar dados completos do onboarding que já retorna tudo
+      const responseOnboarding = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/status`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!responseOnboarding.ok) {
+        throw new Error('Falha ao carregar perfil do onboarding')
+      }
+
+      const onboardingData = await responseOnboarding.json()
+      console.log('Dados do candidato (onboarding):', onboardingData)
+      
+      setCandidato({
+        ...onboardingData,
+        habilidades: onboardingData.habilidades || []
+      })
+      
       setFormData({
-        telefone: candidatoData.telefone || "",
-        localizacao: candidatoData.localizacao || "",
-        curriculo: candidatoData.curriculo || "",
-        curriculoArquivo: candidatoData.curriculoArquivo || null,
-        curriculoNome: candidatoData.curriculoNome || null,
-        linkedin: candidatoData.linkedin || "",
-        portfolio: candidatoData.portfolio || "",
-        habilidades: candidatoData.habilidades || [],
+        telefone: onboardingData.phone || "",
+        cpf: onboardingData.cpf || "",
+        rg: onboardingData.rg || "",
+        dataNascimento: onboardingData.birth_date || "",
+        genero: onboardingData.genero || "",
+        cidade: onboardingData.cidade || "",
+        estado: onboardingData.estado || "",
+        cep: onboardingData.cep || "",
+        logradouro: onboardingData.logradouro || "",
+        numero: onboardingData.numero || "",
+        bairro: onboardingData.bairro || "",
+        curriculo: onboardingData.curriculo_url || "",
+        linkedin: onboardingData.linkedin_url || "",
+        portfolio: onboardingData.portfolio_url || "",
+        bio: onboardingData.bio || "",
+        isPCD: onboardingData.is_pcd || false,
+        tipoPCD: onboardingData.tipo_pcd || "",
+        necessidadesAdaptacao: onboardingData.necessidades_adaptacao || "",
+        experienciaProfissional: onboardingData.experiencia_profissional || "",
+        formacaoEscolaridade: onboardingData.formacao_escolaridade || "",
       })
     } catch (error) {
       console.error("Erro ao carregar perfil:", error)
-      // Fallback para dados do user atual
-      const candidatoData = user as Candidato
-      setCandidato(candidatoData)
-      setFormData({
-        telefone: candidatoData.telefone || "",
-        localizacao: candidatoData.localizacao || "",
-        curriculo: candidatoData.curriculo || "",
-        curriculoArquivo: candidatoData.curriculoArquivo || null,
-        curriculoNome: candidatoData.curriculoNome || null,
-        linkedin: candidatoData.linkedin || "",
-        portfolio: candidatoData.portfolio || "",
-        habilidades: candidatoData.habilidades || [],
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível carregar seu perfil. Tente novamente."
       })
+    }
+  }
+
+  const loadOnboarding = async () => {
+    if (!user) return
+
+    setIsLoadingOnboarding(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      // Carregar status completo do onboarding que retorna todos os dados do perfil
+      const responseStatus = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/status`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (responseStatus.ok) {
+        const statusData = await responseStatus.json()
+        console.log('Status completo do onboarding:', statusData)
+        
+        // Extrair progresso do status completo
+        const progresso = {
+          percentual_completude: statusData.percentual_completude,
+          dados_pessoais_completo: !!statusData.full_name && !!statusData.email && !!statusData.phone,
+          dados_profissionais_completo: !!statusData.experiencia_profissional && !!statusData.formacao_escolaridade && statusData.habilidades?.length > 0,
+          teste_habilidades_completo: statusData.teste_habilidades_completado,
+          onboarding_completo: statusData.onboarding_completo
+        }
+        
+        setOnboardingProgresso(progresso)
+        setOnboardingStatus(statusData)
+        
+        // Atualizar candidato com dados do status se necessário
+        if (statusData.habilidades) {
+          setCandidato(prev => prev ? {
+            ...prev,
+            habilidades: statusData.habilidades,
+            teste_habilidades_completado: statusData.teste_habilidades_completado,
+            score_teste_habilidades: statusData.score_teste_habilidades
+          } : null)
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar onboarding:", error)
+    } finally {
+      setIsLoadingOnboarding(false)
     }
   }
 
@@ -107,52 +214,249 @@ export default function PerfilPage() {
   const handleSave = async () => {
     if (!candidato || !user) return
 
+    setIsSaving(true)
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const updatedCandidato = await api.put<Candidato>(`/candidatos/${user.id}`, {
-        ...formData,
-        curriculoArquivo: formData.curriculoArquivo || undefined,
-        curriculoNome: formData.curriculoNome || undefined,
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert("Token não encontrado")
+        return
+      }
+
+      // Mapear formData para o formato esperado pela API
+      const dataToSend = {
+        phone: formData.telefone,
+        cpf: formData.cpf,
+        rg: formData.rg,
+        birth_date: formData.dataNascimento,
+        genero: formData.genero,
+        cidade: formData.cidade,
+        estado: formData.estado,
+        cep: formData.cep,
+        logradouro: formData.logradouro,
+        numero: formData.numero,
+        bairro: formData.bairro,
+        bio: formData.bio,
+        linkedin_url: formData.linkedin,
+        portfolio_url: formData.portfolio,
+        is_pcd: formData.isPCD,
+        tipo_pcd: formData.tipoPCD,
+        necessidades_adaptacao: formData.necessidadesAdaptacao,
+        experiencia_profissional: formData.experienciaProfissional,
+        formacao_escolaridade: formData.formacaoEscolaridade,
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(dataToSend)
       })
 
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error('Erro na resposta:', response.status, errorData)
+        throw new Error(`Erro ao salvar: ${response.status}`)
+      }
+
+      const updatedCandidato = await response.json()
+      console.log('Candidato atualizado:', updatedCandidato)
+
       setCandidato(updatedCandidato)
-      localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
       setIsEditing(false)
-      alert("Perfil atualizado com sucesso!")
+      toast({
+        title: "Sucesso",
+        description: "Perfil atualizado com sucesso!"
+      })
     } catch (error) {
       console.error("Erro ao salvar perfil:", error)
-      alert("Erro ao salvar perfil. Tente novamente.")
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: `Erro ao salvar perfil: ${error instanceof Error ? error.message : 'Desconhecido'}`
+      })
+    } finally {
+      setIsSaving(false)
     }
   }
 
   const addHabilidade = () => {
-    if (habilidadeInput.trim() && !formData.habilidades.includes(habilidadeInput.trim())) {
-      setFormData({
-        ...formData,
-        habilidades: [...formData.habilidades, habilidadeInput.trim()],
+    if (!habilidadeInput.trim() || !candidato) return
+    
+    // Verificar se já existe
+    if (candidato.habilidades?.some(h => h.habilidade === habilidadeInput.trim())) {
+      toast({
+        variant: "destructive",
+        title: "Duplicada",
+        description: "Esta habilidade já foi adicionada"
       })
-      setHabilidadeInput("")
+      return
     }
+
+    const updatedCandidato: Candidato = {
+      ...candidato,
+      habilidades: [
+        ...(candidato.habilidades || []),
+        {
+          habilidade: habilidadeInput.trim(),
+          nivel: 3,
+          anos_experiencia: 0,
+        }
+      ]
+    }
+    
+    setCandidato(updatedCandidato)
+    setHabilidadeInput("")
   }
 
   const removeHabilidade = (habilidade: string) => {
-    setFormData({
-      ...formData,
-      habilidades: formData.habilidades.filter((h) => h !== habilidade),
-    })
+    if (!candidato) return
+    const updatedCandidato: Candidato = {
+      ...candidato,
+      habilidades: candidato.habilidades?.filter((h) => h.habilidade !== habilidade) || [],
+    }
+    setCandidato(updatedCandidato)
+  }
+
+  // Handlers para upload de currículo
+  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true)
+    } else if (e.type === "dragleave") {
+      setDragActive(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0]
+      if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+        setCurriculoFile(file)
+        uploadCurriculo(file)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Arquivo inválido",
+          description: "Por favor, envie um arquivo PDF"
+        })
+      }
+    }
+  }
+
+  const handleCurriculoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+        setCurriculoFile(file)
+        uploadCurriculo(file)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Arquivo inválido",
+          description: "Por favor, envie um arquivo PDF"
+        })
+      }
+    }
+  }
+
+  const uploadCurriculo = async (file: File) => {
+    if (!file) return
+
+    setUploadingCurriculo(true)
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Token não encontrado"
+        })
+        return
+      }
+
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/upload-curriculo`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao fazer upload do currículo")
+      }
+
+      const data = await response.json()
+      
+      // Atualizar o perfil com a URL do currículo
+      setFormData(prev => ({
+        ...prev,
+        curriculo: data.curriculo_url || file.name
+      }))
+      
+      if (candidato) {
+        setCandidato({
+          ...candidato,
+          curriculo: data.curriculo_url || file.name
+        })
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Currículo enviado com sucesso"
+      })
+    } catch (error) {
+      console.error("Erro ao fazer upload:", error)
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível enviar o currículo. Tente novamente."
+      })
+    } finally {
+      setUploadingCurriculo(false)
+    }
+  }
+
+  const removeCurriculo = () => {
+    setCurriculoFile(null)
+    setFormData(prev => ({
+      ...prev,
+      curriculo: ""
+    }))
+    if (candidato) {
+      setCandidato({
+        ...candidato,
+        curriculo: ""
+      })
+    }
   }
 
   const handleAddEducacao = () => {
-    if (!candidato) return
+    if (!candidato || !novaEducacao.instituicao || !novaEducacao.curso) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Preencha instituição e curso"
+      })
+      return
+    }
 
-    const educacao: Educacao = {
+    const educacao = {
       id: Date.now().toString(),
-      instituicao: novaEducacao.instituicao || "",
-      curso: novaEducacao.curso || "",
-      nivel: novaEducacao.nivel || "Superior",
-      status: novaEducacao.status || "Completo",
-      dataInicio: novaEducacao.dataInicio,
-      dataFim: novaEducacao.dataFim,
+      instituicao: novaEducacao.instituicao,
+      curso: novaEducacao.curso,
+      nivel: novaEducacao.nivel,
+      status: novaEducacao.status,
     }
 
     const updatedCandidato: Candidato = {
@@ -161,22 +465,33 @@ export default function PerfilPage() {
     }
 
     setCandidato(updatedCandidato)
-    localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
-    setNovaEducacao({})
+    setNovaEducacao({
+      instituicao: "",
+      curso: "",
+      nivel: "Superior",
+      status: "Completo",
+    })
     setEducacaoDialogOpen(false)
   }
 
   const handleAddExperiencia = () => {
-    if (!candidato) return
+    if (!candidato || !novaExperiencia.empresa || !novaExperiencia.cargo) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Preencha empresa e cargo"
+      })
+      return
+    }
 
-    const experiencia: Experiencia = {
+    const experiencia = {
       id: Date.now().toString(),
-      empresa: novaExperiencia.empresa || "",
-      cargo: novaExperiencia.cargo || "",
-      descricao: novaExperiencia.descricao,
-      dataInicio: novaExperiencia.dataInicio || new Date(),
-      dataFim: novaExperiencia.dataFim,
-      atual: novaExperiencia.atual || false,
+      empresa: novaExperiencia.empresa,
+      cargo: novaExperiencia.cargo,
+      descricao: novaExperiencia.descricao || "",
+      dataInicio: new Date(),
+      dataFim: undefined,
+      atual: novaExperiencia.atual,
     }
 
     const updatedCandidato: Candidato = {
@@ -185,37 +500,38 @@ export default function PerfilPage() {
     }
 
     setCandidato(updatedCandidato)
-    localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
-    setNovaExperiencia({})
+    setNovaExperiencia({
+      empresa: "",
+      cargo: "",
+      descricao: "",
+      atual: false,
+    })
     setExperienciaDialogOpen(false)
   }
 
-  const handleAddCurso = () => {
+  const handleDeleteEducacao = (id: string) => {
     if (!candidato) return
-
-    const curso: Curso = {
-      id: Date.now().toString(),
-      nome: novoCurso.nome || "",
-      instituicao: novoCurso.instituicao || "",
-      cargaHoraria: novoCurso.cargaHoraria,
-      dataConclusao: novoCurso.dataConclusao,
-      certificado: novoCurso.certificado,
-    }
-
     const updatedCandidato: Candidato = {
       ...candidato,
-      cursos: [...(candidato.cursos || []), curso],
+      educacao: candidato.educacao?.filter((e) => e.id !== id) || [],
     }
-
     setCandidato(updatedCandidato)
-    localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
-    setNovoCurso({})
-    setCursoDialogOpen(false)
+  }
+
+  const handleDeleteExperiencia = (id: string) => {
+    if (!candidato) return
+    const updatedCandidato: Candidato = {
+      ...candidato,
+      experiencias: candidato.experiencias?.filter((e) => e.id !== id) || [],
+    }
+    setCandidato(updatedCandidato)
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <DashboardHeader />
+    <SidebarProvider>
+      <CandidatoSidebar />
+      <div className="min-h-screen flex flex-col bg-secondary/30 w-full">
+        <DashboardHeader />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -229,20 +545,63 @@ export default function PerfilPage() {
               Editar Perfil
             </Button>
           ) : (
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isSaving}>
               <Save className="mr-2 h-4 w-4" />
-              Salvar Alterações
+              {isSaving ? "Salvando..." : "Salvar Alterações"}
             </Button>
           )}
         </div>
+
+        {/* Progresso do Onboarding */}
+        {onboardingProgresso && (
+          <Card className="mb-8 border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="text-lg">Progresso do Onboarding</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm font-medium">Completude</span>
+                    <span className="text-sm font-bold text-blue-600">{onboardingProgresso.percentual_completude}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all"
+                      style={{ width: `${onboardingProgresso.percentual_completude}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.dados_pessoais_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm">Dados Pessoais</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.dados_profissionais_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm">Dados Profissionais</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.teste_habilidades_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm">Teste Habilidades</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.onboarding_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm">Onboarding Completo</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="dados" className="space-y-4">
           <TabsList>
             <TabsTrigger value="dados">Dados Pessoais</TabsTrigger>
             <TabsTrigger value="profissional">Profissional</TabsTrigger>
+            <TabsTrigger value="pcd">PCD</TabsTrigger>
             <TabsTrigger value="educacao">Educação</TabsTrigger>
             <TabsTrigger value="experiencia">Experiência</TabsTrigger>
-            <TabsTrigger value="cursos">Cursos</TabsTrigger>
           </TabsList>
 
           {/* Tab Dados Pessoais */}
@@ -255,7 +614,7 @@ export default function PerfilPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="nome">Nome Completo</Label>
-                  <Input id="nome" value={candidato?.nome || ""} disabled />
+                  <Input id="nome" value={candidato?.full_name || candidato?.nome || ""} disabled />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -271,13 +630,103 @@ export default function PerfilPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="localizacao">Localização</Label>
+                  <Label htmlFor="cidade">Cidade</Label>
                   <Input
-                    id="localizacao"
-                    value={formData.localizacao}
-                    onChange={(e) => setFormData({ ...formData, localizacao: e.target.value })}
+                    id="cidade"
+                    value={formData.cidade}
+                    onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
                     disabled={!isEditing}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="estado">Estado</Label>
+                  <Input
+                    id="estado"
+                    value={formData.estado}
+                    onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input
+                      id="cpf"
+                      value={formData.cpf}
+                      onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                      disabled={!isEditing}
+                      placeholder="000.000.000-00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rg">RG</Label>
+                    <Input
+                      id="rg"
+                      value={formData.rg}
+                      onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dataNascimento">Data de Nascimento</Label>
+                    <Input
+                      id="dataNascimento"
+                      type="date"
+                      value={formData.dataNascimento}
+                      onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="genero">Gênero</Label>
+                    <Input
+                      id="genero"
+                      value={formData.genero}
+                      onChange={(e) => setFormData({ ...formData, genero: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cep">CEP</Label>
+                  <Input
+                    id="cep"
+                    value={formData.cep}
+                    onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="00000-000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="logradouro">Logradouro</Label>
+                  <Input
+                    id="logradouro"
+                    value={formData.logradouro}
+                    onChange={(e) => setFormData({ ...formData, logradouro: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numero">Número</Label>
+                    <Input
+                      id="numero"
+                      value={formData.numero}
+                      onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="bairro">Bairro</Label>
+                    <Input
+                      id="bairro"
+                      value={formData.bairro}
+                      onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -292,36 +741,36 @@ export default function PerfilPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Arquivo do Currículo</Label>
-                  <UploadCurriculo
-                    onFileUpload={(file) => {
-                      // Converte arquivo para base64 (em produção, enviaria para servidor)
-                      const reader = new FileReader()
-                      reader.onloadend = () => {
-                        const base64String = reader.result as string
-                        setFormData({ 
-                          ...formData, 
-                          curriculoArquivo: base64String,
-                          curriculoNome: file.name
-                        })
-                      }
-                      reader.readAsDataURL(file)
-                    }}
-                    currentFile={formData.curriculoArquivo || undefined}
-                    currentFileName={formData.curriculoNome || undefined}
-                    onRemove={() => setFormData({ ...formData, curriculoArquivo: null, curriculoNome: null })}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="curriculo">Resumo Profissional</Label>
+                  <Label htmlFor="bio">Bio / Resumo Profissional</Label>
                   <Textarea
-                    id="curriculo"
-                    value={formData.curriculo}
-                    onChange={(e) => setFormData({ ...formData, curriculo: e.target.value })}
+                    id="bio"
+                    value={formData.bio}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                     disabled={!isEditing}
                     rows={6}
                     placeholder="Conte um pouco sobre você, suas experiências e objetivos profissionais..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin">URL LinkedIn</Label>
+                  <Input
+                    id="linkedin"
+                    type="url"
+                    value={formData.linkedin}
+                    onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="https://linkedin.com/in/seu-perfil"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portfolio">URL Portfólio</Label>
+                  <Input
+                    id="portfolio"
+                    type="url"
+                    value={formData.portfolio}
+                    onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="https://seuportifolio.com"
                   />
                 </div>
                 <div className="space-y-2">
@@ -341,16 +790,16 @@ export default function PerfilPage() {
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2">
-                    {formData.habilidades.map((habilidade) => (
+                    {candidato?.habilidades?.map((h) => (
                       <div
-                        key={habilidade}
+                        key={h.habilidade}
                         className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full text-sm"
                       >
-                        <span>{habilidade}</span>
+                        <span>{h.habilidade} (Nível {h.nivel})</span>
                         {isEditing && (
                           <button
                             type="button"
-                            onClick={() => removeHabilidade(habilidade)}
+                            onClick={() => removeHabilidade(h.habilidade)}
                             className="text-primary hover:text-primary/80"
                           >
                             ×
@@ -360,26 +809,128 @@ export default function PerfilPage() {
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="linkedin">LinkedIn</Label>
-                  <Input
-                    id="linkedin"
-                    type="url"
-                    value={formData.linkedin}
-                    onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+
+                {/* Seção de Upload de Currículo */}
+                <div className="space-y-2 mt-8 pt-8 border-t">
+                  <Label htmlFor="curriculo">Currículo (PDF)</Label>
+                  
+                  {candidato?.curriculo || formData.curriculo ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Upload className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="font-semibold text-green-900">
+                            {curriculoFile?.name || formData.curriculo || "Currículo enviado"}
+                          </p>
+                          <p className="text-xs text-green-700">Arquivo carregado com sucesso</p>
+                        </div>
+                      </div>
+                      {isEditing && (
+                        <button
+                          onClick={removeCurriculo}
+                          className="text-green-600 hover:text-red-600"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
+                        dragActive
+                          ? "border-primary bg-primary/5"
+                          : "border-gray-300 hover:border-primary/50"
+                      } ${!isEditing ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <input
+                        type="file"
+                        id="curriculo"
+                        accept=".pdf"
+                        onChange={handleCurriculoChange}
+                        disabled={!isEditing || uploadingCurriculo}
+                        className="hidden"
+                      />
+                      
+                      {uploadingCurriculo ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                          <p className="text-sm text-muted-foreground">Enviando currículo...</p>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="curriculo"
+                          className={`flex flex-col items-center gap-2 ${isEditing ? "cursor-pointer" : ""}`}
+                        >
+                          <Upload className="h-8 w-8 text-muted-foreground" />
+                          <p className="font-semibold text-foreground">
+                            Arraste seu currículo aqui
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            ou clique para selecionar um arquivo PDF
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Máximo 10MB • Apenas PDF
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab PCD */}
+          <TabsContent value="pcd" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Informações de Acessibilidade</CardTitle>
+                <CardDescription>Dados sobre deficiência e necessidades de adaptação</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isPCD"
+                    checked={formData.isPCD}
+                    onChange={(e) => setFormData({ ...formData, isPCD: e.target.checked })}
                     disabled={!isEditing}
                   />
+                  <Label htmlFor="isPCD" className="cursor-pointer">
+                    Sou uma Pessoa com Deficiência (PCD)
+                  </Label>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="portfolio">Portfólio</Label>
-                  <Input
-                    id="portfolio"
-                    type="url"
-                    value={formData.portfolio}
-                    onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
+
+                {formData.isPCD && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="tipoPCD">Tipo de Deficiência</Label>
+                      <Input
+                        id="tipoPCD"
+                        value={formData.tipoPCD}
+                        onChange={(e) => setFormData({ ...formData, tipoPCD: e.target.value })}
+                        disabled={!isEditing}
+                        placeholder="Ex: Mobilidade Reduzida, Visual, Auditiva, etc."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="necessidadesAdaptacao">Necessidades de Adaptação</Label>
+                      <Textarea
+                        id="necessidadesAdaptacao"
+                        value={formData.necessidadesAdaptacao}
+                        onChange={(e) => setFormData({ ...formData, necessidadesAdaptacao: e.target.value })}
+                        disabled={!isEditing}
+                        rows={4}
+                        placeholder="Descreva as adaptações que você necessita no ambiente de trabalho..."
+                      />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -412,6 +963,14 @@ export default function PerfilPage() {
                               {edu.nivel} • {edu.status}
                             </p>
                           </div>
+                          {isEditing && (
+                            <button
+                              onClick={() => handleDeleteEducacao(edu.id)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remover
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -453,6 +1012,14 @@ export default function PerfilPage() {
                             </p>
                             {exp.descricao && <p className="text-sm mt-2">{exp.descricao}</p>}
                           </div>
+                          {isEditing && (
+                            <button
+                              onClick={() => handleDeleteExperiencia(exp.id)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remover
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -467,49 +1034,18 @@ export default function PerfilPage() {
           {/* Tab Cursos */}
           <TabsContent value="cursos" className="space-y-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader>
                 <div>
                   <CardTitle>Cursos e Certificações</CardTitle>
                   <CardDescription>Seus cursos e certificações</CardDescription>
                 </div>
-                {isEditing && (
-                  <Button onClick={() => setCursoDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar
-                  </Button>
-                )}
               </CardHeader>
               <CardContent>
-                {candidato?.cursos && candidato.cursos.length > 0 ? (
-                  <div className="space-y-4">
-                    {candidato.cursos.map((curso) => (
-                      <div key={curso.id} className="p-4 border rounded-lg">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-semibold">{curso.nome}</h4>
-                            <p className="text-sm text-muted-foreground">{curso.instituicao}</p>
-                            {curso.cargaHoraria && (
-                              <p className="text-sm text-muted-foreground">{curso.cargaHoraria} horas</p>
-                            )}
-                            {curso.dataConclusao && (
-                              <p className="text-sm text-muted-foreground">
-                                Concluído em {curso.dataConclusao.toLocaleDateString("pt-BR")}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">Nenhum curso cadastrado</p>
-                )}
+                <p className="text-muted-foreground text-center py-8">Nenhum curso cadastrado</p>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Dialog Adicionar Educação */}
         <Dialog open={educacaoDialogOpen} onOpenChange={setEducacaoDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -521,26 +1057,28 @@ export default function PerfilPage() {
                 <Label htmlFor="instituicao">Instituição</Label>
                 <Input
                   id="instituicao"
-                  value={novaEducacao.instituicao || ""}
+                  value={novaEducacao.instituicao}
                   onChange={(e) => setNovaEducacao({ ...novaEducacao, instituicao: e.target.value })}
+                  placeholder="Nome da instituição"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="curso">Curso</Label>
                 <Input
                   id="curso"
-                  value={novaEducacao.curso || ""}
+                  value={novaEducacao.curso}
                   onChange={(e) => setNovaEducacao({ ...novaEducacao, curso: e.target.value })}
+                  placeholder="Nome do curso"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nivel">Nível</Label>
                 <Select
-                  value={novaEducacao.nivel || "Superior"}
+                  value={novaEducacao.nivel}
                   onValueChange={(v) =>
                     setNovaEducacao({
                       ...novaEducacao,
-                      nivel: v as Educacao["nivel"],
+                      nivel: v,
                     })
                   }
                 >
@@ -560,11 +1098,11 @@ export default function PerfilPage() {
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select
-                  value={novaEducacao.status || "Completo"}
+                  value={novaEducacao.status}
                   onValueChange={(v) =>
                     setNovaEducacao({
                       ...novaEducacao,
-                      status: v as Educacao["status"],
+                      status: v,
                     })
                   }
                 >
@@ -602,32 +1140,35 @@ export default function PerfilPage() {
                 <Label htmlFor="empresa">Empresa</Label>
                 <Input
                   id="empresa"
-                  value={novaExperiencia.empresa || ""}
+                  value={novaExperiencia.empresa}
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, empresa: e.target.value })}
+                  placeholder="Nome da empresa"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cargo">Cargo</Label>
                 <Input
                   id="cargo"
-                  value={novaExperiencia.cargo || ""}
+                  value={novaExperiencia.cargo}
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, cargo: e.target.value })}
+                  placeholder="Seu cargo"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="descricao">Descrição</Label>
                 <Textarea
                   id="descricao"
-                  value={novaExperiencia.descricao || ""}
+                  value={novaExperiencia.descricao}
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, descricao: e.target.value })}
                   rows={4}
+                  placeholder="Descreva suas responsabilidades"
                 />
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   id="atual"
-                  checked={novaExperiencia.atual || false}
+                  checked={novaExperiencia.atual}
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, atual: e.target.checked })}
                 />
                 <Label htmlFor="atual">Trabalho atual</Label>
@@ -643,54 +1184,8 @@ export default function PerfilPage() {
             </div>
           </DialogContent>
         </Dialog>
-
-        {/* Dialog Adicionar Curso */}
-        <Dialog open={cursoDialogOpen} onOpenChange={setCursoDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Curso</DialogTitle>
-              <DialogDescription>Adicione um novo curso ou certificação</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="nomeCurso">Nome do Curso</Label>
-                <Input
-                  id="nomeCurso"
-                  value={novoCurso.nome || ""}
-                  onChange={(e) => setNovoCurso({ ...novoCurso, nome: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instituicaoCurso">Instituição</Label>
-                <Input
-                  id="instituicaoCurso"
-                  value={novoCurso.instituicao || ""}
-                  onChange={(e) => setNovoCurso({ ...novoCurso, instituicao: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cargaHoraria">Carga Horária</Label>
-                <Input
-                  id="cargaHoraria"
-                  type="number"
-                  value={novoCurso.cargaHoraria || ""}
-                  onChange={(e) =>
-                    setNovoCurso({ ...novoCurso, cargaHoraria: parseInt(e.target.value) || undefined })
-                  }
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={() => setCursoDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="button" onClick={handleAddCurso}>
-                  Adicionar
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </main>
-    </div>
+      </div>
+    </SidebarProvider>
   )
 }

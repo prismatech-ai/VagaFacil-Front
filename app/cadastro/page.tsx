@@ -231,7 +231,12 @@ export default function CadastroPage() {
       const success = await register(registerData);
 
       if (success) {
-        router.push("/dashboard");
+        // Candidato vai para onboarding, empresa vai para dashboard
+        if (activeTab === "candidato") {
+          router.push("/dashboard/candidato/onboarding");
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         setError("Erro ao criar conta. Verifique os dados e tente novamente.");
       }

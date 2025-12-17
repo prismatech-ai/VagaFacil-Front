@@ -1,11 +1,12 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { LogOut, Menu } from "lucide-react"
+import { LogOut, Menu, Bell } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,14 @@ export function DashboardHeader() {
   const { user, logout } = useAuth()
   const router = useRouter()
   const sidebar = useSidebarSafe()
+  const [notificacoes, setNotificacoes] = useState(0)
+
+  useEffect(() => {
+    // TODO: Implementar fetch de notificações da API
+    // Por enquanto, simular com um número aleatório
+    const unreadCount = Math.floor(Math.random() * 5)
+    setNotificacoes(unreadCount)
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -73,6 +82,18 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex items-center gap-4">
+          <div className="relative">
+            <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer" />
+            {notificacoes > 0 && (
+              <Badge 
+                className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs" 
+                variant="destructive"
+              >
+                {notificacoes}
+              </Badge>
+            )}
+          </div>
+
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium">{user?.nome}</p>
             <p className="text-xs text-muted-foreground">{getRoleLabel(user?.role || "")}</p>

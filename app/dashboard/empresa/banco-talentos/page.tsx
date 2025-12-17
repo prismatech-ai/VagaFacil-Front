@@ -5,6 +5,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { EmpresaSidebar } from "@/components/empresa-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,18 +16,19 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Search, MapPin, Award, Send, Eye } from "lucide-react"
-import { mockUsers, mockVagas } from "@/lib/mock-data"
 import type { Candidato, Vaga } from "@/lib/types"
-import { api } from "@/lib/api"
+import { toast } from "sonner"
 
 export default function BancoTalentosPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
+  const [vagas, setVagas] = useState<Vaga[]>([])
   const [candidatoSelecionado, setCandidatoSelecionado] = useState<Candidato | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [conviteDialogOpen, setConviteDialogOpen] = useState(false)
   const [vagaSelecionada, setVagaSelecionada] = useState<string>("")
+  const [loadingVagas, setLoadingVagas] = useState(false)
   const [filtros, setFiltros] = useState({
     busca: "",
     localizacao: "",
@@ -46,26 +49,158 @@ export default function BancoTalentosPage() {
 
     if (user && user.role === "empresa") {
       loadCandidatos()
+      loadVagas()
     }
   }, [user, isLoading, router])
 
   const loadCandidatos = async () => {
     try {
       setLoadingData(true)
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const candidatosData = await api.get<Candidato[]>("/candidatos").catch(() => {
-        console.warn("Erro ao carregar candidatos, usando dados mockados")
-        return mockUsers.filter((u) => u.role === "candidato") as Candidato[]
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Token não encontrado')
+        return
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      console.log('NEXT_PUBLIC_API_URL:', apiUrl)
+
+      if (!apiUrl) {
+        toast.error('Variável de ambiente não configurada', {
+          description: 'NEXT_PUBLIC_API_URL não está definida',
+          duration: 5000
+        })
+        return
+      }
+
+      const url = `${apiUrl}/api/v1/companies/todos-candidatos`
+      console.log('Carregando candidatos de:', url)
+      console.log('Token:', token?.slice(0, 20) + '...')
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
       })
 
-      setCandidatos(Array.isArray(candidatosData) ? candidatosData : [])
+      console.log('Response status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada')
+        setTimeout(() => router.push('/login'), 2000)
+        return
+      }
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Dados recebidos:', data)
+        const candidatosData = Array.isArray(data) ? data : (data.candidatos || data.data || [])
+        const candidatosMapeados = candidatosData.map((c: any) => ({
+          id: c.id,
+          nome: c.nome_completo || c.nome,
+          email: c.email,
+          role: 'candidato' as const,
+          telefone: c.telefone,
+          localizacao: c.cidade && c.estado ? `${c.cidade} - ${c.estado}` : c.localizacao,
+          curriculo: c.profissao,
+          habilidades: c.habilidades || [],
+          anosExperiencia: c.anos_experiencia,
+          educacao: c.educacao || [],
+          experiencias: c.experiencias || [],
+          linkedin: c.linkedin,
+          createdAt: new Date(c.criado_em || Date.now())
+        }))
+        setCandidatos(candidatosMapeados)
+        toast.success(`${candidatosMapeados.length} candidatos carregados`)
+      } else {
+        const errorText = await response.text()
+        console.error('Erro na resposta:', response.status, errorText)
+        toast.error('Erro ao carregar candidatos', {
+          description: `Status ${response.status}: ${errorText || response.statusText}`,
+          duration: 5000
+        })
+        setCandidatos([])
+      }
     } catch (error) {
-      console.error("Erro ao carregar candidatos:", error)
-      // Fallback para dados mockados
-      const todosCandidatos = mockUsers.filter((u) => u.role === "candidato") as Candidato[]
-      setCandidatos(todosCandidatos)
+      console.error('Erro ao carregar candidatos:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      console.error('Detalhes do erro:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined
+      })
+      
+      toast.error('Erro ao carregar candidatos', {
+        description: errorMessage,
+        duration: 5000
+      })
+      setCandidatos([])
     } finally {
       setLoadingData(false)
+
+    }
+  }
+
+  const loadVagas = async () => {
+    try {
+      setLoadingVagas(true)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.warn('Token não encontrado')
+        return
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      const url = `${apiUrl}/api/v1/jobs/`
+      console.log('Carregando vagas de:', url)
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      console.log('Response vagas status:', response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Dados vagas recebidos:', data)
+        const vagasData = Array.isArray(data) ? data : (data.vagas || data.data || [])
+        console.log('Vagas data:', vagasData)
+        
+        const vagasMapeadas = vagasData.map((v: any) => ({
+          id: v.id,
+          empresaId: v.company_id || user?.id || '',
+          titulo: v.title,
+          descricao: v.description,
+          requisitos: v.requirements || '',
+          localizacao: v.location,
+          tipo: v.job_type,
+          status: v.status || 'aberta',
+          createdAt: new Date(v.created_at || Date.now()),
+          salarioMin: v.salary_min,
+          salarioMax: v.salary_max
+        }))
+        
+        
+        setVagas(vagasMapeadas)
+        
+        setVagas(vagasMapeadas)
+      } else {
+        const errorText = await response.text()
+        console.error('Erro ao carregar vagas:', response.status, errorText)
+        setVagas([])
+      }
+    } catch (error) {
+      console.error('Erro ao buscar vagas:', error)
+      setVagas([])
+    } finally {
+      setLoadingVagas(false)
     }
   }
 
@@ -80,13 +215,14 @@ export default function BancoTalentosPage() {
     )
   }
 
-  const minhasVagas = mockVagas.filter((v) => v.empresaId === user.id)
-
   const candidatosFiltrados = candidatos.filter((candidato) => {
     const matchBusca =
       !filtros.busca ||
       candidato.nome.toLowerCase().includes(filtros.busca.toLowerCase()) ||
-      candidato.habilidades?.some((h) => h.toLowerCase().includes(filtros.busca.toLowerCase()))
+      candidato.habilidades?.some((h) => {
+        const habilidadeStr = typeof h === 'string' ? h : (h?.habilidade || '')
+        return habilidadeStr.toLowerCase().includes(filtros.busca.toLowerCase())
+      })
 
     const matchLocalizacao = !filtros.localizacao || candidato.localizacao?.includes(filtros.localizacao)
 
@@ -106,26 +242,72 @@ export default function BancoTalentosPage() {
     if (!vagaSelecionada || !candidatoSelecionado) return
 
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      await api.post("/convites", {
-        candidatoId: candidatoSelecionado.id,
-        vagaId: vagaSelecionada,
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Token não encontrado')
+        return
+      }
+
+      console.log('Enviando convite com:', {
+        candidato_id: candidatoSelecionado.id,
+        vaga_id: vagaSelecionada,
+        tipo_vaga_id: typeof vagaSelecionada
+      })
+      console.log('Vagas disponíveis:', vagas)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/convites/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          candidato_id: candidatoSelecionado.id,
+          vaga_id: parseInt(vagaSelecionada)
+        })
       })
 
-      alert(`Convite enviado para ${candidatoSelecionado.nome} para a vaga selecionada!`)
+      console.log('Response convite:', response.status)
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada')
+        setTimeout(() => router.push('/login'), 2000)
+        return
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Erro response:', errorText)
+        throw new Error(errorText || response.statusText)
+      }
+
+      const data = await response.json()
+      console.log('Convite enviado com sucesso:', data)
+
+      toast.success(`Convite enviado para ${candidatoSelecionado.nome}!`, {
+        description: 'O candidato receberá uma notificação',
+        duration: 4000
+      })
       setConviteDialogOpen(false)
       setVagaSelecionada("")
     } catch (error) {
-      console.error("Erro ao enviar convite:", error)
-      alert("Erro ao enviar convite. Tente novamente.")
+      console.error('Erro ao enviar convite:', error)
+      toast.error('Erro ao enviar convite', {
+        description: (error as Error).message,
+        duration: 5000
+      })
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <DashboardHeader />
+    <SidebarProvider>
+      <div className="min-h-screen flex flex-col bg-secondary/30">
+        <DashboardHeader />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="flex flex-1 overflow-hidden">
+          <EmpresaSidebar />
+
+          <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Banco de Talentos</h2>
           <p className="text-muted-foreground">Encontre e convide os melhores candidatos para suas vagas</p>
@@ -213,11 +395,14 @@ export default function BancoTalentosPage() {
                     <div>
                       <p className="text-sm font-medium mb-2">Habilidades:</p>
                       <div className="flex flex-wrap gap-2">
-                        {candidato.habilidades.slice(0, 5).map((habilidade) => (
-                          <Badge key={habilidade} variant="outline" className="text-xs">
-                            {habilidade}
-                          </Badge>
-                        ))}
+                        {candidato.habilidades.slice(0, 5).map((habilidade, idx) => {
+                          const habilidadeStr = typeof habilidade === 'string' ? habilidade : (habilidade?.habilidade || '')
+                          return (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {habilidadeStr}
+                            </Badge>
+                          )
+                        })}
                         {candidato.habilidades.length > 5 && (
                           <Badge variant="outline" className="text-xs">
                             +{candidato.habilidades.length - 5}
@@ -301,11 +486,14 @@ export default function BancoTalentosPage() {
                   <div>
                     <h4 className="font-semibold mb-2">Habilidades</h4>
                     <div className="flex flex-wrap gap-2">
-                      {candidatoSelecionado.habilidades.map((habilidade) => (
-                        <Badge key={habilidade} variant="outline">
-                          {habilidade}
-                        </Badge>
-                      ))}
+                      {candidatoSelecionado.habilidades.map((habilidade, idx) => {
+                        const habilidadeStr = typeof habilidade === 'string' ? habilidade : (habilidade?.habilidade || '')
+                        return (
+                          <Badge key={idx} variant="outline">
+                            {habilidadeStr}
+                          </Badge>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -376,26 +564,36 @@ export default function BancoTalentosPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="vaga">Vaga</Label>
-                <Select value={vagaSelecionada} onValueChange={setVagaSelecionada}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma vaga" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {minhasVagas
-                      .filter((v) => v.status === "aberta")
-                      .map((vaga) => (
-                        <SelectItem key={vaga.id} value={vaga.id}>
-                          {vaga.titulo}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                {loadingVagas ? (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    Carregando vagas...
+                  </div>
+                ) : vagas.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    Nenhuma vaga aberta disponível
+                  </div>
+                ) : (
+                  <Select value={vagaSelecionada} onValueChange={setVagaSelecionada}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma vaga" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vagas
+                        .filter((v) => v.status === "aberta")
+                        .map((vaga) => (
+                          <SelectItem key={vaga.id} value={vaga.id.toString()}>
+                            {vaga.titulo}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setConviteDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="button" onClick={handleConvite} disabled={!vagaSelecionada}>
+                <Button type="button" onClick={handleConvite} disabled={!vagaSelecionada || loadingVagas}>
                   <Send className="mr-2 h-4 w-4" />
                   Enviar Convite
                 </Button>
@@ -404,6 +602,8 @@ export default function BancoTalentosPage() {
           </DialogContent>
         </Dialog>
       </main>
-    </div>
+      </div>
+      </div>
+    </SidebarProvider>
   )
 }

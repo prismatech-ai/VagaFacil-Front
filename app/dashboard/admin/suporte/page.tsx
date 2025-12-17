@@ -105,6 +105,7 @@ export default function AdminSuportePage() {
         },
       ],
       createdAt: new Date("2024-03-15T09:30:00"),
+      updatedAt: new Date("2024-03-15T10:00:00"),
     },
     {
       id: "t2",
@@ -113,7 +114,9 @@ export default function AdminSuportePage() {
       mensagem: "Como funcionam os testes dinâmicos?",
       status: "em_andamento",
       prioridade: "media",
+      respostas: [],
       createdAt: new Date("2024-03-16T11:20:00"),
+      updatedAt: new Date("2024-03-16T11:20:00"),
     },
   ])
   const [ticketDialogOpen, setTicketDialogOpen] = useState(false)
@@ -168,14 +171,13 @@ export default function AdminSuportePage() {
   const alterarStatusTicket = (novo: TicketSuporte["status"]) => {
     if (!ticketSelecionado) return
     setTickets((prev) => prev.map((t) => (t.id === ticketSelecionado.id ? { ...t, status: novo } : t)))
-    setTicketSelecionado((t) => (t ? { ...t, status: novo } : t))
+    setTicketSelecionado((t: TicketSuporte | null) => (t ? { ...t, status: novo } : t))
   }
 
   const badgeStatus = (s: TicketSuporte["status"]) => {
     const map: Record<TicketSuporte["status"], "outline" | "default" | "secondary" | "destructive"> = {
       aberto: "outline",
       em_andamento: "secondary",
-      resolvido: "default",
       fechado: "destructive",
     }
     return map[s]
@@ -413,7 +415,6 @@ export default function AdminSuportePage() {
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="aberto">Aberto</SelectItem>
                       <SelectItem value="em_andamento">Em andamento</SelectItem>
-                      <SelectItem value="resolvido">Resolvido</SelectItem>
                       <SelectItem value="fechado">Fechado</SelectItem>
                     </SelectContent>
                   </Select>
@@ -488,7 +489,6 @@ export default function AdminSuportePage() {
                       <SelectContent>
                         <SelectItem value="aberto">Aberto</SelectItem>
                         <SelectItem value="em_andamento">Em andamento</SelectItem>
-                        <SelectItem value="resolvido">Resolvido</SelectItem>
                         <SelectItem value="fechado">Fechado</SelectItem>
                       </SelectContent>
                     </Select>
@@ -505,7 +505,7 @@ export default function AdminSuportePage() {
                           {ticketSelecionado.createdAt.toLocaleString("pt-BR")}
                         </p>
                       </div>
-                      {(ticketSelecionado.respostas ?? []).map((r) => {
+                      {(ticketSelecionado.respostas ?? []).map((r: RespostaTicket) => {
                         const autor = mockUsers.find((u) => u.id === r.usuarioId)
                         return (
                           <div key={r.id} className="p-3 rounded-md border">

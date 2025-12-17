@@ -1,0 +1,25 @@
+habilidade,nivel,pergunta,opcao_a,opcao_b,opcao_c,opcao_d,resposta_correta
+JavaScript,Básico,O que é uma variável em JavaScript?,Um local para armazenar dados,Uma função,Um objeto especial,Uma biblioteca,A
+JavaScript,Básico,Como declarar uma variável em JavaScript?,var nome = "valor",variavel nome = "valor",declare nome = "valor",int nome = "valor",A
+JavaScript,Básico,Qual é a diferença entre let e const?,"let pode ser reatribuído, const não",Nenhuma diferença,const é mais rápido,let é mais seguro,A
+JavaScript,Intermediário,O que é uma closure em JavaScript?,Uma função que acessa variáveis externas,Uma variável global,Um método de segurança,Uma forma de laço,A
+JavaScript,Intermediário,Como funcionam promises em JavaScript?,Representam o resultado futuro de uma operação,São funções assíncronas,São variáveis especiais,São estruturas de controle,A
+JavaScript,Intermediário,O que é destructuring em JavaScript?,Extrair valores de objetos/arrays,Deletar propriedades,Modificar tipos de dados,Inicializar variáveis,A
+JavaScript,Avançado,O que é o event loop em JavaScript?,Mecanismo que executa callbacks assincronamente,Um tipo de laço,Uma variável global,Um objeto especial,A
+JavaScript,Avançado,Como funcionam generators em JavaScript?,São funções que podem pausar e retomar,São funções normais,São métodos de arrays,São tipos de dados,A
+Python,Básico,O que é uma lista em Python?,Uma sequência mutável de elementos,[],Um dicionário,Uma tupla,A
+Python,Básico,Como criar uma função em Python?,def minha_funcao():,function minha_funcao(),func minha_funcao():,def minha_funcao{},A
+Python,Básico,Qual é a saída de print(type([]))?,"<class 'list'>","<class 'array'>","<class 'tuple'>","<class 'collection'>",A
+Python,Intermediário,O que é list comprehension?,Uma forma concisa de criar listas,Um método de listas,Uma função especial,Um tipo de loop,A
+Python,Intermediário,Como lidar com exceções em Python?,try/except blocks,try/catch blocks,if/else statements,try/finally,A
+Python,Avançado,O que é um decorator em Python?,Uma função que modifica outra função,Uma variável especial,Um tipo de classe,Um método privado,A
+React,Básico,O que é JSX?,Sintaxe que permite escrever HTML em JavaScript,Uma biblioteca JavaScript,Um tipo de arquivo,Uma framework,A
+React,Básico,Como criar um componente funcional em React?,function MinhaComponent() {},class MinhaComponent {},const MinhaComponent() {},function MinhaComponent[],A
+React,Intermediário,O que é o hook useState?,Permite adicionar estado a componentes funcionais,Um tipo de componente,Uma biblioteca,Uma função de classe,A
+React,Intermediário,Como passar dados para um componente em React?,Props,Variables,Methods,Imports,A
+React,Avançado,O que é renderização condicional em React?,Mostrar/ocultar elementos baseado em condições,Um tipo de componente,Uma biblioteca,Um hook especial,A
+SQL,Básico,Qual comando SQL seleciona dados?,SELECT,INSERT,UPDATE,DELETE,A
+SQL,Básico,Como filtrar resultados em SQL?,WHERE clausula,FILTER clausula,IF clausula,MATCH clausula,A
+SQL,Intermediário,O que é um JOIN em SQL?,Combina dados de múltiplas tabelas,Cria uma nova tabela,Deleta registros,Atualiza dados,A
+SQL,Intermediário,Como contar registros em SQL?,COUNT(),TOTAL(),SUM(),QUANTITY(),A
+SQL,Avançado,O que é uma subquery em SQL?,Uma query dentro de outra query,Uma tabela temporária,Um índice de banco de dados,Um tipo de JOIN,A

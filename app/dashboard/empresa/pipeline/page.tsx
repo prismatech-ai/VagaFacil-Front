@@ -5,6 +5,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { EmpresaSidebar } from "@/components/empresa-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -107,10 +109,14 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <DashboardHeader />
+    <SidebarProvider>
+      <div className="min-h-screen flex flex-col bg-secondary/30">
+        <DashboardHeader />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="flex flex-1 overflow-hidden">
+          <EmpresaSidebar />
+
+          <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Pipeline de Candidatos</h2>
           <p className="text-muted-foreground">Gerencie o fluxo de candidaturas por etapas</p>
@@ -285,7 +291,9 @@ export default function PipelinePage() {
             )}
           </DialogContent>
         </Dialog>
-      </main>
-    </div>
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   )
 }

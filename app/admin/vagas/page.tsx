@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, Trash2, Search, Briefcase, Building2, MapPin, Plus, X, Target } from "lucide-react"
+import { Eye, Trash2, Search, Briefcase, Building2, MapPin, Plus, X, Target, Pencil } from "lucide-react"
 import type { Vaga, Candidatura, Candidato } from "@/lib/types"
 import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
+import { toast } from "sonner"
 
 export default function AdminVagasPage() {
   const [vagas, setVagas] = useState<Vaga[]>([])
@@ -27,7 +28,7 @@ export default function AdminVagasPage() {
   const [vagaSelecionada, setVagaSelecionada] = useState<Vaga | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [empresaIdForm, setEmpresaIdForm] = useState<string>("")
-  const [usuarioIdForm, setUsuarioIdForm] = useState<string>("")
+  const [usuarioIdForm, setUsuarioIdForm] = useState<string>("none")
   const [tituloForm, setTituloForm] = useState("")
   const [descricaoForm, setDescricaoForm] = useState("")
   const [requisitosForm, setRequisitosForm] = useState("")
@@ -40,10 +41,49 @@ export default function AdminVagasPage() {
   const [anosExpMaxForm, setAnosExpMaxForm] = useState(10)
   const [salarioMinForm, setSalarioMinForm] = useState<number | undefined>()
   const [salarioMaxForm, setSalarioMaxForm] = useState<number | undefined>()
+  const [empresas, setEmpresas] = useState<Array<{ id: string; razao_social?: string; nome?: string; cnpj?: string }>>([])
+  const [loadingEmpresas, setLoadingEmpresas] = useState(false)
+  const [editingVagaId, setEditingVagaId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchVagas()
+    fetchEmpresas()
   }, [])
+
+  const fetchEmpresas = async () => {
+    try {
+      setLoadingEmpresas(true)
+      
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.warn('Token não encontrado')
+        return
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/companies/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      })
+      
+      console.log('GET /api/v1/companies/', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Empresas recebidas:', data)
+        const empresasData = Array.isArray(data) ? data : (data.companies || data.data || [])
+        setEmpresas(empresasData)
+      } else {
+        console.error('Erro ao carregar empresas:', response.status)
+      }
+    } catch (err) {
+      console.error('Erro ao buscar empresas:', err)
+    } finally {
+      setLoadingEmpresas(false)
+    }
+  }
 
   const fetchVagas = async () => {
     try {
@@ -112,8 +152,6 @@ export default function AdminVagasPage() {
       setLoading(false)
     }
   }
-
-  const empresas = useMemo<Array<{ id: string; nome?: string; nomeEmpresa?: string; email?: string }>>(() => [], [])
 
   const candidatos = useMemo<Candidato[]>(() => [], [])
 
@@ -207,11 +245,11 @@ export default function AdminVagasPage() {
   }
 
   const removerVaga = (id: string) => {
-    setVagas((prev) => prev.filter((v) => v.id !== id))
+    handleDeleteVaga(parseInt(id))
   }
 
   const empresaNome = (empresaId: string) => {
-    const e = empresas.find((u) => u.id === empresaId)
+    const e = empresas.find((u: any) => u.id === empresaId)
     // @ts-ignore
     return (e?.nomeEmpresa as string) || e?.nome || "Empresa"
   }
@@ -236,7 +274,7 @@ export default function AdminVagasPage() {
 
   const resetForm = () => {
     setEmpresaIdForm("")
-    setUsuarioIdForm("")
+    setUsuarioIdForm("none")
     setTituloForm("")
     setDescricaoForm("")
     setRequisitosForm("")
@@ -248,6 +286,219 @@ export default function AdminVagasPage() {
     setAnosExpMaxForm(10)
     setSalarioMinForm(undefined)
     setSalarioMaxForm(undefined)
+    setEditingVagaId(null)
+  }
+
+  const carregarVagaParaEdicao = (vaga: Vaga) => {
+    setEmpresaIdForm(vaga.empresaId)
+    setUsuarioIdForm("none")
+    setTituloForm(vaga.titulo)
+    setDescricaoForm(vaga.descricao)
+    setRequisitosForm(vaga.requisitos)
+    setLocalizacaoForm(vaga.localizacao)
+    setTipoForm(vaga.tipo)
+    setHabilidadesForm(vaga.habilidadesRequeridas || [])
+    setAnosExpMinForm(vaga.anosExperienciaMin || 0)
+    setAnosExpMaxForm(vaga.anosExperienciaMax || 10)
+    setSalarioMinForm(vaga.salarioMin)
+    setSalarioMaxForm(vaga.salarioMax)
+    setEditingVagaId(vaga.id)
+    setCreateOpen(true)
+  }
+
+  const handleDeleteVaga = async (vagaId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Token não encontrado')
+        return
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas/${vagaId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada')
+        setTimeout(() => window.location.href = '/login', 2000)
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(`Erro ao deletar vaga: ${response.statusText}`)
+      }
+
+      toast.success('Vaga deletada com sucesso')
+      fetchVagas()
+    } catch (err) {
+      console.error('Erro ao deletar vaga:', err)
+      toast.error('Erro ao deletar vaga', {
+        description: (err as Error).message,
+        duration: 5000
+      })
+    }
+  }
+
+  const handlePublishVaga = async (vagaId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Token não encontrado')
+        return
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas/${vagaId}/publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada')
+        setTimeout(() => window.location.href = '/login', 2000)
+        return
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || response.statusText)
+      }
+
+      toast.success('Vaga publicada com sucesso')
+      fetchVagas()
+    } catch (err) {
+      console.error('Erro ao publicar vaga:', err)
+      toast.error('Erro ao publicar vaga', {
+        description: (err as Error).message,
+        duration: 5000
+      })
+    }
+  }
+
+  const handleCloseVaga = async (vagaId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Token não encontrado')
+        return
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas/${vagaId}/close`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada')
+        setTimeout(() => window.location.href = '/login', 2000)
+        return
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || response.statusText)
+      }
+
+      toast.success('Vaga fechada com sucesso')
+      fetchVagas()
+    } catch (err) {
+      console.error('Erro ao fechar vaga:', err)
+      toast.error('Erro ao fechar vaga', {
+        description: (err as Error).message,
+        duration: 5000
+      })
+    }
+  }
+
+  const handleUpdateVaga = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Token não encontrado')
+        return
+      }
+
+      const payload = {
+        title: tituloForm,
+        description: descricaoForm,
+        requirements: requisitosForm,
+        location: localizacaoForm,
+        job_type: tipoForm,
+        salary_min: salarioMinForm || 0,
+        salary_max: salarioMaxForm || 0,
+        salary_currency: "BRL",
+        remote: false,
+        benefits: "",
+      }
+
+      console.log(`PUT /api/v1/admin/vagas/${editingVagaId}?company_id=${parseInt(empresaIdForm)} - Payload:`, payload)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas/${editingVagaId}?company_id=${parseInt(empresaIdForm)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada')
+        setTimeout(() => window.location.href = '/login', 2000)
+        return
+      }
+
+      if (!response.ok) {
+        const responseText = await response.text()
+        console.error('Erro ao atualizar vaga - Status:', response.status, response.statusText)
+        console.error('Erro ao atualizar vaga - Response:', responseText)
+        
+        let errorMessage = `Erro ${response.status}: ${response.statusText}`
+        try {
+          const errorData = JSON.parse(responseText)
+          if (errorData.detail) {
+            errorMessage = typeof errorData.detail === 'string' 
+              ? errorData.detail 
+              : JSON.stringify(errorData.detail)
+          }
+        } catch (e) {
+          if (responseText) errorMessage = responseText
+        }
+        
+        toast.error('Erro ao atualizar vaga', {
+          description: errorMessage,
+          duration: 5000,
+        })
+        return
+      }
+
+      const vagaAtualizada = await response.json()
+      console.log('Vaga atualizada com sucesso:', vagaAtualizada)
+
+      setCreateOpen(false)
+      resetForm()
+      
+      toast.success('Vaga atualizada com sucesso', {
+        description: `${tituloForm} foi atualizada`,
+        duration: 4000,
+      })
+
+      fetchVagas()
+    } catch (err) {
+      console.error('Erro ao atualizar vaga:', err)
+      toast.error('Erro ao atualizar vaga', {
+        description: (err as Error).message,
+        duration: 5000,
+      })
+    }
   }
 
   return (
@@ -292,7 +543,7 @@ export default function AdminVagasPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
-                  {empresas.map((e) => (
+                  {empresas.map((e: any) => (
                     <SelectItem key={e.id} value={e.id}>
                       {/* @ts-ignore */}
                       {(e.nomeEmpresa as string) || e.nome}
@@ -331,12 +582,12 @@ export default function AdminVagasPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog Criar Vaga */}
+      {/* Dialog Criar/Editar Vaga */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Registrar Nova Vaga</DialogTitle>
-            <DialogDescription>Preencha os requisitos detalhados para melhor matching com candidatos</DialogDescription>
+            <DialogTitle>{editingVagaId ? "Editar Vaga" : "Registrar Nova Vaga"}</DialogTitle>
+            <DialogDescription>{editingVagaId ? "Atualize os detalhes da vaga" : "Preencha os requisitos detalhados para melhor matching com candidatos"}</DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
             <div className="grid md:grid-cols-2 gap-4">
@@ -353,24 +604,35 @@ export default function AdminVagasPage() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {empresas.map((e: any) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {(e.nomeEmpresa as string) || e.nome}
-                      </SelectItem>
-                    ))}
+                    {loadingEmpresas ? (
+                      <div className="p-2 text-center text-sm text-muted-foreground">
+                        Carregando empresas...
+                      </div>
+                    ) : empresas.length === 0 ? (
+                      <div className="p-2 text-center text-sm text-muted-foreground">
+                        Nenhuma empresa encontrada
+                      </div>
+                    ) : (
+                      empresas.map((e: any) => (
+                        <SelectItem key={e.id} value={e.id.toString()}>
+                          {e.razao_social || e.nome || `Empresa ${e.id}`}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="usuario">Usuário Responsável</Label>
+                <Label htmlFor="usuario">Usuário Responsável <span className="text-xs text-muted-foreground">(Opcional)</span></Label>
                 <Select value={usuarioIdForm} onValueChange={setUsuarioIdForm}>
                   <SelectTrigger id="usuario">
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue placeholder="Selecione (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {empresas.map((e: any) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.nome} ({e.email})
+                      <SelectItem key={e.id} value={e.id.toString()}>
+                        {e.razao_social || e.nome || `Empresa ${e.id}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -522,29 +784,104 @@ export default function AdminVagasPage() {
               <Button
                 type="button"
                 disabled={!empresaIdForm || !tituloForm.trim() || !localizacaoForm.trim() || !descricaoForm.trim()}
-                onClick={() => {
-                  const novaVaga: Vaga = {
-                    id: Date.now().toString(),
-                    empresaId: empresaIdForm,
-                    titulo: tituloForm,
-                    descricao: descricaoForm,
-                    requisitos: requisitosForm,
-                    habilidadesRequeridas: habilidadesForm,
-                    anosExperienciaMin: anosExpMinForm,
-                    anosExperienciaMax: anosExpMaxForm,
-                    localizacao: localizacaoForm,
-                    tipo: tipoForm,
-                    status: "aberta",
-                    createdAt: new Date(),
-                    salarioMin: salarioMinForm,
-                    salarioMax: salarioMaxForm,
+                onClick={async () => {
+                  if (editingVagaId) {
+                    await handleUpdateVaga()
+                  } else {
+                    try {
+                      const token = localStorage.getItem('token')
+                      if (!token) {
+                        toast.error('Token não encontrado', {
+                          description: 'Faça login novamente.',
+                          duration: 4000,
+                        })
+                        return
+                      }
+
+                      const payload = {
+                        title: tituloForm,
+                        description: descricaoForm,
+                        requirements: requisitosForm,
+                        location: localizacaoForm,
+                        job_type: tipoForm,
+                        salary_min: salarioMinForm || 0,
+                        salary_max: salarioMaxForm || 0,
+                        salary_currency: "BRL",
+                        remote: false,
+                        benefits: "",
+                        status: "rascunho"
+                      }
+
+                      console.log('POST /api/v1/admin/vagas?company_id=' + parseInt(empresaIdForm) + ' - Payload:', payload)
+
+                      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas?company_id=${parseInt(empresaIdForm)}`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(payload)
+                      })
+
+                      if (response.status === 401) {
+                        toast.error('Sessão expirada', {
+                          description: 'Sua sessão expirou. Por favor, faça login novamente.',
+                          duration: 5000,
+                        })
+                        setTimeout(() => {
+                          window.location.href = '/login'
+                        }, 2000)
+                        return
+                      }
+
+                      if (!response.ok) {
+                        const responseText = await response.text()
+                        console.error('Erro ao criar vaga - Status:', response.status, response.statusText)
+                        console.error('Erro ao criar vaga - Response:', responseText)
+                        
+                        let errorMessage = `Erro ${response.status}: ${response.statusText}`
+                        try {
+                          const errorData = JSON.parse(responseText)
+                          if (errorData.detail) {
+                            errorMessage = typeof errorData.detail === 'string' 
+                              ? errorData.detail 
+                              : JSON.stringify(errorData.detail)
+                          }
+                        } catch (e) {
+                          if (responseText) errorMessage = responseText
+                        }
+                        
+                        toast.error('Erro ao criar vaga', {
+                          description: errorMessage,
+                          duration: 5000,
+                      })
+                      return
+                    }
+
+                    const novaVaga = await response.json()
+                    console.log('Vaga criada com sucesso:', novaVaga)
+
+                    setCreateOpen(false)
+                    resetForm()
+                    
+                    // Recarregar lista de vagas
+                    await fetchVagas()
+                    
+                    toast.success('Vaga criada com sucesso!', {
+                      description: `A vaga "${novaVaga.title || tituloForm}" foi criada em modo rascunho.`,
+                      duration: 4000,
+                    })
+                    } catch (error) {
+                      console.error('Erro ao criar vaga:', error)
+                      toast.error('Erro ao criar vaga', {
+                        description: 'Não foi possível criar a vaga. Tente novamente.',
+                        duration: 4000,
+                      })
+                    }
                   }
-                  setVagas((prev) => [novaVaga, ...prev])
-                  setCreateOpen(false)
-                  resetForm()
                 }}
               >
-                Registrar Vaga
+                {editingVagaId ? "Atualizar Vaga" : "Registrar Vaga"}
               </Button>
             </div>
           </div>
@@ -621,6 +958,9 @@ export default function AdminVagasPage() {
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="sm" onClick={() => abrirDetalhes(vaga)}>
                               <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => carregarVagaParaEdicao(vaga)}>
+                              <Pencil className="h-4 w-4 text-blue-500" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => removerVaga(vaga.id)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -805,6 +1145,38 @@ export default function AdminVagasPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              <div className="flex gap-2 justify-end mt-4">
+                {vagaSelecionada.status === "rascunho" && (
+                  <Button 
+                    onClick={() => {
+                      handlePublishVaga(parseInt(vagaSelecionada.id))
+                      setDialogOpen(false)
+                    }}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Publicar
+                  </Button>
+                )}
+                {vagaSelecionada.status === "aberta" && (
+                  <Button 
+                    onClick={() => {
+                      handleCloseVaga(parseInt(vagaSelecionada.id))
+                      setDialogOpen(false)
+                    }}
+                    variant="destructive"
+                  >
+                    Fechar
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => handleDeleteVaga(parseInt(vagaSelecionada.id))}
+                  variant="outline"
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                >
+                  Deletar
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
