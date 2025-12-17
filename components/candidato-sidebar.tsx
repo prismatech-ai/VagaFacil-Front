@@ -7,6 +7,7 @@ import {
   User,
   Zap,
   FileText,
+  Briefcase,
 } from "lucide-react"
 import {
   Sidebar,
@@ -26,6 +27,11 @@ const menuItems = [
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard/candidato",
+  },
+  {
+    title: "Vagas Disponíveis",
+    icon: Briefcase,
+    href: "/vagas",
   },
   {
     title: "Meu Perfil",

@@ -407,7 +407,7 @@ export default function PerfilPage() {
       if (candidato) {
         setCandidato({
           ...candidato,
-          curriculo_url: data.curriculo_url || file.name
+          curriculo: data.curriculo_url || file.name
         })
       }
 
@@ -436,7 +436,7 @@ export default function PerfilPage() {
     if (candidato) {
       setCandidato({
         ...candidato,
-        curriculo_url: undefined
+        curriculo: ""
       })
     }
   }
@@ -814,7 +814,7 @@ export default function PerfilPage() {
                 <div className="space-y-2 mt-8 pt-8 border-t">
                   <Label htmlFor="curriculo">Currículo (PDF)</Label>
                   
-                  {candidato?.curriculo_url || formData.curriculo ? (
+                  {candidato?.curriculo || formData.curriculo ? (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Upload className="h-5 w-5 text-green-600" />

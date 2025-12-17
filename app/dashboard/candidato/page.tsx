@@ -31,7 +31,6 @@ import {
 import type { Vaga, Candidatura } from "@/lib/types"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { api } from "@/lib/api"
 
 export default function CandidatoDashboardPage() {
   const router = useRouter()
@@ -340,12 +339,12 @@ export default function CandidatoDashboardPage() {
         <div className="grid gap-4 md:grid-cols-3 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Vagas Disponíveis</CardTitle>
+              <CardTitle className="text-sm font-medium">Vagas Recomendadas</CardTitle>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{vagasDisponiveis.length}</div>
-              <p className="text-xs text-muted-foreground">Vagas abertas para candidatura</p>
+              <p className="text-xs text-muted-foreground">Vagas recomendadas para você</p>
             </CardContent>
           </Card>
 
@@ -377,11 +376,11 @@ export default function CandidatoDashboardPage() {
         {/* Tabs */}
         <Tabs defaultValue="vagas" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="vagas">Vagas Disponíveis</TabsTrigger>
+            <TabsTrigger value="vagas">Vagas Recomendadas</TabsTrigger>
             <TabsTrigger value="candidaturas">Minhas Candidaturas</TabsTrigger>
           </TabsList>
 
-          {/* Tab de Vagas Disponíveis */}
+          {/* Tab de Vagas Recomendadas */}
           <TabsContent value="vagas" className="space-y-4">
             {/* Barra de Pesquisa */}
             <Card>
@@ -496,9 +495,9 @@ export default function CandidatoDashboardPage() {
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <FileText className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Nenhuma candidatura ainda</h3>
-                  <p className="text-muted-foreground text-center mb-4">Comece se candidatando às vagas disponíveis</p>
+                  <p className="text-muted-foreground text-center mb-4">Comece se candidatando às vagas recomendadas</p>
                   <Button onClick={() => document.querySelector<HTMLButtonElement>('[value="vagas"]')?.click()}>
-                    Ver Vagas Disponíveis
+                    Ver Vagas Recomendadas
                   </Button>
                 </CardContent>
               </Card>
