@@ -103,7 +103,10 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     }
 
     const errorData = await response.json().catch(() => ({ message: "Erro na requisição" }))
-    console.error(`Erro API [${response.status}] ${url}:`, errorData)
+    // Silenciar erros 404 e outros erros de API não implementada ainda
+    if (response.status !== 404) {
+      console.warn(`Erro API [${response.status}] ${url}:`, errorData)
+    }
     const errorMessage = errorData.detail || errorData.message || errorData.error || `Erro ${response.status}`
     throw new Error(errorMessage)
   }

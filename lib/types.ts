@@ -22,7 +22,7 @@ export type Empresa = User & {
 export type Candidato = User & {
   role: "candidato"
   curriculo?: string
-  habilidades?: string[]
+  habilidades?: Habilidade[]
   anosExperiencia?: number
   nivelDesejado?: string
   educacao?: Educacao[]
@@ -32,6 +32,22 @@ export type Candidato = User & {
     habilidades: Record<string, number>
   }
   testesRealizados?: string[]
+  // Onboarding
+  phone?: string
+  cidade?: string
+  estado?: string
+  is_pcd?: boolean
+  tipo_pcd?: "Física" | "Auditiva" | "Visual" | "Intelectual" | "Múltipla" | "Psicossocial"
+  necessidades_adaptacao?: string
+  experiencia_profissional?: string
+  formacao_escolaridade?: string
+  teste_habilidades_completado?: boolean
+  score_teste_habilidades?: number
+  percentual_completude?: number
+  onboarding_completo?: boolean
+  full_name?: string
+  created_at?: Date
+  updated_at?: Date
 }
 
 export type Educacao = {
@@ -42,6 +58,12 @@ export type Educacao = {
   status: string
   dataInicio?: Date
   dataFim?: Date
+}
+
+export type Habilidade = {
+  habilidade: string
+  nivel: 1 | 2 | 3 | 4 | 5
+  anos_experiencia?: number
 }
 
 export type Experiencia = {
@@ -57,6 +79,7 @@ export type Experiencia = {
 export type Vaga = {
   id: string
   empresaId: string
+  empresaNome: string
   titulo: string
   descricao: string
   requisitos: string
@@ -66,6 +89,7 @@ export type Vaga = {
   localizacao: string
   tipo: "CLT" | "PJ" | "Estágio" | "Temporário"
   status: "rascunho" | "aberta" | "fechada"
+  salario?: string
   createdAt: Date
   salarioMin?: number
   salarioMax?: number
@@ -111,4 +135,89 @@ export type Notificacao = {
   lida: boolean
   createdAt: Date
   createdBy?: string
+}
+
+// Tipos para Onboarding
+export type OnboardingStatus = {
+  id: number
+  full_name: string
+  email: string
+  phone?: string
+  cidade?: string
+  estado?: string
+  is_pcd?: boolean
+  tipo_pcd?: "Física" | "Auditiva" | "Visual" | "Intelectual" | "Múltipla" | "Psicossocial"
+  necessidades_adaptacao?: string
+  experiencia_profissional?: string
+  formacao_escolaridade?: string
+  habilidades?: Habilidade[]
+  teste_habilidades_completado?: boolean
+  score_teste_habilidades?: number
+  percentual_completude: number
+  onboarding_completo: boolean
+  created_at: Date
+  updated_at: Date
+}
+
+export type OnboardingProgresso = {
+  percentual_completude: number
+  onboarding_completo: boolean
+  dados_pessoais_completo: boolean
+  dados_profissionais_completo: boolean
+  teste_habilidades_completo: boolean
+  etapas_completas: {
+    perfil_basico: boolean
+    dados_pessoais: boolean
+    dados_profissionais: boolean
+    teste_habilidades: boolean
+  }
+}
+
+export type DadosPessoais = {
+  phone?: string
+  cidade?: string
+  estado?: string
+  is_pcd?: boolean
+  tipo_pcd?: "Física" | "Auditiva" | "Visual" | "Intelectual" | "Múltipla" | "Psicossocial"
+  necessidades_adaptacao?: string
+}
+
+export type DadosProfissionais = {
+  experiencia_profissional?: string
+  formacao_escolaridade?: string
+  habilidades?: Habilidade[]
+}
+
+export type TesteHabilidades = {
+  score: number
+  dados_teste?: {
+    tempo_resposta?: string
+    total_perguntas?: number
+    acertos?: number
+    perguntas_respondidas?: Array<{
+      id: number
+      resposta: string
+      correta: boolean
+    }>
+  }
+}
+
+export type RespostaTicket = {
+  id: string
+  ticketId: string
+  usuarioId: string
+  mensagem: string
+  createdAt: Date
+}
+
+export type TicketSuporte = {
+  id: string
+  usuarioId: string
+  assunto: string
+  mensagem: string
+  status: "aberto" | "em_andamento" | "fechado"
+  prioridade: "baixa" | "media" | "alta"
+  respostas: RespostaTicket[]
+  createdAt: Date
+  updatedAt: Date
 }

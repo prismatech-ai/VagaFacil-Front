@@ -9,12 +9,17 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Eye, Pencil, Trash2, Plus, X, GraduationCap } from "lucide-react"
-import type { Teste } from "@/lib/types"
+import { Search, Eye, Pencil, Trash2, Plus, X, GraduationCap, Upload, HelpCircle, FileText } from "lucide-react"
+import type { Teste, Questao } from "@/lib/types"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 import { toast } from "sonner"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
+import Papa from "papaparse"
+import * as XLSX from "xlsx"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function AdminTestesPage() {
   const [testes, setTestes] = useState<Teste[]>([])
@@ -27,6 +32,11 @@ export default function AdminTestesPage() {
   const [dialogVerOpen, setDialogVerOpen] = useState(false)
   const [modoEdicao, setModoEdicao] = useState<"create" | "edit">("create")
   const [testeSelecionado, setTesteSelecionado] = useState<Teste | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [questoesImportadas, setQuestoesImportadas] = useState<Questao[]>([])
+  const [erroImportacao, setErroImportacao] = useState("")
+  const [abaPrincipal, setAbaPrincipal] = useState<"manual" | "importacao">("manual")
 
   useEffect(() => {
     fetchTestes()
@@ -145,6 +155,69 @@ export default function AdminTestesPage() {
     }
   }
 
+  const converterNivel = (nivel: string): 1 | 2 | 3 | 4 | 5 => {
+    const n = nivel.toLowerCase()
+    if (n.includes("bás") || n.includes("bas")) return 1
+    if (n.includes("inter")) return 2
+    return 3
+  }
+
+  const respostaParaIndice = (r: string) =>
+    ({ A: 0, B: 1, C: 2, D: 3 } as Record<string, number>)[
+      r.toUpperCase()
+    ] ?? 0
+
+  const processarCSVouXLSX = async (file: File) => {
+    setErroImportacao("")
+    const rows: any[] = []
+
+    if (file.name.endsWith(".csv")) {
+      const text = await file.text()
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
+      rows.push(...(parsed.data as any[]))
+    } else {
+      const data = await file.arrayBuffer()
+      const wb = XLSX.read(data)
+      rows.push(...XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]))
+    }
+
+    const questoes: Questao[] = []
+    const erros: string[] = []
+
+    rows.forEach((r, i) => {
+      if (!r.habilidade || !r.pergunta) {
+        erros.push(`Linha ${i + 2}: habilidade/pergunta ausente`)
+        return
+      }
+
+      const opcoes = [r.opcao_a, r.opcao_b, r.opcao_c, r.opcao_d].filter(Boolean)
+      if (opcoes.length < 2) {
+        erros.push(`Linha ${i + 2}: mínimo 2 opções`)
+        return
+      }
+
+      const nivelNum = converterNivel(r.nivel ?? "")
+
+      questoes.push({
+        id: `import-${Date.now()}-${i}`,
+        pergunta: r.pergunta,
+        alternativas: opcoes,
+        respostaCorreta: respostaParaIndice(r.resposta_correta ?? "A"),
+        nivelDificuldade: nivelNum === 1 ? "facil" : nivelNum === 2 ? "medio" : "dificil",
+        nivel: nivelNum,
+        habilidade: r.habilidade,
+      } as Questao)
+    })
+
+    if (erros.length) {
+      setErroImportacao(erros.slice(0, 5).join("\n"))
+      return
+    }
+
+    setQuestoesImportadas(questoes)
+    toast.success(`${questoes.length} questões importadas com sucesso!`)
+  }
+
   const [form, setForm] = useState({
     nome: "",
     descricao: "",
@@ -260,11 +333,18 @@ export default function AdminTestesPage() {
   }
 
   const salvar = async () => {
-    if (!form.nome || !form.habilidade) return
+    // Validar dados básicos
+    if (!form.nome || !form.habilidade) {
+      toast.error('Preenchimento incompleto', {
+        description: 'Preencha nome e habilidade do teste.',
+        duration: 4000,
+      })
+      return
+    }
 
     // Validar que há questões
     if (form.questoes.length === 0) {
-      toast.error('Adicione questões ao teste', {
+      toast.error('Sem questões', {
         description: 'O teste precisa ter pelo menos uma questão.',
         duration: 4000,
       })
@@ -277,13 +357,10 @@ export default function AdminTestesPage() {
       const temTodasAlternativas = q.alternativas.length >= 2 && q.alternativas.every((a) => a.trim().length > 0)
       return temPergunta && temTodasAlternativas
     })
-
-    console.log('Questões no form:', form.questoes.length)
-    console.log('Questões válidas:', questoesValidas.length)
     
     // Validar que há pelo menos uma questão válida
     if (questoesValidas.length === 0) {
-      toast.error('Preencha todas as questões corretamente', {
+      toast.error('Questões inválidas', {
         description: 'Cada questão precisa ter uma pergunta e pelo menos 2 alternativas preenchidas.',
         duration: 5000,
       })
@@ -374,17 +451,30 @@ export default function AdminTestesPage() {
         const novoTeste = await response.json()
         console.log('Teste criado com sucesso:', novoTeste)
 
-        // Fechar o modal
-        setDialogCriarEditarOpen(false)
+        // Mostrar toast de sucesso ANTES de fechar
+        toast.success('Teste criado com sucesso!', {
+          description: `O teste "${novoTeste.nome}" foi criado e está disponível para uso.`,
+          duration: 3000,
+        })
         
         // Recarregar lista de testes
         await fetchTestes()
         
-        // Mostrar toast de sucesso
-        toast.success('Teste criado com sucesso!', {
-          description: `O teste "${novoTeste.nome}" foi criado e está disponível para uso.`,
-          duration: 4000,
-        })
+        // DEPOIS fechar o modal e limpar estado
+        setTimeout(() => {
+          setDialogCriarEditarOpen(false)
+          setQuestoesImportadas([])
+          setErroImportacao("")
+          setAbaPrincipal("manual")
+          setForm({
+            nome: "",
+            descricao: "",
+            habilidade: "",
+            nivel: 1,
+            questoes: [],
+          })
+        }, 500)
+        
         return
       } catch (error) {
         console.error('Erro ao criar teste:', error)
@@ -500,17 +590,29 @@ export default function AdminTestesPage() {
         const testeAtualizado = await response.json()
         console.log('Teste atualizado com sucesso:', testeAtualizado)
 
-        // Fechar o modal
-        setDialogCriarEditarOpen(false)
+        // Mostrar toast de sucesso ANTES de fechar
+        toast.success('Teste atualizado com sucesso!', {
+          description: `O teste "${form.nome}" foi atualizado.`,
+          duration: 3000,
+        })
         
         // Recarregar lista de testes
         await fetchTestes()
         
-        // Mostrar toast de sucesso
-        toast.success('Teste atualizado com sucesso!', {
-          description: `O teste "${form.nome}" foi atualizado.`,
-          duration: 4000,
-        })
+        // DEPOIS fechar o modal e limpar estado
+        setTimeout(() => {
+          setDialogCriarEditarOpen(false)
+          setQuestoesImportadas([])
+          setErroImportacao("")
+          setAbaPrincipal("manual")
+          setForm({
+            nome: "",
+            descricao: "",
+            habilidade: "",
+            nivel: 1,
+            questoes: [],
+          })
+        }, 500)
       } catch (error) {
         console.error('Erro ao atualizar teste:', error)
         toast.error('Erro ao atualizar teste', {
@@ -621,10 +723,19 @@ export default function AdminTestesPage() {
             Crie testes com questões de múltipla escolha, níveis de dificuldade e habilidades específicas
           </p>
         </div>
-        <Button onClick={abrirCriar}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Teste
-        </Button>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <Button onClick={() => {
+            setModoEdicao("create")
+            setTesteSelecionado(null)
+            setAbaPrincipal("manual")
+            setQuestoesImportadas([])
+            setErroImportacao("")
+            setDialogCriarEditarOpen(true)
+          }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Teste
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-6">
@@ -761,52 +872,58 @@ export default function AdminTestesPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{modoEdicao === "create" ? "Novo Teste" : "Editar Teste"}</DialogTitle>
-            <DialogDescription>Preencha as informações do teste e adicione questões com alternativas</DialogDescription>
+            <DialogDescription>{abaPrincipal === "importacao" ? "Questões importadas prontas para vinculação" : "Preencha as informações do teste e adicione questões com alternativas"}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Basic Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome do Teste</Label>
-                <Input
-                  id="nome"
-                  value={form.nome}
-                  onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
-                  placeholder="Ex: React Avançado"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="habilidade-form">Habilidade</Label>
-                <Input
-                  id="habilidade-form"
-                  value={form.habilidade}
-                  onChange={(e) => setForm((f) => ({ ...f, habilidade: e.target.value }))}
-                  placeholder="Ex: React, Python, JavaScript"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nivel-form">Nível</Label>
-                <Select
-                  value={form.nivel.toString()}
-                  onValueChange={(v) => setForm((f) => ({ ...f, nivel: Number.parseInt(v) as any }))}
-                >
-                  <SelectTrigger id="nivel-form">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Nível 1 - Iniciante</SelectItem>
-                    <SelectItem value="2">Nível 2 - Básico</SelectItem>
-                    <SelectItem value="3">Nível 3 - Intermediário</SelectItem>
-                    <SelectItem value="4">Nível 4 - Avançado</SelectItem>
-                    <SelectItem value="5">Nível 5 - Expert</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="descricao">Descrição</Label>
-                <Textarea
-                  id="descricao"
+          <Tabs value={abaPrincipal} onValueChange={(v) => setAbaPrincipal(v as any)}>
+            <TabsList className="grid grid-cols-2">
+              <TabsTrigger value="manual">Manual</TabsTrigger>
+              <TabsTrigger value="importacao">Importadas ({questoesImportadas.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="manual" className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nome">Nome do Teste</Label>
+                  <Input
+                    id="nome"
+                    value={form.nome}
+                    onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+                    placeholder="Ex: React Avançado"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="habilidade-form">Habilidade</Label>
+                  <Input
+                    id="habilidade-form"
+                    value={form.habilidade}
+                    onChange={(e) => setForm((f) => ({ ...f, habilidade: e.target.value }))}
+                    placeholder="Ex: React, Python, JavaScript"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nivel-form">Nível</Label>
+                  <Select
+                    value={form.nivel.toString()}
+                    onValueChange={(v) => setForm((f) => ({ ...f, nivel: Number.parseInt(v) as any }))}
+                  >
+                    <SelectTrigger id="nivel-form">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Nível 1 - Iniciante</SelectItem>
+                      <SelectItem value="2">Nível 2 - Básico</SelectItem>
+                      <SelectItem value="3">Nível 3 - Intermediário</SelectItem>
+                      <SelectItem value="4">Nível 4 - Avançado</SelectItem>
+                      <SelectItem value="5">Nível 5 - Expert</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="descricao">Descrição</Label>
+                  <Textarea
+                    id="descricao"
                   value={form.descricao}
                   onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
                   placeholder="Descreva o objetivo e conteúdo do teste..."
@@ -911,11 +1028,146 @@ export default function AdminTestesPage() {
               <Button variant="outline" type="button" onClick={() => setDialogCriarEditarOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="button" onClick={salvar} disabled={!form.nome || !form.habilidade}>
+              <Button type="button" onClick={salvar} disabled={!form.nome || !form.habilidade || form.questoes.length === 0}>
                 {modoEdicao === "create" ? "Criar Teste" : "Salvar Alterações"}
               </Button>
             </div>
-          </div>
+            </TabsContent>
+
+            <TabsContent value="importacao" className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-4 border-b">
+                  <Button 
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Selecionar Arquivo CSV/XLSX
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={(e) => {
+                      const file = e.currentTarget.files?.[0]
+                      if (file) {
+                        processarCSVouXLSX(file)
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Importe questões de um arquivo CSV ou XLSX
+                  </span>
+                </div>
+
+                {erroImportacao && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{erroImportacao}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome-import">Nome do Teste</Label>
+                    <Input
+                      id="nome-import"
+                      value={form.nome}
+                      onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+                      placeholder="Ex: React Avançado"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="habilidade-import">Habilidade</Label>
+                    <Input
+                      id="habilidade-import"
+                      value={form.habilidade}
+                      onChange={(e) => setForm((f) => ({ ...f, habilidade: e.target.value }))}
+                      placeholder="Ex: React, Python, JavaScript"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nivel-import">Nível</Label>
+                    <Select
+                      value={form.nivel.toString()}
+                      onValueChange={(v) => setForm((f) => ({ ...f, nivel: Number.parseInt(v) as any }))}
+                    >
+                      <SelectTrigger id="nivel-import">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Nível 1 - Iniciante</SelectItem>
+                        <SelectItem value="2">Nível 2 - Básico</SelectItem>
+                        <SelectItem value="3">Nível 3 - Intermediário</SelectItem>
+                        <SelectItem value="4">Nível 4 - Avançado</SelectItem>
+                        <SelectItem value="5">Nível 5 - Expert</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="descricao-import">Descrição</Label>
+                    <Textarea
+                      id="descricao-import"
+                      value={form.descricao}
+                      onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+                      placeholder="Descreva o objetivo e conteúdo do teste..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
+
+                {questoesImportadas.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8 border rounded-lg">
+                    Nenhuma questão importada. Volte ao dialog de importação para selecionar um arquivo.
+                  </p>
+                ) : (
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-green-700 font-medium mb-3">
+                        ✓ {questoesImportadas.length} questões prontas para serem vinculadas:
+                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {questoesImportadas.map((q, idx) => (
+                          <p key={idx} className="text-xs text-green-600 truncate">
+                            {idx + 1}. {q.pergunta}
+                          </p>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" type="button" onClick={() => setDialogCriarEditarOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    // Adicionar questões importadas ao form
+                    setForm((f) => ({
+                      ...f,
+                      questoes: questoesImportadas.map((q) => ({
+                        id: q.id,
+                        pergunta: q.pergunta,
+                        alternativas: q.alternativas,
+                        respostaCorreta: q.respostaCorreta,
+                        nivel: q.nivel,
+                      })),
+                    }))
+                    toast.success('Questões importadas adicionadas ao teste')
+                    salvar()
+                  }}
+                  disabled={!form.nome || !form.habilidade || questoesImportadas.length === 0}
+                >
+                  {modoEdicao === "create" ? "Criar Teste com Importados" : "Salvar Alterações"}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 

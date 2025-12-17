@@ -5,6 +5,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { CandidatoSidebar } from "@/components/candidato-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,39 +15,50 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2, Save } from "lucide-react"
+import { Plus, Edit, Save } from "lucide-react"
 import { UploadCurriculo } from "@/components/upload-curriculo"
-import type { Candidato, Educacao, Experiencia, Curso } from "@/lib/types"
+import type { Candidato } from "@/lib/types"
 import { api } from "@/lib/api"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function PerfilPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
+  const { toast } = useToast()
   const [candidato, setCandidato] = useState<Candidato | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [onboardingProgresso, setOnboardingProgresso] = useState<any>(null)
+  const [onboardingStatus, setOnboardingStatus] = useState<any>(null)
+  const [isLoadingOnboarding, setIsLoadingOnboarding] = useState(false)
 
   // Estados para formulários
   const [formData, setFormData] = useState({
     telefone: "",
-    localizacao: "",
+    cidade: "",
+    estado: "",
     curriculo: "",
-    curriculoArquivo: null as string | null,
-    curriculoNome: null as string | null,
     linkedin: "",
-    portfolio: "",
-    habilidades: [] as string[],
   })
   const [habilidadeInput, setHabilidadeInput] = useState("")
 
   // Estados para diálogos
   const [educacaoDialogOpen, setEducacaoDialogOpen] = useState(false)
   const [experienciaDialogOpen, setExperienciaDialogOpen] = useState(false)
-  const [cursoDialogOpen, setCursoDialogOpen] = useState(false)
 
   // Estados para formulários de adição
-  const [novaEducacao, setNovaEducacao] = useState<Partial<Educacao>>({})
-  const [novaExperiencia, setNovaExperiencia] = useState<Partial<Experiencia>>({})
-  const [novoCurso, setNovoCurso] = useState<Partial<Curso>>({})
+  const [novaEducacao, setNovaEducacao] = useState<{ instituicao: string; curso: string; nivel: string; status: string }>({
+    instituicao: "",
+    curso: "",
+    nivel: "Superior",
+    status: "Completo",
+  })
+  const [novaExperiencia, setNovaExperiencia] = useState<{ empresa: string; cargo: string; descricao: string; atual: boolean }>({
+    empresa: "",
+    cargo: "",
+    descricao: "",
+    atual: false,
+  })
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -55,6 +68,7 @@ export default function PerfilPage() {
 
     if (user && user.role === "candidato") {
       loadPerfil()
+      loadOnboarding()
     }
   }, [user, isLoading, router])
 
@@ -62,34 +76,52 @@ export default function PerfilPage() {
     if (!user) return
 
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const candidatoData = await api.get<Candidato>(`/candidatos/${user.id}`)
+      const candidatoData = await api.get<Candidato>(`/api/v1/candidates/me`)
       setCandidato(candidatoData)
       setFormData({
         telefone: candidatoData.telefone || "",
-        localizacao: candidatoData.localizacao || "",
+        cidade: candidatoData.cidade || "",
+        estado: candidatoData.estado || "",
         curriculo: candidatoData.curriculo || "",
-        curriculoArquivo: candidatoData.curriculoArquivo || null,
-        curriculoNome: candidatoData.curriculoNome || null,
         linkedin: candidatoData.linkedin || "",
-        portfolio: candidatoData.portfolio || "",
-        habilidades: candidatoData.habilidades || [],
       })
     } catch (error) {
       console.error("Erro ao carregar perfil:", error)
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível carregar seu perfil. Tente novamente."
+      })
       // Fallback para dados do user atual
       const candidatoData = user as Candidato
       setCandidato(candidatoData)
       setFormData({
         telefone: candidatoData.telefone || "",
-        localizacao: candidatoData.localizacao || "",
+        cidade: candidatoData.cidade || "",
+        estado: candidatoData.estado || "",
         curriculo: candidatoData.curriculo || "",
-        curriculoArquivo: candidatoData.curriculoArquivo || null,
-        curriculoNome: candidatoData.curriculoNome || null,
         linkedin: candidatoData.linkedin || "",
-        portfolio: candidatoData.portfolio || "",
-        habilidades: candidatoData.habilidades || [],
       })
+    }
+  }
+
+  const loadOnboarding = async () => {
+    if (!user) return
+
+    setIsLoadingOnboarding(true)
+    try {
+      // Carregar status do onboarding
+      const status = await api.get(`/api/v1/candidates/onboarding/status`)
+      setOnboardingStatus(status)
+
+      // Carregar progresso do onboarding
+      const progresso = await api.get(`/api/v1/candidates/onboarding/progresso`)
+      setOnboardingProgresso(progresso)
+    } catch (error) {
+      console.error("Erro ao carregar onboarding:", error)
+      // Não mostrar toast de erro, pois é opcional
+    } finally {
+      setIsLoadingOnboarding(false)
     }
   }
 
@@ -107,52 +139,83 @@ export default function PerfilPage() {
   const handleSave = async () => {
     if (!candidato || !user) return
 
+    setIsSaving(true)
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const updatedCandidato = await api.put<Candidato>(`/candidatos/${user.id}`, {
-        ...formData,
-        curriculoArquivo: formData.curriculoArquivo || undefined,
-        curriculoNome: formData.curriculoNome || undefined,
-      })
+      const updatedCandidato = await api.put<Candidato>(`/api/v1/candidates/me`, formData)
 
       setCandidato(updatedCandidato)
       localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
       setIsEditing(false)
-      alert("Perfil atualizado com sucesso!")
+      toast({
+        title: "Sucesso",
+        description: "Perfil atualizado com sucesso!"
+      })
     } catch (error) {
       console.error("Erro ao salvar perfil:", error)
-      alert("Erro ao salvar perfil. Tente novamente.")
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao salvar perfil. Tente novamente."
+      })
+    } finally {
+      setIsSaving(false)
     }
   }
 
   const addHabilidade = () => {
-    if (habilidadeInput.trim() && !formData.habilidades.includes(habilidadeInput.trim())) {
-      setFormData({
-        ...formData,
-        habilidades: [...formData.habilidades, habilidadeInput.trim()],
+    if (!habilidadeInput.trim() || !candidato) return
+    
+    // Verificar se já existe
+    if (candidato.habilidades?.some(h => h.habilidade === habilidadeInput.trim())) {
+      toast({
+        variant: "destructive",
+        title: "Duplicada",
+        description: "Esta habilidade já foi adicionada"
       })
-      setHabilidadeInput("")
+      return
     }
+
+    const updatedCandidato: Candidato = {
+      ...candidato,
+      habilidades: [
+        ...(candidato.habilidades || []),
+        {
+          habilidade: habilidadeInput.trim(),
+          nivel: 3,
+          anos_experiencia: 0,
+        }
+      ]
+    }
+    
+    setCandidato(updatedCandidato)
+    setHabilidadeInput("")
   }
 
   const removeHabilidade = (habilidade: string) => {
-    setFormData({
-      ...formData,
-      habilidades: formData.habilidades.filter((h) => h !== habilidade),
-    })
+    if (!candidato) return
+    const updatedCandidato: Candidato = {
+      ...candidato,
+      habilidades: candidato.habilidades?.filter((h) => h.habilidade !== habilidade) || [],
+    }
+    setCandidato(updatedCandidato)
   }
 
   const handleAddEducacao = () => {
-    if (!candidato) return
+    if (!candidato || !novaEducacao.instituicao || !novaEducacao.curso) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Preencha instituição e curso"
+      })
+      return
+    }
 
-    const educacao: Educacao = {
+    const educacao = {
       id: Date.now().toString(),
-      instituicao: novaEducacao.instituicao || "",
-      curso: novaEducacao.curso || "",
-      nivel: novaEducacao.nivel || "Superior",
-      status: novaEducacao.status || "Completo",
-      dataInicio: novaEducacao.dataInicio,
-      dataFim: novaEducacao.dataFim,
+      instituicao: novaEducacao.instituicao,
+      curso: novaEducacao.curso,
+      nivel: novaEducacao.nivel,
+      status: novaEducacao.status,
     }
 
     const updatedCandidato: Candidato = {
@@ -161,22 +224,33 @@ export default function PerfilPage() {
     }
 
     setCandidato(updatedCandidato)
-    localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
-    setNovaEducacao({})
+    setNovaEducacao({
+      instituicao: "",
+      curso: "",
+      nivel: "Superior",
+      status: "Completo",
+    })
     setEducacaoDialogOpen(false)
   }
 
   const handleAddExperiencia = () => {
-    if (!candidato) return
+    if (!candidato || !novaExperiencia.empresa || !novaExperiencia.cargo) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Preencha empresa e cargo"
+      })
+      return
+    }
 
-    const experiencia: Experiencia = {
+    const experiencia = {
       id: Date.now().toString(),
-      empresa: novaExperiencia.empresa || "",
-      cargo: novaExperiencia.cargo || "",
-      descricao: novaExperiencia.descricao,
-      dataInicio: novaExperiencia.dataInicio || new Date(),
-      dataFim: novaExperiencia.dataFim,
-      atual: novaExperiencia.atual || false,
+      empresa: novaExperiencia.empresa,
+      cargo: novaExperiencia.cargo,
+      descricao: novaExperiencia.descricao || "",
+      dataInicio: new Date(),
+      dataFim: undefined,
+      atual: novaExperiencia.atual,
     }
 
     const updatedCandidato: Candidato = {
@@ -185,37 +259,38 @@ export default function PerfilPage() {
     }
 
     setCandidato(updatedCandidato)
-    localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
-    setNovaExperiencia({})
+    setNovaExperiencia({
+      empresa: "",
+      cargo: "",
+      descricao: "",
+      atual: false,
+    })
     setExperienciaDialogOpen(false)
   }
 
-  const handleAddCurso = () => {
+  const handleDeleteEducacao = (id: string) => {
     if (!candidato) return
-
-    const curso: Curso = {
-      id: Date.now().toString(),
-      nome: novoCurso.nome || "",
-      instituicao: novoCurso.instituicao || "",
-      cargaHoraria: novoCurso.cargaHoraria,
-      dataConclusao: novoCurso.dataConclusao,
-      certificado: novoCurso.certificado,
-    }
-
     const updatedCandidato: Candidato = {
       ...candidato,
-      cursos: [...(candidato.cursos || []), curso],
+      educacao: candidato.educacao?.filter((e) => e.id !== id) || [],
     }
-
     setCandidato(updatedCandidato)
-    localStorage.setItem("currentUser", JSON.stringify(updatedCandidato))
-    setNovoCurso({})
-    setCursoDialogOpen(false)
+  }
+
+  const handleDeleteExperiencia = (id: string) => {
+    if (!candidato) return
+    const updatedCandidato: Candidato = {
+      ...candidato,
+      experiencias: candidato.experiencias?.filter((e) => e.id !== id) || [],
+    }
+    setCandidato(updatedCandidato)
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <DashboardHeader />
+    <SidebarProvider>
+      <CandidatoSidebar />
+      <div className="min-h-screen flex flex-col bg-secondary/30 w-full">
+        <DashboardHeader />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -229,12 +304,55 @@ export default function PerfilPage() {
               Editar Perfil
             </Button>
           ) : (
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isSaving}>
               <Save className="mr-2 h-4 w-4" />
-              Salvar Alterações
+              {isSaving ? "Salvando..." : "Salvar Alterações"}
             </Button>
           )}
         </div>
+
+        {/* Progresso do Onboarding */}
+        {onboardingProgresso && (
+          <Card className="mb-8 border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="text-lg">Progresso do Onboarding</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm font-medium">Completude</span>
+                    <span className="text-sm font-bold text-blue-600">{onboardingProgresso.percentual_completude}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all"
+                      style={{ width: `${onboardingProgresso.percentual_completude}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.dados_pessoais_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm">Dados Pessoais</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.dados_profissionais_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm">Dados Profissionais</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.teste_habilidades_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm">Teste Habilidades</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.onboarding_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-sm">Onboarding Completo</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="dados" className="space-y-4">
           <TabsList>
@@ -242,7 +360,6 @@ export default function PerfilPage() {
             <TabsTrigger value="profissional">Profissional</TabsTrigger>
             <TabsTrigger value="educacao">Educação</TabsTrigger>
             <TabsTrigger value="experiencia">Experiência</TabsTrigger>
-            <TabsTrigger value="cursos">Cursos</TabsTrigger>
           </TabsList>
 
           {/* Tab Dados Pessoais */}
@@ -271,11 +388,20 @@ export default function PerfilPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="localizacao">Localização</Label>
+                  <Label htmlFor="localizacao">Cidade</Label>
                   <Input
                     id="localizacao"
-                    value={formData.localizacao}
-                    onChange={(e) => setFormData({ ...formData, localizacao: e.target.value })}
+                    value={formData.cidade}
+                    onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="estado">Estado</Label>
+                  <Input
+                    id="estado"
+                    value={formData.estado}
+                    onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
                     disabled={!isEditing}
                   />
                 </div>
@@ -291,28 +417,6 @@ export default function PerfilPage() {
                 <CardDescription>Seu currículo, habilidades e links</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Arquivo do Currículo</Label>
-                  <UploadCurriculo
-                    onFileUpload={(file) => {
-                      // Converte arquivo para base64 (em produção, enviaria para servidor)
-                      const reader = new FileReader()
-                      reader.onloadend = () => {
-                        const base64String = reader.result as string
-                        setFormData({ 
-                          ...formData, 
-                          curriculoArquivo: base64String,
-                          curriculoNome: file.name
-                        })
-                      }
-                      reader.readAsDataURL(file)
-                    }}
-                    currentFile={formData.curriculoArquivo || undefined}
-                    currentFileName={formData.curriculoNome || undefined}
-                    onRemove={() => setFormData({ ...formData, curriculoArquivo: null, curriculoNome: null })}
-                    disabled={!isEditing}
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="curriculo">Resumo Profissional</Label>
                   <Textarea
@@ -341,16 +445,16 @@ export default function PerfilPage() {
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2">
-                    {formData.habilidades.map((habilidade) => (
+                    {candidato?.habilidades?.map((h) => (
                       <div
-                        key={habilidade}
+                        key={h.habilidade}
                         className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full text-sm"
                       >
-                        <span>{habilidade}</span>
+                        <span>{h.habilidade} (Nível {h.nivel})</span>
                         {isEditing && (
                           <button
                             type="button"
-                            onClick={() => removeHabilidade(habilidade)}
+                            onClick={() => removeHabilidade(h.habilidade)}
                             className="text-primary hover:text-primary/80"
                           >
                             ×
@@ -367,16 +471,6 @@ export default function PerfilPage() {
                     type="url"
                     value={formData.linkedin}
                     onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="portfolio">Portfólio</Label>
-                  <Input
-                    id="portfolio"
-                    type="url"
-                    value={formData.portfolio}
-                    onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
                     disabled={!isEditing}
                   />
                 </div>
@@ -412,6 +506,14 @@ export default function PerfilPage() {
                               {edu.nivel} • {edu.status}
                             </p>
                           </div>
+                          {isEditing && (
+                            <button
+                              onClick={() => handleDeleteEducacao(edu.id)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remover
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -453,6 +555,14 @@ export default function PerfilPage() {
                             </p>
                             {exp.descricao && <p className="text-sm mt-2">{exp.descricao}</p>}
                           </div>
+                          {isEditing && (
+                            <button
+                              onClick={() => handleDeleteExperiencia(exp.id)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remover
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -467,49 +577,18 @@ export default function PerfilPage() {
           {/* Tab Cursos */}
           <TabsContent value="cursos" className="space-y-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader>
                 <div>
                   <CardTitle>Cursos e Certificações</CardTitle>
                   <CardDescription>Seus cursos e certificações</CardDescription>
                 </div>
-                {isEditing && (
-                  <Button onClick={() => setCursoDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar
-                  </Button>
-                )}
               </CardHeader>
               <CardContent>
-                {candidato?.cursos && candidato.cursos.length > 0 ? (
-                  <div className="space-y-4">
-                    {candidato.cursos.map((curso) => (
-                      <div key={curso.id} className="p-4 border rounded-lg">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-semibold">{curso.nome}</h4>
-                            <p className="text-sm text-muted-foreground">{curso.instituicao}</p>
-                            {curso.cargaHoraria && (
-                              <p className="text-sm text-muted-foreground">{curso.cargaHoraria} horas</p>
-                            )}
-                            {curso.dataConclusao && (
-                              <p className="text-sm text-muted-foreground">
-                                Concluído em {curso.dataConclusao.toLocaleDateString("pt-BR")}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">Nenhum curso cadastrado</p>
-                )}
+                <p className="text-muted-foreground text-center py-8">Nenhum curso cadastrado</p>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Dialog Adicionar Educação */}
         <Dialog open={educacaoDialogOpen} onOpenChange={setEducacaoDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -521,26 +600,28 @@ export default function PerfilPage() {
                 <Label htmlFor="instituicao">Instituição</Label>
                 <Input
                   id="instituicao"
-                  value={novaEducacao.instituicao || ""}
+                  value={novaEducacao.instituicao}
                   onChange={(e) => setNovaEducacao({ ...novaEducacao, instituicao: e.target.value })}
+                  placeholder="Nome da instituição"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="curso">Curso</Label>
                 <Input
                   id="curso"
-                  value={novaEducacao.curso || ""}
+                  value={novaEducacao.curso}
                   onChange={(e) => setNovaEducacao({ ...novaEducacao, curso: e.target.value })}
+                  placeholder="Nome do curso"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nivel">Nível</Label>
                 <Select
-                  value={novaEducacao.nivel || "Superior"}
+                  value={novaEducacao.nivel}
                   onValueChange={(v) =>
                     setNovaEducacao({
                       ...novaEducacao,
-                      nivel: v as Educacao["nivel"],
+                      nivel: v,
                     })
                   }
                 >
@@ -560,11 +641,11 @@ export default function PerfilPage() {
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select
-                  value={novaEducacao.status || "Completo"}
+                  value={novaEducacao.status}
                   onValueChange={(v) =>
                     setNovaEducacao({
                       ...novaEducacao,
-                      status: v as Educacao["status"],
+                      status: v,
                     })
                   }
                 >
@@ -602,32 +683,35 @@ export default function PerfilPage() {
                 <Label htmlFor="empresa">Empresa</Label>
                 <Input
                   id="empresa"
-                  value={novaExperiencia.empresa || ""}
+                  value={novaExperiencia.empresa}
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, empresa: e.target.value })}
+                  placeholder="Nome da empresa"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cargo">Cargo</Label>
                 <Input
                   id="cargo"
-                  value={novaExperiencia.cargo || ""}
+                  value={novaExperiencia.cargo}
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, cargo: e.target.value })}
+                  placeholder="Seu cargo"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="descricao">Descrição</Label>
                 <Textarea
                   id="descricao"
-                  value={novaExperiencia.descricao || ""}
+                  value={novaExperiencia.descricao}
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, descricao: e.target.value })}
                   rows={4}
+                  placeholder="Descreva suas responsabilidades"
                 />
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   id="atual"
-                  checked={novaExperiencia.atual || false}
+                  checked={novaExperiencia.atual}
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, atual: e.target.checked })}
                 />
                 <Label htmlFor="atual">Trabalho atual</Label>
@@ -643,54 +727,8 @@ export default function PerfilPage() {
             </div>
           </DialogContent>
         </Dialog>
-
-        {/* Dialog Adicionar Curso */}
-        <Dialog open={cursoDialogOpen} onOpenChange={setCursoDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Curso</DialogTitle>
-              <DialogDescription>Adicione um novo curso ou certificação</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="nomeCurso">Nome do Curso</Label>
-                <Input
-                  id="nomeCurso"
-                  value={novoCurso.nome || ""}
-                  onChange={(e) => setNovoCurso({ ...novoCurso, nome: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instituicaoCurso">Instituição</Label>
-                <Input
-                  id="instituicaoCurso"
-                  value={novoCurso.instituicao || ""}
-                  onChange={(e) => setNovoCurso({ ...novoCurso, instituicao: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cargaHoraria">Carga Horária</Label>
-                <Input
-                  id="cargaHoraria"
-                  type="number"
-                  value={novoCurso.cargaHoraria || ""}
-                  onChange={(e) =>
-                    setNovoCurso({ ...novoCurso, cargaHoraria: parseInt(e.target.value) || undefined })
-                  }
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={() => setCursoDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="button" onClick={handleAddCurso}>
-                  Adicionar
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </main>
-    </div>
+      </div>
+    </SidebarProvider>
   )
 }

@@ -5,6 +5,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { CandidatoSidebar } from "@/components/candidato-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -235,7 +237,9 @@ export default function AutoavaliacaoPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
+    <SidebarProvider>
+      <CandidatoSidebar />
+      <div className="min-h-screen flex flex-col bg-secondary/30 w-full">
       <DashboardHeader />
 
       <main className="flex-1 container mx-auto px-4 py-8">
@@ -496,6 +500,7 @@ export default function AutoavaliacaoPage() {
           </DialogContent>
         </Dialog>
       </main>
-    </div>
+      </div>
+    </SidebarProvider>
   )
 }

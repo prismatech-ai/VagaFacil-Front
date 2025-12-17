@@ -1,0 +1,15 @@
+habilidade,nivel,pergunta,opcao_a,opcao_b,opcao_c,opcao_d,resposta_correta
+Python,Básico,O que é uma lista em Python?,Estrutura de dados mutável,Uma string imutável,Um número inteiro,Um tipo como tupla,A
+Python,Básico,Como declarar uma função em Python?,def nome_funcao():,function nome_funcao(),func nome_funcao(),void nome_funcao(),A
+Python,Básico,Qual é o resultado de 10 // 3?,3,3.333,1,30,A
+Python,Intermediário,O que são decorators em Python?,Funções que modificam outras funções,Comentários especiais,Tipos de variáveis,Estruturas de controle,A
+Python,Intermediário,Qual a diferença entre == e is?,== compara valores e is compara identidade,São completamente iguais,is compara valores,is só funciona com strings,A
+Python,Avançado,O que é o GIL em Python?,Mutex que protege acesso a objetos,Uma biblioteca padrão,Um tipo de decorator,Método de garbage collection,A
+JavaScript,Básico,O que é JavaScript?,Linguagem de programação para web,Banco de dados,Framework CSS,Compilador,A
+JavaScript,Básico,Como declarar uma variável em JavaScript?,var/let/const nome = valor,variable nome = valor,int nome = valor,declare nome = valor,A
+JavaScript,Intermediário,O que são Promises em JavaScript?,Objetos que representam uma operação assíncrona,Funções síncronas,Loops de repetição,Tipos de dados,A
+JavaScript,Avançado,O que é o Event Loop?,Mecanismo que executa código assíncrono na ordem correta,Um tipo de array,Uma função de DOM,Um error handler,A
+React,Básico,O que é JSX?,Sintaxe que permite escrever HTML em JavaScript,Um tipo de arquivo,Uma biblioteca CSS,Uma ferramenta de build,A
+React,Básico,O que é um componente React?,Uma função ou classe que retorna JSX,Um arquivo HTML,Uma variável,Um banco de dados,A
+React,Intermediário,Como você passa dados para um componente React?,Através de props,Através de variáveis globais,Através de localStorage,Através de classes,A
+React,Avançado,O que é Context API no React?,Sistema para compartilhar estado sem prop drilling,Um hook para efeitos,Uma ferramenta de roteamento,Um método de segurança,A

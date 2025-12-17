@@ -5,29 +5,47 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { CandidatoSidebar } from "@/components/candidato-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { CheckCircle2, XCircle, Clock, Award } from "lucide-react"
-import type { Questao, ResultadoTeste, RespostaQuestao } from "@/lib/types"
-import { mockQuestoes } from "@/lib/mock-data"
-import { api } from "@/lib/api"
+import { Clock, Award } from "lucide-react"
+
+type RespostaQuestao = {
+  questaoId: number | string
+  resposta: number
+  correta: boolean
+  tempoResposta: number
+}
+
+type ResultadoTeste = {
+  score: number
+  dados_teste?: {
+    total_perguntas: number
+    acertos: number
+  }
+}
 
 export default function TestesPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const [testeEmAndamento, setTesteEmAndamento] = useState(false)
-  const [questaoAtual, setQuestaoAtual] = useState(0)
-  const [nivelAtual, setNivelAtual] = useState<"facil" | "medio" | "dificil">("facil")
+  const [questaoAtual, setQuestaoAtual] = useState<any>(null)
   const [respostas, setRespostas] = useState<RespostaQuestao[]>([])
-  const [questoes, setQuestoes] = useState<Questao[]>([])
-  const [questoesDisponiveis, setQuestoesDisponiveis] = useState<Questao[]>([])
   const [respostaSelecionada, setRespostaSelecionada] = useState<number | null>(null)
-  const [resultado, setResultado] = useState<ResultadoTeste | null>(null)
+  const [resultado, setResultado] = useState<any>(null)
   const [tempoInicio, setTempoInicio] = useState<Date | null>(null)
+  const [sessaoId, setSessaoId] = useState<string | null>(null)
+  const [loadingQuestao, setLoadingQuestao] = useState(false)
+  const [testesDisponiveis, setTestesDisponiveis] = useState<any[]>([])
+  const [habilidadeSelecionada, setHabilidadeSelecionada] = useState('Python')
+  const [nivelSelecionado, setNivelSelecionado] = useState('Básico')
+  const [questoesCarregadas, setQuestoesCarregadas] = useState<any[]>([])
+  const [indiceQuestao, setIndiceQuestao] = useState(0)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -41,22 +59,31 @@ export default function TestesPage() {
     }
 
     if (user && user.role === "candidato") {
-      loadQuestoes()
+      loadTestes()
     }
   }, [user, isLoading, router])
 
-  const loadQuestoes = async () => {
+  const loadTestes = async () => {
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      const questoesData = await api.get<Questao[]>("/testes/questoes").catch(() => {
-        console.warn("Erro ao carregar questões, usando dados mockados")
-        return mockQuestoes
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/testes`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
       })
 
-      setQuestoesDisponiveis(Array.isArray(questoesData) ? questoesData : mockQuestoes)
+      if (response.ok) {
+        const data = await response.json()
+        const testesData = Array.isArray(data) ? data : (data.testes || data.data || [])
+        setTestesDisponiveis(testesData)
+      }
     } catch (error) {
-      console.error("Erro ao carregar questões:", error)
-      setQuestoesDisponiveis(mockQuestoes)
+      console.warn("Erro ao carregar testes:", error)
+      setTestesDisponiveis([])
     }
   }
 
@@ -71,235 +98,386 @@ export default function TestesPage() {
     )
   }
 
-  const iniciarTeste = () => {
-    const questoesFacil = questoesDisponiveis.filter((q) => q.nivelDificuldade === "facil").slice(0, 3)
-    setQuestoes(questoesFacil)
-    setNivelAtual("facil")
-    setQuestaoAtual(0)
-    setRespostas([])
-    setRespostaSelecionada(null)
-    setResultado(null)
-    setTempoInicio(new Date())
-    setTesteEmAndamento(true)
+  const iniciarTeste = async () => {
+    try {
+      setLoadingQuestao(true)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert("Token não encontrado")
+        return
+      }
+
+      // Buscar TODAS as questões disponíveis (limite de 15)
+      const params = new URLSearchParams({
+        habilidade: habilidadeSelecionada,
+        nivel: nivelSelecionado,
+        limit: '15'
+      })
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/testes/questoes/filtrar?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Erro na resposta:', response.status, errorText)
+        throw new Error(`Erro ${response.status}: ${errorText}`)
+      }
+
+      const data = await response.json()
+      console.log('Resposta de questões:', data)
+      
+      // Extrair array de questões
+      let questoes: any[] = []
+      if (data?.questoes && Array.isArray(data.questoes)) {
+        questoes = data.questoes
+      } else if (Array.isArray(data)) {
+        questoes = data
+      }
+
+      console.log(`Total de questões carregadas: ${questoes.length}`)
+      
+      if (questoes.length === 0) {
+        alert(`Nenhuma questão disponível para ${habilidadeSelecionada} - ${nivelSelecionado}. Tente outro nível.`)
+        setLoadingQuestao(false)
+        return
+      }
+      
+      // Armazenar todas as questões e iniciar com a primeira
+      setQuestoesCarregadas(questoes)
+      setIndiceQuestao(0)
+      setQuestaoAtual(questoes[0])
+      setRespostas([])
+      setRespostaSelecionada(null)
+      setResultado(null)
+      setTempoInicio(new Date())
+      setTesteEmAndamento(true)
+      setLoadingQuestao(false)
+    } catch (error) {
+      console.error("Erro ao iniciar teste:", error)
+      alert(`Erro ao iniciar teste: ${error instanceof Error ? error.message : 'Desconhecido'}`)
+    } finally {
+      setLoadingQuestao(false)
+    }
   }
 
-  const proximaQuestao = () => {
+  const proximaQuestao = async () => {
     if (respostaSelecionada === null) return
 
-    const questao = questoes[questaoAtual]
-    const correta = respostaSelecionada === questao.respostaCorreta
-    const tempoResposta = tempoInicio ? Date.now() - tempoInicio.getTime() : 0
-
-    const novaResposta: RespostaQuestao = {
-      questaoId: questao.id,
-      resposta: respostaSelecionada,
-      correta,
-      tempoResposta,
-    }
-
-    const novasRespostas = [...respostas, novaResposta]
-    setRespostas(novasRespostas)
-
-    // Adaptação do nível de dificuldade
-    if (questaoAtual < questoes.length - 1) {
-      const acertos = novasRespostas.filter((r) => r.correta).length
-      const total = novasRespostas.length
-
-      if (acertos / total >= 0.7 && nivelAtual === "facil") {
-        // Subir para médio
-        const questoesMedio = questoesDisponiveis.filter((q) => q.nivelDificuldade === "medio").slice(0, 2)
-        setQuestoes([...questoes, ...questoesMedio])
-        setNivelAtual("medio")
-      } else if (acertos / total >= 0.7 && nivelAtual === "medio") {
-        // Subir para difícil
-        const questoesDificil = questoesDisponiveis.filter((q) => q.nivelDificuldade === "dificil").slice(0, 2)
-        setQuestoes([...questoes, ...questoesDificil])
-        setNivelAtual("dificil")
-      } else if (acertos / total < 0.5 && nivelAtual === "medio") {
-        // Descer para fácil
-        const questoesFacil = questoesDisponiveis.filter((q) => q.nivelDificuldade === "facil").slice(0, 2)
-        setQuestoes([...questoes, ...questoesFacil])
-        setNivelAtual("facil")
-      }
-    }
-
-    if (questaoAtual < questoes.length - 1) {
-      setQuestaoAtual(questaoAtual + 1)
-      setRespostaSelecionada(null)
-      setTempoInicio(new Date())
-    } else {
-      finalizarTeste(novasRespostas)
-    }
-  }
-
-  const finalizarTeste = async (todasRespostas: RespostaQuestao[]) => {
-    const acertos = todasRespostas.filter((r) => r.correta).length
-    const total = todasRespostas.length
-    const pontuacao = Math.round((acertos / total) * 100)
-
-    // Determinar nível final baseado na pontuação
-    let nivelFinal: "facil" | "medio" | "dificil" = "facil"
-    if (pontuacao >= 80) {
-      nivelFinal = "dificil"
-    } else if (pontuacao >= 60) {
-      nivelFinal = "medio"
-    }
-
-    const resultadoFinal: ResultadoTeste = {
-      id: Date.now().toString(),
-      testeId: "teste-dinamico",
-      candidatoId: user.id,
-      pontuacao,
-      totalQuestoes: total,
-      nivelFinal,
-      respostas: todasRespostas,
-      dataRealizacao: new Date(),
-    }
-
     try {
-      // #colocarRota - Ajuste a rota conforme seu backend
-      await api.post("/testes/resultados", resultadoFinal)
-      setResultado(resultadoFinal)
-      setTesteEmAndamento(false)
+      setLoadingQuestao(true)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert("Token não encontrado")
+        return
+      }
+
+      // Salvar resposta atual
+      const novaResposta: RespostaQuestao = {
+        questaoId: questaoAtual.id,
+        resposta: respostaSelecionada,
+        correta: false,
+        tempoResposta: tempoInicio ? Date.now() - tempoInicio.getTime() : 0,
+      }
+      
+      const novasRespostas = [...respostas, novaResposta]
+      setRespostas(novasRespostas)
+
+      // Tentar enviar resposta para o servidor
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/testes/responder`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            question_id: questaoAtual.id,
+            alternative_id: respostaSelecionada
+          })
+        })
+      } catch (e) {
+        console.log('Endpoint de resposta não disponível')
+      }
+
+      // Avançar para próxima questão localmente
+      const proximoIndice = indiceQuestao + 1
+      
+      if (proximoIndice < questoesCarregadas.length) {
+        // Há mais questões
+        console.log(`Questão ${proximoIndice + 1} de ${questoesCarregadas.length}`)
+        setIndiceQuestao(proximoIndice)
+        setQuestaoAtual(questoesCarregadas[proximoIndice])
+        setRespostaSelecionada(null)
+        setTempoInicio(new Date())
+      } else {
+        // Teste finalizado
+        console.log('Teste finalizado - todas as questões respondidas')
+        finalizarTeste()
+      }
     } catch (error) {
-      console.error("Erro ao salvar resultado do teste:", error)
-      // Mesmo com erro, mostra o resultado para o usuário
-      setResultado(resultadoFinal)
-      setTesteEmAndamento(false)
+      console.error("Erro ao responder questão:", error)
+      alert(`Erro ao responder: ${error instanceof Error ? error.message : 'Desconhecido'}`)
+    } finally {
+      setLoadingQuestao(false)
     }
   }
 
-  const questao = questoes[questaoAtual]
-  const progresso = questoes.length > 0 ? ((questaoAtual + 1) / questoes.length) * 100 : 0
+  const finalizarTeste = async () => {
+    try {
+      setLoadingQuestao(true)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert("Token não encontrado")
+        return
+      }
 
-  return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <DashboardHeader />
+      // Mostrar resultado final com as respostas
+      console.log('Finalizando teste com respostas:', respostas)
+      const totalRespostas = respostas.length
+      const acertos = respostas.filter(r => r.correta).length
+      const pontuacao = totalRespostas > 0 ? Math.round((acertos / totalRespostas) * 100) : 0
+      console.log(`Total: ${totalRespostas}, Acertos: ${acertos}, Pontuação: ${pontuacao}%`)
+      
+      const resultadoFinal: ResultadoTeste = {
+        score: pontuacao / 100,
+        dados_teste: {
+          total_perguntas: respostas.length,
+          acertos: acertos
+        }
+      }
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Testes Dinâmicos</h2>
-          <p className="text-muted-foreground">Realize testes adaptativos e melhore seu perfil profissional</p>
+      setResultado(resultadoFinal)
+      setTesteEmAndamento(false)
+      
+      // Marcar teste como concluído no localStorage
+      localStorage.setItem("testeConcluido", "true")
+    } catch (error) {
+      console.error("Erro ao finalizar teste:", error)
+      alert("Erro ao finalizar teste")
+    } finally {
+      setLoadingQuestao(false)
+    }
+  }
+
+  const cancelarTeste = () => {
+    if (confirm("Tem certeza que deseja cancelar o teste?")) {
+      setTesteEmAndamento(false)
+      setQuestaoAtual(null)
+      setRespostas([])
+      setSessaoId(null)
+      setResultado(null)
+    }
+  }
+
+  // Se não está em andamento e não tem resultado, mostrar tela inicial
+  if (!testeEmAndamento && !resultado) {
+    return (
+      <SidebarProvider>
+        <div className="flex h-screen w-full">
+          <CandidatoSidebar />
+          <div className="flex-1 flex flex-col">
+            <DashboardHeader />
+            <main className="flex-1 container mx-auto px-4 py-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Teste de Habilidades</CardTitle>
+                  <CardDescription>
+                    Avalie suas habilidades através de um teste adaptativo
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold mb-2">Como funciona:</h3>
+                      <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+                        <li>O teste é adaptativo e se ajusta ao seu nível de desempenho</li>
+                        <li>Você responderá a várias questões de diferentes dificuldades</li>
+                        <li>Acertos aumentam a dificuldade, erros podem diminuir</li>
+                        <li>O resultado final será baseado no seu desempenho geral</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border-t pt-6">
+                    <div>
+                      <Label htmlFor="habilidade" className="text-base font-semibold">Selecione a Habilidade</Label>
+                      <select
+                        id="habilidade"
+                        value={habilidadeSelecionada}
+                        onChange={(e) => setHabilidadeSelecionada(e.target.value)}
+                        className="w-full mt-2 px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      >
+                        <option value="Python">Python</option>
+                        <option value="JavaScript">JavaScript</option>
+                        <option value="Java">Java</option>
+                        <option value="C++">C++</option>
+                        <option value="SQL">SQL</option>
+                        <option value="React">React</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="nivel" className="text-base font-semibold">Selecione o Nível</Label>
+                      <select
+                        id="nivel"
+                        value={nivelSelecionado}
+                        onChange={(e) => setNivelSelecionado(e.target.value)}
+                        className="w-full mt-2 px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      >
+                        <option value="Básico">Básico</option>
+                        <option value="Intermediário">Intermediário</option>
+                        <option value="Avançado">Avançado</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <Button onClick={iniciarTeste} disabled={loadingQuestao} size="lg" className="w-full">
+                    {loadingQuestao ? "Iniciando..." : "Iniciar Teste"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </main>
+          </div>
         </div>
+      </SidebarProvider>
+    )
+  }
 
-        {!testeEmAndamento && !resultado && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Teste Dinâmico de Conhecimentos</CardTitle>
-              <CardDescription>
-                Este teste se adapta ao seu desempenho, ajustando a dificuldade das questões conforme você responde
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold">Como funciona:</h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li>O teste começa com questões de nível fácil</li>
-                  <li>Se você acertar 70% ou mais, o nível aumenta</li>
-                  <li>Se você errar muitas questões, o nível diminui</li>
-                  <li>O teste se adapta ao seu desempenho em tempo real</li>
-                </ul>
-              </div>
-              <Button onClick={iniciarTeste} className="w-full">
-                Iniciar Teste
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {testeEmAndamento && questao && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between mb-2">
-                <CardTitle>Questão {questaoAtual + 1} de {questoes.length}</CardTitle>
-                <Badge variant="outline">
-                  Nível: {nivelAtual === "facil" ? "Fácil" : nivelAtual === "medio" ? "Médio" : "Difícil"}
-                </Badge>
-              </div>
-              <Progress value={progresso} className="h-2" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">{questao.pergunta}</h3>
-                <RadioGroup value={respostaSelecionada?.toString()} onValueChange={(v) => setRespostaSelecionada(parseInt(v))}>
-                  {questao.opcoes.map((opcao, index) => (
-                    <div key={index} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
-                      <RadioGroupItem value={index.toString()} id={`opcao-${index}`} />
-                      <Label htmlFor={`opcao-${index}`} className="flex-1 cursor-pointer">
-                        {opcao}
-                      </Label>
+  // Se tem resultado, mostrar resultado final
+  if (resultado && !testeEmAndamento) {
+    const pontuacao = resultado.dados_teste?.acertos ? 
+      Math.round((resultado.dados_teste.acertos / (resultado.dados_teste.total_perguntas || 1)) * 100) : 
+      Math.round(resultado.score * 100)
+    
+    return (
+      <SidebarProvider>
+        <div className="flex h-screen w-full">
+          <CandidatoSidebar />
+          <div className="flex-1 flex flex-col">
+            <DashboardHeader />
+            <main className="flex-1 container mx-auto px-4 py-8">
+              <Card className="max-w-2xl mx-auto">
+                <CardHeader className="text-center">
+                  <div className="mb-4">
+                    <Award className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                  </div>
+                  <CardTitle className="text-2xl">Teste Concluído!</CardTitle>
+                  <CardDescription>Aqui está o seu resultado</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="text-center">
+                    <div className="text-5xl font-bold text-green-600 mb-2">
+                      {pontuacao}%
                     </div>
-                  ))}
-                </RadioGroup>
-              </div>
-              <Button onClick={proximaQuestao} disabled={respostaSelecionada === null} className="w-full">
-                {questaoAtual < questoes.length - 1 ? "Próxima Questão" : "Finalizar Teste"}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {resultado && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-center mb-4">
-                <div className="p-4 bg-primary/10 rounded-full">
-                  <Award className="h-12 w-12 text-primary" />
-                </div>
-              </div>
-              <CardTitle className="text-center">Teste Finalizado!</CardTitle>
-              <CardDescription className="text-center">Veja seus resultados abaixo</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-primary">{resultado.pontuacao}%</div>
-                  <div className="text-sm text-muted-foreground">Pontuação</div>
-                </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold">
-                    {resultado.respostas.filter((r) => r.correta).length}/{resultado.totalQuestoes}
+                    <p className="text-lg text-muted-foreground">Pontuação Final</p>
                   </div>
-                  <div className="text-sm text-muted-foreground">Acertos</div>
-                </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold">
-                    {resultado.nivelFinal === "facil" ? "Fácil" : resultado.nivelFinal === "medio" ? "Médio" : "Difícil"}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Nível Final</div>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <h3 className="font-semibold">Detalhes das Respostas:</h3>
-                {resultado.respostas.map((resposta, index) => {
-                  const questao = questoes.find((q) => q.id === resposta.questaoId)
-                  return (
-                    <div key={index} className="p-3 border rounded-lg flex items-center gap-3">
-                      {resposta.correta ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-red-500" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Questão {index + 1}</p>
-                        {questao && <p className="text-xs text-muted-foreground">{questao.pergunta}</p>}
+                  {resultado.dados_teste && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-secondary rounded-lg">
+                        <p className="text-sm text-muted-foreground">Questões Respondidas</p>
+                        <p className="text-2xl font-semibold">{resultado.dados_teste.total_perguntas}</p>
                       </div>
-                      <Badge variant={resposta.correta ? "default" : "destructive"}>
-                        {resposta.correta ? "Correta" : "Incorreta"}
-                      </Badge>
+                      <div className="p-4 bg-secondary rounded-lg">
+                        <p className="text-sm text-muted-foreground">Respostas Corretas</p>
+                        <p className="text-2xl font-semibold text-green-600">{resultado.dados_teste.acertos}</p>
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
+                  )}
 
-              <Button onClick={() => setResultado(null)} className="w-full">
-                Fazer Novo Teste
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </main>
-    </div>
+                  <Button onClick={() => router.push("/dashboard/candidato")} className="w-full">
+                    Voltar ao Dashboard
+                  </Button>
+                </CardContent>
+              </Card>
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
+    )
+  }
+
+  // Teste em andamento - mostrar questão
+  if (!questaoAtual) {
+    return (
+      <SidebarProvider>
+        <div className="flex h-screen w-full">
+          <CandidatoSidebar />
+          <div className="flex-1 flex flex-col">
+            <DashboardHeader />
+            <main className="flex-1 container mx-auto px-4 py-8 flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Carregando questão...</p>
+              </div>
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
+    )
+  }
+
+  // Mostrar questão atual
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <CandidatoSidebar />
+        <div className="flex-1 flex flex-col">
+          <DashboardHeader />
+          <main className="flex-1 container mx-auto px-4 py-8">
+            <Card className="max-w-2xl mx-auto">
+              <CardHeader>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <CardTitle>Teste de Habilidades</CardTitle>
+                    <CardDescription>Questão {respostas.length + 1}</CardDescription>
+                  </div>
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <Progress value={((respostas.length + 1) / 10) * 100} className="h-2" />
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-4">
+                    {questaoAtual?.texto_questao || questaoAtual?.pergunta || 'Carregando questão...'}
+                  </h3>
+                </div>
+
+                <RadioGroup value={respostaSelecionada?.toString()} onValueChange={(val) => setRespostaSelecionada(parseInt(val))}>
+                  <div className="space-y-3">
+                    {((questaoAtual?.alternativas || questaoAtual?.opcoes || questaoAtual?.alternatives) || []).map((opcao: any, idx: number) => {
+                      // opcao pode ser string ou objeto com {id, texto, ordem}
+                      const textoOpcao = typeof opcao === 'string' ? opcao : (opcao?.texto || opcao?.text || opcao?.titulo || JSON.stringify(opcao))
+                      return (
+                        <div key={idx} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-secondary cursor-pointer">
+                          <RadioGroupItem value={idx.toString()} id={`opcao-${idx}`} />
+                          <Label htmlFor={`opcao-${idx}`} className="cursor-pointer flex-1">
+                            {textoOpcao}
+                          </Label>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </RadioGroup>
+
+                <div className="flex gap-3 pt-4">
+                  <Button variant="outline" onClick={cancelarTeste} disabled={loadingQuestao}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={proximaQuestao} disabled={respostaSelecionada === null || loadingQuestao} className="flex-1">
+                    {loadingQuestao ? "Processando..." : "Próxima"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   )
 }

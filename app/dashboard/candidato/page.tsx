@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
+import { CandidatoSidebar } from "@/components/candidato-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +26,7 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Lock,
 } from "lucide-react"
 import type { Vaga, Candidatura } from "@/lib/types"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -40,6 +43,7 @@ export default function CandidatoDashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [mensagem, setMensagem] = useState("")
   const [loadingData, setLoadingData] = useState(true)
+  const [testesCompletos, setTestesCompletos] = useState(false)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -53,6 +57,11 @@ export default function CandidatoDashboardPage() {
     }
 
     if (user && user.role === "candidato") {
+      // Verificar status dos testes
+      const testeConcluido = localStorage.getItem("testeConcluido") === "true"
+      const autoavaliacaoConcluida = localStorage.getItem("autoavaliacaoConcluida") === "true"
+      setTestesCompletos(testeConcluido && autoavaliacaoConcluida)
+      
       loadData()
     }
   }, [user, isLoading, router])
@@ -64,7 +73,7 @@ export default function CandidatoDashboardPage() {
       setLoadingData(true)
 
       // Fetch vagas públicas
-      const vagasResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/jobs-public/`, {
+      const vagasResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/jobs/disponibles`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -100,7 +109,7 @@ export default function CandidatoDashboardPage() {
       const token = localStorage.getItem("token")
       
       if (token) {
-        const candidaturasResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/applications/my-applications`, {
+        const candidaturasResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/jobs/minhas-candidaturas`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -118,15 +127,41 @@ export default function CandidatoDashboardPage() {
         }
 
         const formattedCandidaturas: Candidatura[] = (candidaturasData || []).map((c: any) => ({
-          id: c.id,
-          vagaId: c.job_id || c.vaga_id || c.vagaId,
-          candidatoId: c.candidate_id || c.candidato_id || c.candidatoId,
-          mensagem: c.message || c.mensagem || '',
+          id: c.candidatura_id,
+          vagaId: c.vaga?.id,
+          candidatoId: user.id,
+          mensagem: c.mensagem || '',
           status: c.status || 'pendente',
-          createdAt: c.created_at ? new Date(c.created_at) : new Date(),
+          createdAt: c.data_candidatura ? new Date(c.data_candidatura) : new Date(),
         }))
 
         setCandidaturas(formattedCandidaturas)
+        
+        // Atualizar vagas com dados da resposta
+        const vagasDoEndpoint = candidaturasData.map((c: any) => ({
+          id: c.vaga.id,
+          empresaId: c.vaga.empresa_id || '',
+          empresaNome: c.vaga.empresa || 'Empresa',
+          titulo: c.vaga.titulo || '',
+          descricao: '',
+          requisitos: '',
+          tipo: c.vaga.tipo_contrato || 'CLT',
+          localizacao: c.vaga.localizacao || '',
+          salario: '',
+          status: c.vaga.status_vaga || 'aberta',
+          createdAt: c.vaga.criada_em ? new Date(c.vaga.criada_em) : new Date(),
+        }))
+
+        // Mesclar vagas existentes com as do endpoint de candidaturas
+        setVagas((prevVagas) => {
+          const vagasMap = new Map(prevVagas.map(v => [v.id, v]))
+          vagasDoEndpoint.forEach((v: any) => {
+            if (!vagasMap.has(v.id)) {
+              vagasMap.set(v.id, v)
+            }
+          })
+          return Array.from(vagasMap.values())
+        })
       } else {
         setCandidaturas([])
       }
@@ -162,6 +197,45 @@ export default function CandidatoDashboardPage() {
       (vaga.descricao || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (vaga.localizacao || '').toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const handleOpenCandidaturaDialog = async (vaga: Vaga) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/jobs/publico/${vaga.id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token || ""}`,
+        },
+      })
+
+      if (response.ok) {
+        const vagaDetalhes = await response.json()
+        console.log("Detalhes da vaga:", vagaDetalhes)
+        
+        const vagaFormatada: Vaga = {
+          id: vagaDetalhes.id,
+          empresaId: vagaDetalhes.company_id,
+          empresaNome: vagaDetalhes.company_name || 'Empresa',
+          titulo: vagaDetalhes.title || '',
+          descricao: vagaDetalhes.description || '',
+          requisitos: vagaDetalhes.requirements || '',
+          tipo: vagaDetalhes.job_type || 'CLT',
+          localizacao: vagaDetalhes.location || '',
+          salario: vagaDetalhes.salary_min && vagaDetalhes.salary_max ? `${vagaDetalhes.salary_min} - ${vagaDetalhes.salary_max} ${vagaDetalhes.salary_currency || 'BRL'}` : '',
+          status: vagaDetalhes.status,
+          createdAt: vagaDetalhes.created_at ? new Date(vagaDetalhes.created_at) : new Date(),
+        }
+        
+        setSelectedVaga(vagaFormatada)
+        setIsDialogOpen(true)
+      } else {
+        console.error("Erro ao carregar detalhes da vaga:", response.status)
+      }
+    } catch (error) {
+      console.error("Erro ao carregar detalhes da vaga:", error)
+    }
+  }
 
   const handleCandidatar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -249,29 +323,18 @@ export default function CandidatoDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <DashboardHeader />
+    <SidebarProvider>
+      <CandidatoSidebar />
+      <div className="min-h-screen flex flex-col bg-secondary/30 w-full">
+        <DashboardHeader />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="mb-8">
             <div>
               <h2 className="text-3xl font-bold mb-2">Painel do Candidato</h2>
               <p className="text-muted-foreground">Encontre vagas e acompanhe suas candidaturas</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/candidato/perfil">Meu Perfil</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/candidato/autoavaliacao">Autoavaliação</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/candidato/testes">Testes</Link>
-              </Button>
-            </div>
           </div>
-        </div>
 
         {/* Cards de Estatísticas */}
         <div className="grid gap-4 md:grid-cols-3 mb-8">
@@ -365,32 +428,49 @@ export default function CandidatoDashboardPage() {
                             <CardDescription className="flex flex-wrap gap-3 text-sm">
                               <span className="flex items-center gap-1">
                                 <Building2 className="h-3 w-3" />
-                                {(vaga as any).empresaNome || 'Empresa'}
+                                {vaga.empresaNome || 'Empresa'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
                                 {vaga.localizacao}
                               </span>
-                              {(vaga as any).salario && (
+                              {vaga.salario && (
                                 <span className="flex items-center gap-1">
                                   <DollarSign className="h-3 w-3" />
-                                  {(vaga as any).salario}
+                                  {vaga.salario}
                                 </span>
                               )}
                             </CardDescription>
                           </div>
-                          <Button
-                            onClick={() => {
-                              setSelectedVaga(vaga)
-                              setIsDialogOpen(true)
-                            }}
-                          >
-                            <Send className="mr-2 h-4 w-4" />
-                            Candidatar
-                          </Button>
+                          {!testesCompletos ? (
+                            <Button disabled className="opacity-50 cursor-not-allowed">
+                              <Lock className="mr-2 h-4 w-4" />
+                              Testes Obrigatórios
+                            </Button>
+                          ) : (
+                            <Button onClick={() => handleOpenCandidaturaDialog(vaga)}>
+                              <Send className="mr-2 h-4 w-4" />
+                              Candidatar
+                            </Button>
+                          )}
                         </div>
                       </CardHeader>
                       <CardContent>
+                        {!testesCompletos && (
+                          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-sm text-amber-800">
+                              <strong>⚠️ Atenção:</strong> Você precisa completar todos os testes no seu onboarding para poder se candidatar a vagas. 
+                              <Button 
+                                variant="link" 
+                                size="sm" 
+                                className="p-0 h-auto font-semibold text-amber-900 hover:text-amber-950"
+                                onClick={() => router.push("/dashboard/candidato/onboarding")}
+                              >
+                                Clique aqui para completar.
+                              </Button>
+                            </p>
+                          </div>
+                        )}
                         <div className="space-y-3">
                           <div>
                             <p className="text-sm font-medium mb-1">Descrição:</p>
@@ -443,7 +523,7 @@ export default function CandidatoDashboardPage() {
                             <CardDescription className="flex flex-wrap gap-3 text-sm">
                               <span className="flex items-center gap-1">
                                 <Building2 className="h-3 w-3" />
-                                {(vaga as any)?.empresaNome || 'Empresa'}
+                                {vaga?.empresaNome || 'Empresa'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
@@ -503,5 +583,6 @@ export default function CandidatoDashboardPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </SidebarProvider>
   )
 }

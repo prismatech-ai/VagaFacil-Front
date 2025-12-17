@@ -4,13 +4,9 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import {
   LayoutDashboard,
-  Briefcase,
-  Users,
-  TrendingUp,
-  FileText,
-  Settings,
   User,
-  Shield,
+  Zap,
+  FileText,
 } from "lucide-react"
 import {
   Sidebar,
@@ -29,47 +25,32 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
-    href: "/dashboard/empresa",
+    href: "/dashboard/candidato",
   },
   {
-    title: "Gerenciar Vagas",
-    icon: Briefcase,
-    href: "/dashboard/empresa/jobs",
-  },
-  {
-    title: "Pipeline",
-    icon: TrendingUp,
-    href: "/dashboard/empresa/pipeline",
-  },
-  {
-    title: "Banco de Talentos",
-    icon: Users,
-    href: "/dashboard/empresa/banco-talentos",
-  },
-  {
-    title: "Perfil da Empresa",
+    title: "Meu Perfil",
     icon: User,
-    href: "/dashboard/empresa/perfil",
+    href: "/dashboard/candidato/perfil",
   },
   {
-    title: "Gestão de Usuários",
-    icon: Shield,
-    href: "/dashboard/empresa/usuarios",
+    title: "Autoavaliação",
+    icon: Zap,
+    href: "/dashboard/candidato/autoavaliacao",
   },
   {
-    title: "Configurações",
-    icon: Settings,
-    href: "/dashboard/empresa/configuracoes",
+    title: "Testes",
+    icon: FileText,
+    href: "/dashboard/candidato/testes",
   },
 ]
 
-export function EmpresaSidebar() {
+export function CandidatoSidebar() {
   const pathname = usePathname()
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <Link href="/dashboard/empresa" className="flex items-center gap-2">
+        <Link href="/dashboard/candidato" className="flex items-center gap-2">
           <Logo width={120} />
         </Link>
       </SidebarHeader>
