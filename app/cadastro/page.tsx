@@ -59,14 +59,6 @@ export default function CadastroPage() {
   const [rg, setRg] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
   const [genero, setGenero] = useState("");
-  const [estadoCivil, setEstadoCivil] = useState("");
-  const [cep, setCep] = useState("");
-  const [logradouro, setLogradouro] = useState("");
-  const [numero, setNumero] = useState("");
-  const [complemento, setComplemento] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [cidade, setCidade] = useState("");
-  const [estado, setEstado] = useState("");
 
   useEffect(() => {
     if (tipoParam === "empresa" || tipoParam === "candidato") {
@@ -210,20 +202,6 @@ export default function CadastroPage() {
         if (rg) registerData.rg = rg;
         if (dataNascimento) registerData.dataNascimento = dataNascimento;
         if (genero) registerData.genero = genero;
-        if (estadoCivil) registerData.estadoCivil = estadoCivil;
-
-        // ENDEREÇO (somente se algo for preenchido)
-        if (cep || logradouro || numero || bairro || cidade || estado) {
-          registerData.endereco = {
-            cep: cep || undefined,
-            logradouro: logradouro || undefined,
-            numero: numero || undefined,
-            complemento: complemento || undefined,
-            bairro: bairro || undefined,
-            cidade: cidade || undefined,
-            estado: estado || undefined,
-          };
-        }
       }
 
       console.log("ENVIADO PARA BACKEND (CANDIDATO):", registerData);
@@ -404,109 +382,6 @@ export default function CadastroPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Estado Civil</Label>
-                    <Select value={estadoCivil} onValueChange={setEstadoCivil}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Solteiro">Solteiro</SelectItem>
-                        <SelectItem value="Casado">Casado</SelectItem>
-                        <SelectItem value="Divorciado">Divorciado</SelectItem>
-                        <SelectItem value="Viúvo">Viúvo</SelectItem>
-                        <SelectItem value="União Estável">União Estável</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* ENDEREÇO */}
-                  <div className="space-y-4 pt-2 border-t">
-                    <h4 className="font-semibold text-sm">Endereço (Opcional)</h4>
-
-                    <div className="space-y-2">
-                      <Label>CEP</Label>
-                      <Input placeholder="00000-000" value={cep} onChange={(e) => setCep(e.target.value)} />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Logradouro</Label>
-                      <Input
-                        value={logradouro}
-                        onChange={(e) => setLogradouro(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Número</Label>
-                      <Input
-                        value={numero}
-                        onChange={(e) => setNumero(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Complemento</Label>
-                      <Input
-                        value={complemento}
-                        onChange={(e) => setComplemento(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Bairro</Label>
-                      <Input
-                        value={bairro}
-                        onChange={(e) => setBairro(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Cidade</Label>
-                      <Input
-                        value={cidade}
-                        onChange={(e) => setCidade(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Estado</Label>
-                      <Select value={estado} onValueChange={setEstado}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o estado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="AC">Acre</SelectItem>
-                          <SelectItem value="AL">Alagoas</SelectItem>
-                          <SelectItem value="AP">Amapá</SelectItem>
-                          <SelectItem value="AM">Amazonas</SelectItem>
-                          <SelectItem value="BA">Bahia</SelectItem>
-                          <SelectItem value="CE">Ceará</SelectItem>
-                          <SelectItem value="DF">Distrito Federal</SelectItem>
-                          <SelectItem value="ES">Espírito Santo</SelectItem>
-                          <SelectItem value="GO">Goiás</SelectItem>
-                          <SelectItem value="MA">Maranhão</SelectItem>
-                          <SelectItem value="MT">Mato Grosso</SelectItem>
-                          <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
-                          <SelectItem value="MG">Minas Gerais</SelectItem>
-                          <SelectItem value="PA">Pará</SelectItem>
-                          <SelectItem value="PB">Paraíba</SelectItem>
-                          <SelectItem value="PR">Paraná</SelectItem>
-                          <SelectItem value="PE">Pernambuco</SelectItem>
-                          <SelectItem value="PI">Piauí</SelectItem>
-                          <SelectItem value="RJ">Rio de Janeiro</SelectItem>
-                          <SelectItem value="RN">Rio Grande do Norte</SelectItem>
-                          <SelectItem value="RS">Rio Grande do Sul</SelectItem>
-                          <SelectItem value="RO">Rondônia</SelectItem>
-                          <SelectItem value="RR">Roraima</SelectItem>
-                          <SelectItem value="SC">Santa Catarina</SelectItem>
-                          <SelectItem value="SP">São Paulo</SelectItem>
-                          <SelectItem value="SE">Sergipe</SelectItem>
-                          <SelectItem value="TO">Tocantins</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
                 </TabsContent>
 
                 {/* SENHA */}

@@ -62,6 +62,10 @@ export default function OnboardingPage() {
     phone: "",
     cidade: "",
     estado: "",
+    cep: "",
+    logradouro: "",
+    numero: "",
+    bairro: "",
     is_pcd: false,
     tipo_pcd: undefined,
     necessidades_adaptacao: "",
@@ -110,18 +114,11 @@ export default function OnboardingPage() {
   useEffect(() => {
     carregarProgresso()
     carregarTestesDisponiveis()
-    // Restaurar status de testes do localStorage
-    const testeCompleto = localStorage.getItem("testeConcluido") === "true"
-    const autoavaliacaoCompleta = localStorage.getItem("autoavaliacaoConcluida") === "true"
-    
-    if (testeCompleto) setTesteConcluido(true)
-    if (autoavaliacaoCompleta) setAutoavaliacaoConcluida(true)
   }, [])
 
   // Salvar status de testes no localStorage
   useEffect(() => {
-    localStorage.setItem("testeConcluido", String(testeConcluido))
-    localStorage.setItem("autoavaliacaoConcluida", String(autoavaliacaoConcluida))
+    // Status é carregado do backend, não precisa salvar localmente
   }, [testeConcluido, autoavaliacaoConcluida])
 
   const carregarTestesDisponiveis = async () => {
@@ -131,15 +128,46 @@ export default function OnboardingPage() {
 
   const carregarProgresso = async () => {
     try {
-      const prog = await onboardingApi.obterProgresso()
-      setProgresso(prog)
+      const token = localStorage.getItem('token')
+      if (!token) return
 
-      // Se já completou, redirecionar
-      if (prog.onboarding_completo) {
-        router.push("/dashboard/candidato")
+      // Carregar progresso real do backend
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/progresso`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const progressoData = await response.json()
+        const progresso: OnboardingProgresso = {
+          percentual_completude: progressoData.percentual_completude || 0,
+          dados_pessoais_completo: progressoData.dados_pessoais_completo || false,
+          dados_profissionais_completo: progressoData.dados_profissionais_completo || false,
+          teste_habilidades_completo: progressoData.teste_habilidades_completo || false,
+          onboarding_completo: progressoData.onboarding_completo || false,
+          etapas_completas: {
+            perfil_basico: false,
+            dados_pessoais: progressoData.dados_pessoais_completo || false,
+            dados_profissionais: progressoData.dados_profissionais_completo || false,
+            teste_habilidades: progressoData.teste_habilidades_completo || false,
+          },
+        }
+        setProgresso(progresso)
+        
+        // Atualizar status real dos testes
+        setTesteConcluido(progressoData.teste_habilidades_completo)
+        setAutoavaliacaoConcluida(false)
+
+        // Se já completou, redirecionar
+        if (progressoData.onboarding_completo) {
+          router.push("/dashboard/candidato")
+        }
       }
     } catch (err) {
-      // API não implementada ainda - silenciar erro
+      console.error("Erro ao carregar progresso:", err)
     }
   }
 
@@ -170,14 +198,8 @@ export default function OnboardingPage() {
         return
       }
 
-      // Marcar o teste como concluído
-      setTesteConcluido(true)
-      console.log("Teste marcado como concluído")
-      
-      toast({
-        title: "Teste concluído",
-        description: "Complete também a autoavaliação para finalizar seu onboarding",
-      })
+      // Redirecionar para a página de testes para fazer o teste de verdade
+      router.push("/dashboard/candidato/testes")
     } catch (err) {
       toast({
         variant: "destructive",
@@ -324,11 +346,11 @@ export default function OnboardingPage() {
     try {
       if (currentStep === 1) {
         // Validar e salvar dados pessoais
-        if (!dadosPessoais.phone || !dadosPessoais.cidade || !dadosPessoais.estado) {
+        if (!dadosPessoais.phone || !dadosPessoais.cidade || !dadosPessoais.estado || !dadosPessoais.cep || !dadosPessoais.logradouro || !dadosPessoais.numero || !dadosPessoais.bairro) {
           toast({
             variant: "destructive",
             title: "Campos obrigatórios",
-            description: "Por favor, preencha telefone, cidade e estado",
+            description: "Por favor, preencha todos os campos obrigatórios (telefone, cidade, estado, CEP, logradouro, número e bairro)",
           })
           setLoading(false)
           return
@@ -337,21 +359,21 @@ export default function OnboardingPage() {
         // Construir payload com todos os dados
         try {
           const payload = {
-            full_name: user?.nome || "",
-            email: user?.email || "",
             phone: dadosPessoais.phone,
+            rg: "",
+            birth_date: "",
+            genero: "",
+            estado_civil: "",
+            cep: dadosPessoais.cep,
+            logradouro: dadosPessoais.logradouro,
+            numero: dadosPessoais.numero,
+            complemento: "",
+            bairro: dadosPessoais.bairro,
             cidade: dadosPessoais.cidade,
             estado: dadosPessoais.estado,
             is_pcd: dadosPessoais.is_pcd,
             tipo_pcd: dadosPessoais.tipo_pcd || null,
             necessidades_adaptacao: dadosPessoais.necessidades_adaptacao || null,
-            experiencia_profissional: null,
-            formacao_escolaridade: null,
-            habilidades: [],
-            teste_habilidades_completado: false,
-            score_teste_habilidades: 0,
-            percentual_completude: 25,
-            onboarding_completo: false,
           }
 
           const response = await fetch("/api/v1/candidates/onboarding/dados-pessoais", {
@@ -389,60 +411,66 @@ export default function OnboardingPage() {
 
         // Construir payload completo com todos os dados
         try {
-          const payload = {
-            full_name: user?.nome || "",
-            email: user?.email || "",
-            phone: dadosPessoais.phone,
-            cidade: dadosPessoais.cidade,
-            estado: dadosPessoais.estado,
-            is_pcd: dadosPessoais.is_pcd,
-            tipo_pcd: dadosPessoais.tipo_pcd || null,
-            necessidades_adaptacao: dadosPessoais.necessidades_adaptacao || null,
-            experiencia_profissional: dadosProfissionais.experiencia_profissional,
-            formacao_escolaridade: dadosProfissionais.formacao_escolaridade,
-            habilidades: dadosProfissionais.habilidades,
-            teste_habilidades_completado: false,
-            score_teste_habilidades: 0,
-            percentual_completude: 50,
-            onboarding_completo: false,
+          const token = localStorage.getItem('token')
+          
+          // Validar e formatar habilidades
+          const habilidadesFormatadas = (dadosProfissionais.habilidades || []).map((h: any) => ({
+            habilidade: String(h.habilidade || ""),
+            nivel: Number(h.nivel) as 1 | 2 | 3 | 4 | 5,
+            anos_experiencia: Number(h.anos_experiencia || 0)
+          }))
+          
+          const dadosProfissionaisPara = {
+            bio: "",
+            linkedin_url: "",
+            portfolio_url: "",
+            experiencia_profissional: dadosProfissionais.experiencia_profissional || "",
+            formacao_escolaridade: dadosProfissionais.formacao_escolaridade || "",
+            habilidades: habilidadesFormatadas,
           }
 
-          // Enviar arquivo de currículo junto se houver
+          console.log("Onboarding - Enviando dados profissionais:", dadosProfissionaisPara)
+
+          // Sempre enviar como FormData para consistência
+          const formData = new FormData()
+          formData.append("dados", JSON.stringify(dadosProfissionaisPara))
+          
+          // Enviar arquivo de currículo se houver
           if (curriculoFile) {
-            const formData = new FormData()
-            Object.entries(payload).forEach(([key, value]) => {
-              if (key === "habilidades") {
-                formData.append(key, JSON.stringify(value))
-              } else {
-                formData.append(key, String(value ?? ""))
-              }
-            })
             formData.append("curriculo", curriculoFile)
+          }
 
-            const response = await fetch("/api/v1/candidates/onboarding/dados-profissionais", {
-              method: "POST",
-              body: formData,
-            })
+          console.log("FormData enviado (onboarding/step2):")
+          console.log("  - dados:", JSON.stringify(dadosProfissionaisPara))
+          console.log("  - habilidades no dados:", habilidadesFormatadas)
+          if (curriculoFile) console.log("  - curriculo:", curriculoFile.name, `(${(curriculoFile.size / 1024 / 1024).toFixed(2)}MB)`)
+          console.log("  - URL:", `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`)
+          
+          // Log completo do FormData
+          console.log("Conteúdo completo do FormData:")
+          for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}:`, typeof value === 'string' ? value : value.name)
+          }
 
-            if (!response.ok) {
-              console.warn("Dados profissionais não sincronizados com o backend")
-            }
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`, {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData,
+          })
+
+          console.log("Resposta do onboarding step2:", response.status)
+
+          if (!response.ok) {
+            const errorText = await response.text()
+            console.warn("❌ Erro ao sincronizar dados profissionais:", response.status, errorText)
           } else {
-            // Enviar como JSON
-            const response = await fetch("/api/v1/candidates/onboarding/dados-profissionais", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(payload),
-            })
-
-            if (!response.ok) {
-              console.warn("Dados profissionais não sincronizados com o backend")
-            }
+            const responseData = await response.json()
+            console.log("✅ Dados profissionais salvos:", responseData)
           }
         } catch (syncErr) {
-          // API não implementada ainda - silenciar erro
+          console.error("❌ Erro ao sincronizar:", syncErr)
         }
 
         setCurrentStep(3)
@@ -542,6 +570,46 @@ export default function OnboardingPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cep">CEP *</Label>
+                    <Input
+                      id="cep"
+                      placeholder="00000-000"
+                      value={dadosPessoais.cep || ""}
+                      onChange={(e) => setDadosPessoais({ ...dadosPessoais, cep: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="logradouro">Logradouro (Rua, Avenida, etc.) *</Label>
+                    <Input
+                      id="logradouro"
+                      placeholder="Rua das Flores"
+                      value={dadosPessoais.logradouro || ""}
+                      onChange={(e) => setDadosPessoais({ ...dadosPessoais, logradouro: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="numero">Número *</Label>
+                    <Input
+                      id="numero"
+                      placeholder="123"
+                      value={dadosPessoais.numero || ""}
+                      onChange={(e) => setDadosPessoais({ ...dadosPessoais, numero: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bairro">Bairro *</Label>
+                    <Input
+                      id="bairro"
+                      placeholder="Centro"
+                      value={dadosPessoais.bairro || ""}
+                      onChange={(e) => setDadosPessoais({ ...dadosPessoais, bairro: e.target.value })}
+                    />
                   </div>
                 </div>
 

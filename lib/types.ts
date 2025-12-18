@@ -21,31 +21,49 @@ export type Empresa = User & {
 
 export type Candidato = User & {
   role: "candidato"
-  curriculo?: string
+  id?: number
+  full_name?: string
+  cpf?: string
+  phone?: string
+  rg?: string
+  birth_date?: string
+  genero?: string
+  estado_civil?: string
+  cep?: string
+  logradouro?: string
+  numero?: string
+  complemento?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
+  location?: string
+  is_pcd?: boolean
+  tipo_pcd?: "Física" | "Auditiva" | "Visual" | "Intelectual" | "Múltipla" | "Psicossocial"
+  necessidades_adaptacao?: string
+  bio?: string
+  linkedin_url?: string
+  portfolio_url?: string
+  resume_url?: string
+  experiencia_profissional?: string
+  formacao_escolaridade?: string
+  formacoes_academicas?: Educacao[]
   habilidades?: Habilidade[]
-  anosExperiencia?: number
-  nivelDesejado?: string
+  autoavaliacao_habilidades?: string
+  teste_habilidades_completado?: boolean
+  score_teste_habilidades?: number
+  dados_teste_habilidades?: Record<string, unknown>
+  percentual_completude?: number
+  onboarding_completo?: boolean
+  curriculo?: string
   educacao?: Educacao[]
   experiencias?: Experiencia[]
+  anosExperiencia?: number
+  nivelDesejado?: string
   autoavaliacao?: {
     nivel: number
     habilidades: Record<string, number>
   }
   testesRealizados?: string[]
-  // Onboarding
-  phone?: string
-  cidade?: string
-  estado?: string
-  is_pcd?: boolean
-  tipo_pcd?: "Física" | "Auditiva" | "Visual" | "Intelectual" | "Múltipla" | "Psicossocial"
-  necessidades_adaptacao?: string
-  experiencia_profissional?: string
-  formacao_escolaridade?: string
-  teste_habilidades_completado?: boolean
-  score_teste_habilidades?: number
-  percentual_completude?: number
-  onboarding_completo?: boolean
-  full_name?: string
   created_at?: Date
   updated_at?: Date
 }
@@ -177,6 +195,10 @@ export type DadosPessoais = {
   phone?: string
   cidade?: string
   estado?: string
+  cep?: string
+  logradouro?: string
+  numero?: string
+  bairro?: string
   is_pcd?: boolean
   tipo_pcd?: "Física" | "Auditiva" | "Visual" | "Intelectual" | "Múltipla" | "Psicossocial"
   necessidades_adaptacao?: string
