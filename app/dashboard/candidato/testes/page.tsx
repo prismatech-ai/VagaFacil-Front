@@ -36,14 +36,13 @@ export default function TestesPage() {
   const [testeEmAndamento, setTesteEmAndamento] = useState(false)
   const [questaoAtual, setQuestaoAtual] = useState<any>(null)
   const [respostas, setRespostas] = useState<RespostaQuestao[]>([])
-  const [respostaSelecionada, setRespostaSelecionada] = useState<number | null>(null)
+  const [respostaSelecionada, setRespostaSelecionada] = useState<string>("")
   const [resultado, setResultado] = useState<any>(null)
   const [tempoInicio, setTempoInicio] = useState<Date | null>(null)
   const [sessaoId, setSessaoId] = useState<string | null>(null)
   const [loadingQuestao, setLoadingQuestao] = useState(false)
   const [testesDisponiveis, setTestesDisponiveis] = useState<any[]>([])
   const [habilidadeSelecionada, setHabilidadeSelecionada] = useState('Python')
-  const [nivelSelecionado, setNivelSelecionado] = useState('Básico')
   const [questoesCarregadas, setQuestoesCarregadas] = useState<any[]>([])
   const [indiceQuestao, setIndiceQuestao] = useState(0)
 
@@ -110,7 +109,6 @@ export default function TestesPage() {
       // Buscar TODAS as questões disponíveis (limite de 15)
       const params = new URLSearchParams({
         habilidade: habilidadeSelecionada,
-        nivel: nivelSelecionado,
         limit: '15'
       })
 
@@ -142,7 +140,7 @@ export default function TestesPage() {
       console.log(`Total de questões carregadas: ${questoes.length}`)
       
       if (questoes.length === 0) {
-        alert(`Nenhuma questão disponível para ${habilidadeSelecionada} - ${nivelSelecionado}. Tente outro nível.`)
+        alert(`Nenhuma questão disponível para ${habilidadeSelecionada}. Tente outra habilidade.`)
         setLoadingQuestao(false)
         return
       }
@@ -152,7 +150,7 @@ export default function TestesPage() {
       setIndiceQuestao(0)
       setQuestaoAtual(questoes[0])
       setRespostas([])
-      setRespostaSelecionada(null)
+      setRespostaSelecionada("")
       setResultado(null)
       setTempoInicio(new Date())
       setTesteEmAndamento(true)
@@ -166,7 +164,7 @@ export default function TestesPage() {
   }
 
   const proximaQuestao = async () => {
-    if (respostaSelecionada === null) return
+    if (respostaSelecionada === "") return
 
     try {
       setLoadingQuestao(true)
@@ -177,10 +175,13 @@ export default function TestesPage() {
       }
 
       // Salvar resposta atual
+      const respostaIndex = parseInt(respostaSelecionada)
+      const ehCorreta = respostaIndex === questaoAtual.respostaCorreta
+      
       const novaResposta: RespostaQuestao = {
         questaoId: questaoAtual.id,
-        resposta: respostaSelecionada,
-        correta: false,
+        resposta: respostaIndex,
+        correta: ehCorreta,
         tempoResposta: tempoInicio ? Date.now() - tempoInicio.getTime() : 0,
       }
       
@@ -189,7 +190,7 @@ export default function TestesPage() {
 
       // Tentar enviar resposta para o servidor
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/testes/responder`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/teste-habilidades`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -197,7 +198,7 @@ export default function TestesPage() {
           },
           body: JSON.stringify({
             question_id: questaoAtual.id,
-            alternative_id: respostaSelecionada
+            alternative_id: parseInt(respostaSelecionada)
           })
         })
       } catch (e) {
@@ -212,7 +213,7 @@ export default function TestesPage() {
         console.log(`Questão ${proximoIndice + 1} de ${questoesCarregadas.length}`)
         setIndiceQuestao(proximoIndice)
         setQuestaoAtual(questoesCarregadas[proximoIndice])
-        setRespostaSelecionada(null)
+        setRespostaSelecionada("")
         setTempoInicio(new Date())
       } else {
         // Teste finalizado
@@ -318,20 +319,6 @@ export default function TestesPage() {
                         <option value="C++">C++</option>
                         <option value="SQL">SQL</option>
                         <option value="React">React</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="nivel" className="text-base font-semibold">Selecione o Nível</Label>
-                      <select
-                        id="nivel"
-                        value={nivelSelecionado}
-                        onChange={(e) => setNivelSelecionado(e.target.value)}
-                        className="w-full mt-2 px-3 py-2 border border-input rounded-md bg-background text-sm"
-                      >
-                        <option value="Básico">Básico</option>
-                        <option value="Intermediário">Intermediário</option>
-                        <option value="Avançado">Avançado</option>
                       </select>
                     </div>
                   </div>
@@ -448,7 +435,7 @@ export default function TestesPage() {
                   </h3>
                 </div>
 
-                <RadioGroup value={respostaSelecionada?.toString()} onValueChange={(val) => setRespostaSelecionada(parseInt(val))}>
+                <RadioGroup value={respostaSelecionada} onValueChange={setRespostaSelecionada}>
                   <div className="space-y-3">
                     {((questaoAtual?.alternativas || questaoAtual?.opcoes || questaoAtual?.alternatives) || []).map((opcao: any, idx: number) => {
                       // opcao pode ser string ou objeto com {id, texto, ordem}

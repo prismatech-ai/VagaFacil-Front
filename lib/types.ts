@@ -1,3 +1,15 @@
+// Enums e tipos PCD
+export const TIPOS_PCD = [
+  "Física",
+  "Auditiva",
+  "Visual",
+  "Intelectual",
+  "Múltipla",
+  "Psicossocial"
+] as const
+
+export type TipoPCD = typeof TIPOS_PCD[number]
+
 export type User = {
   id: string
   email: string
@@ -88,8 +100,8 @@ export type Experiencia = {
   id: string
   cargo: string
   empresa: string
-  dataInicio: Date
-  dataFim?: Date
+  dataInicio: Date | string
+  dataFim?: Date | string | null
   atual: boolean
   descricao?: string
 }

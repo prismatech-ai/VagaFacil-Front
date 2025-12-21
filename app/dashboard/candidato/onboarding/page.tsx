@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
-import type { OnboardingProgresso, DadosPessoais, DadosProfissionais, TesteHabilidades, Habilidade } from "@/lib/types"
+import type { OnboardingProgresso, DadosPessoais, DadosProfissionais, TesteHabilidades } from "@/lib/types"
 import { onboardingApi } from "@/lib/onboarding-api"
 import testesApi from "@/lib/testes-api"
 
@@ -75,7 +75,6 @@ export default function OnboardingPage() {
   const [dadosProfissionais, setDadosProfissionais] = useState<DadosProfissionais>({
     experiencia_profissional: "",
     formacao_escolaridade: "",
-    habilidades: [],
   })
 
   // Teste (Step 3)
@@ -84,17 +83,11 @@ export default function OnboardingPage() {
     dados_teste: undefined,
   })
 
-  // Formulário de habilidades
-  const [habilidadeInput, setHabilidadeInput] = useState("")
-  const [nivelHabilidade, setNivelHabilidade] = useState<1 | 2 | 3 | 4 | 5>(3)
-  const [anosExperiencia, setAnosExperiencia] = useState("")
-
   // Arquivo de currículo
   const [curriculoFile, setCurriculoFile] = useState<File | null>(null)
 
-  // Rastreamento de conclusão de teste e autoavaliação
+  // Rastreamento de conclusão de teste
   const [testeConcluido, setTesteConcluido] = useState(false)
-  const [autoavaliacaoConcluida, setAutoavaliacaoConcluida] = useState(false)
 
   // Testes disponíveis
   const [testesDisponiveis, setTestesDisponiveis] = useState<any[]>([])
@@ -119,7 +112,7 @@ export default function OnboardingPage() {
   // Salvar status de testes no localStorage
   useEffect(() => {
     // Status é carregado do backend, não precisa salvar localmente
-  }, [testeConcluido, autoavaliacaoConcluida])
+  }, [testeConcluido])
 
   const carregarTestesDisponiveis = async () => {
     const testes = await testesApi.listarTestes()
@@ -159,7 +152,6 @@ export default function OnboardingPage() {
         
         // Atualizar status real dos testes
         setTesteConcluido(progressoData.teste_habilidades_completo)
-        setAutoavaliacaoConcluida(false)
 
         // Se já completou, redirecionar
         if (progressoData.onboarding_completo) {
@@ -209,37 +201,6 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleFazerAutoavaliacao = async () => {
-    try {
-      // Buscar o primeiro teste de autoavaliação disponível
-      const testeAutoavaliacao = testesDisponiveis.find(t => t.tipo === "autoavaliacao")
-      
-      if (!testeAutoavaliacao) {
-        toast({
-          variant: "destructive",
-          title: "Autoavaliação não disponível",
-          description: "Nenhuma autoavaliação foi publicada ainda",
-        })
-        return
-      }
-
-      // Marcar a autoavaliação como concluída
-      setAutoavaliacaoConcluida(true)
-      console.log("Autoavaliação marcada como concluída")
-      
-      toast({
-        title: "Autoavaliação concluída",
-        description: "Você está pronto para finalizar seu onboarding",
-      })
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Erro ao processar a autoavaliação",
-      })
-    }
-  }
-
   const handleFinalizarAgora = async () => {
     setMostrarDialogFinalizacao(false)
     setLoading(true)
@@ -285,32 +246,6 @@ export default function OnboardingPage() {
   }
 
   const progress = (currentStep / TOTAL_STEPS) * 100
-
-  const addHabilidade = () => {
-    if (!habilidadeInput.trim()) return
-
-    const novaHabilidade: Habilidade = {
-      habilidade: habilidadeInput.trim(),
-      nivel: nivelHabilidade,
-      anos_experiencia: anosExperiencia ? parseInt(anosExperiencia) : undefined,
-    }
-
-    setDadosProfissionais({
-      ...dadosProfissionais,
-      habilidades: [...(dadosProfissionais.habilidades || []), novaHabilidade],
-    })
-
-    setHabilidadeInput("")
-    setNivelHabilidade(3)
-    setAnosExperiencia("")
-  }
-
-  const removeHabilidade = (index: number) => {
-    setDadosProfissionais({
-      ...dadosProfissionais,
-      habilidades: dadosProfissionais.habilidades?.filter((_, i) => i !== index) || [],
-    })
-  }
 
   const handleCurriculoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -396,14 +331,12 @@ export default function OnboardingPage() {
         // Validar e salvar dados profissionais
         if (
           !dadosProfissionais.experiencia_profissional ||
-          !dadosProfissionais.formacao_escolaridade ||
-          !dadosProfissionais.habilidades ||
-          dadosProfissionais.habilidades.length === 0
+          !dadosProfissionais.formacao_escolaridade
         ) {
           toast({
             variant: "destructive",
             title: "Campos obrigatórios",
-            description: "Por favor, preencha experiência, formação e adicione pelo menos uma habilidade",
+            description: "Por favor, preencha experiência e formação",
           })
           setLoading(false)
           return
@@ -770,99 +703,7 @@ export default function OnboardingPage() {
                     </div>
                   </div>
 
-                  {/* Adicionar Habilidades */}
-                  <div className="border-t pt-4 space-y-4">
-                    <h4 className="font-semibold text-sm">Habilidades *</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Adicione suas habilidades técnicas e profissionais com nível de experiência (1-5)
-                    </p>
 
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <div className="md:col-span-1">
-                          <Label htmlFor="habilidade" className="text-xs">
-                            Habilidade
-                          </Label>
-                          <Input
-                            id="habilidade"
-                            placeholder="Ex: Python, React, SQL"
-                            value={habilidadeInput}
-                            onChange={(e) => setHabilidadeInput(e.target.value)}
-                            onKeyPress={(e) => e.key === "Enter" && addHabilidade()}
-                          />
-                        </div>
-
-                        <div className="md:col-span-1">
-                          <Label htmlFor="nivel" className="text-xs">
-                            Nível (1-5)
-                          </Label>
-                          <Select value={nivelHabilidade.toString()} onValueChange={(value) => setNivelHabilidade(parseInt(value) as 1 | 2 | 3 | 4 | 5)}>
-                            <SelectTrigger id="nivel">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1 - Iniciante</SelectItem>
-                              <SelectItem value="2">2 - Básico</SelectItem>
-                              <SelectItem value="3">3 - Intermediário</SelectItem>
-                              <SelectItem value="4">4 - Avançado</SelectItem>
-                              <SelectItem value="5">5 - Especialista</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="md:col-span-1">
-                          <Label htmlFor="anos" className="text-xs">
-                            Anos (opcional)
-                          </Label>
-                          <Input
-                            id="anos"
-                            type="number"
-                            min="0"
-                            max="50"
-                            placeholder="0"
-                            value={anosExperiencia}
-                            onChange={(e) => setAnosExperiencia(e.target.value)}
-                            onKeyPress={(e) => e.key === "Enter" && addHabilidade()}
-                          />
-                        </div>
-                      </div>
-
-                      <Button type="button" onClick={addHabilidade} variant="secondary" className="w-full">
-                        Adicionar Habilidade
-                      </Button>
-                    </div>
-
-                    {/* Lista de Habilidades */}
-                    {dadosProfissionais.habilidades && dadosProfissionais.habilidades.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium">Habilidades Adicionadas ({dadosProfissionais.habilidades.length})</Label>
-                        <div className="space-y-2">
-                          {dadosProfissionais.habilidades.map((hab, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border"
-                            >
-                              <div className="flex-1">
-                                <p className="font-medium text-sm">{hab.habilidade}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Nível {hab.nivel}/5
-                                  {hab.anos_experiencia && ` • ${hab.anos_experiencia} ano(s)`}
-                                </p>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeHabilidade(index)}
-                              >
-                                Remover
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             )}
@@ -916,47 +757,9 @@ export default function OnboardingPage() {
                     )}
                   </div>
 
-                  {/* Card Autoavaliação */}
-                  <div className={`border-2 rounded-lg p-6 transition-all ${
-                    autoavaliacaoConcluida
-                      ? "border-green-300 bg-green-50"
-                      : "border-gray-200 bg-white hover:border-primary/50"
-                  }`}>
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h4 className="font-semibold text-lg mb-2">Autoavaliação</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Avalie sua própria performance e competências de forma honesta
-                        </p>
-                      </div>
-                      {autoavaliacaoConcluida && (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-6 w-6 text-green-600" />
-                          <span className="text-sm font-medium text-green-600">Concluída</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {!autoavaliacaoConcluida ? (
-                      <Button
-                        onClick={handleFazerAutoavaliacao}
-                        className="w-full"
-                      >
-                        Fazer Autoavaliação
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <div className="bg-green-100 border border-green-300 rounded-lg p-4">
-                        <p className="text-sm text-green-800">
-                          ✓ Autoavaliação concluída com sucesso!
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Resumo de Progresso */}
                   <div className={`border rounded-lg p-4 ${
-                    testeConcluido && autoavaliacaoConcluida
+                    testeConcluido
                       ? "bg-green-50 border-green-200"
                       : "bg-blue-50 border-blue-200"
                   }`}>
@@ -974,15 +777,11 @@ export default function OnboardingPage() {
                         <CheckCircle2 className={`h-4 w-4 ${testeConcluido ? "text-green-600" : "text-gray-300"}`} />
                         <span>Teste de habilidades: {testeConcluido ? "Completo" : "Pendente"}</span>
                       </li>
-                      <li className={`flex items-center gap-2 ${autoavaliacaoConcluida ? "text-green-700" : "text-gray-500"}`}>
-                        <CheckCircle2 className={`h-4 w-4 ${autoavaliacaoConcluida ? "text-green-600" : "text-gray-300"}`} />
-                        <span>Autoavaliação: {autoavaliacaoConcluida ? "Completa" : "Pendente"}</span>
-                      </li>
                     </ul>
                   </div>
 
                   {/* Mensagem de conclusão */}
-                  {testeConcluido && autoavaliacaoConcluida && (
+                  {testeConcluido && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
                       <h4 className="font-semibold text-sm text-green-900">✓ Pronto para Finalizar!</h4>
                       <p className="text-sm text-green-800">

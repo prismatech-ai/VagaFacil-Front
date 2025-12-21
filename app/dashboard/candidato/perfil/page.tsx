@@ -16,7 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Edit, Save, Upload, X } from "lucide-react"
-import type { Candidato } from "@/lib/types"
+import type { Candidato, TipoPCD } from "@/lib/types"
+import { TIPOS_PCD } from "@/lib/types"
 import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -67,26 +68,23 @@ export default function PerfilPage() {
   const [uploadingCurriculo, setUploadingCurriculo] = useState(false)
   const [dragActive, setDragActive] = useState(false)
 
-  const [habilidadeDialogOpen, setHabilidadeDialogOpen] = useState(false)
   const [educacaoDialogOpen, setEducacaoDialogOpen] = useState(false)
   const [experienciaDialogOpen, setExperienciaDialogOpen] = useState(false)
-  const [novaHabilidade, setNovaHabilidade] = useState({
-    habilidade: "",
-    nivel: 3 as 1 | 2 | 3 | 4 | 5,
-    anos_experiencia: 0,
-  })
 
-  // Estados para formulários de adição
-  const [novaEducacao, setNovaEducacao] = useState<{ instituicao: string; curso: string; nivel: string; status: string }>({
+  const [novaEducacao, setNovaEducacao] = useState({
     instituicao: "",
     curso: "",
     nivel: "Superior",
     status: "Completo",
+    ano_conclusao: new Date().getFullYear(),
   })
-  const [novaExperiencia, setNovaExperiencia] = useState<{ empresa: string; cargo: string; descricao: string; atual: boolean }>({
+
+  const [novaExperiencia, setNovaExperiencia] = useState({
     empresa: "",
     cargo: "",
     descricao: "",
+    dataInicio: "",
+    dataFim: "",
     atual: false,
   })
 
@@ -125,10 +123,48 @@ export default function PerfilPage() {
       const onboardingData = await responseOnboarding.json()
       console.log('Dados do candidato (onboarding):', onboardingData)
       
+      // Adicionar ID às formações acadêmicas se não tiverem
+      const educacaoComId = (onboardingData.formacoes_academicas || []).map((edu: any, index: number) => ({
+        ...edu,
+        id: edu.id || `edu-${index}-${Date.now()}`
+      }))
+      
+      // Adicionar ID às experiências profissionais se não tiverem e fazer parse do período
+      const experienciasComId = (onboardingData.experiencias_profissionais || onboardingData.experiencias || []).map((exp: any, index: number) => {
+        // Parse do período (exemplo: "2000-09-12 a 2025-09-12" ou "2025-01-15 a Atual")
+        let dataInicio = ""
+        let dataFim = null
+        let atual = false
+        
+        if (exp.periodo && typeof exp.periodo === "string") {
+          const partes = exp.periodo.split(" a ")
+          dataInicio = partes[0] || ""
+          if (partes[1]) {
+            if (partes[1].toLowerCase() === "atual") {
+              atual = true
+              dataFim = null
+            } else {
+              dataFim = partes[1]
+            }
+          }
+        }
+        
+        return {
+          id: exp.id || `exp-${index}-${Date.now()}`,
+          empresa: exp.empresa || "",
+          cargo: exp.cargo || "",
+          descricao: exp.descricao || "",
+          dataInicio: dataInicio || exp.dataInicio || "",
+          dataFim: dataFim || exp.dataFim || null,
+          atual: atual || exp.atual || false
+        }
+      })
+      
       setCandidato({
         ...onboardingData,
         habilidades: onboardingData.habilidades || [],
-        formacoes_academicas: onboardingData.formacoes_academicas || []
+        educacao: educacaoComId,
+        experiencias: experienciasComId
       })
       
       setFormData({
@@ -222,9 +258,189 @@ export default function PerfilPage() {
     )
   }
 
+  const saveFormacoes = async (formacoes: any[], token: string) => {
+    try {
+      // Transformar formações para o formato esperado pela API
+      const formacoesFormatadas = formacoes.map(f => ({
+        instituicao: f.instituicao || "",
+        curso: f.curso || "",
+        nivel: f.nivel || "",
+        status: f.status || "",
+        ano_conclusao: f.ano_conclusao || new Date().getFullYear()
+      }))
+
+      const payload = {
+        formacoes_academicas: formacoesFormatadas
+      }
+
+      console.log("📋 Formações originais:", formacoes)
+      console.log("🔄 Formações formatadas:", formacoesFormatadas)
+      console.log("📤 Payload a ser enviado (objeto/dicionário):", JSON.stringify(payload, null, 2))
+      console.log("📍 URL:", `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/formacoes-academicas`)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/formacoes-academicas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      console.log("📊 Status da resposta:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error("❌ Erro ao salvar formações acadêmicas:")
+        console.error("   Status:", response.status)
+        console.error("   Resposta:", errorData)
+        throw new Error(`Erro ao salvar formações acadêmicas: ${response.status} - ${errorData}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Formações acadêmicas salvas com sucesso:', data)
+      
+      // Recarregar dados completos do candidato para refletir as formações salvas
+      console.log("🔄 Recarregando dados do candidato...")
+      await loadPerfil()
+      
+      return data
+    } catch (error) {
+      console.error("❌ Erro na função saveFormacoes:", error)
+      throw error
+    }
+  }
+
+  const saveExperiencias = async (experiencias: any[], token: string) => {
+    try {
+      // Formatar experiências com período como string conforme esperado pelo backend
+      const payload = {
+        experiencias_profissionais: experiencias.map(e => {
+          // Criar string de período
+          let periodoStr = e.dataInicio || ""
+          if (e.atual) {
+            periodoStr += " a Atual"
+          } else if (e.dataFim) {
+            periodoStr += ` a ${e.dataFim}`
+          }
+          
+          return {
+            cargo: e.cargo || "",
+            empresa: e.empresa || "",
+            periodo: periodoStr,
+            descricao: e.descricao || ""
+          }
+        })
+      }
+
+      console.log("📋 Experiências a enviar:", experiencias)
+      console.log("📤 Payload a ser enviado:", JSON.stringify(payload, null, 2))
+      console.log("📍 URL:", `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/experiencias-profissionais`)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/experiencias-profissionais`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      console.log("📊 Status da resposta:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error("❌ Erro ao salvar experiências profissionais:")
+        console.error("   Status:", response.status)
+        console.error("   Resposta:", errorData)
+        throw new Error(`Erro ao salvar experiências profissionais: ${response.status} - ${errorData}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Experiências profissionais salvas com sucesso:', data)
+      
+      // Recarregar dados completos do candidato para refletir as experiências salvas
+      console.log("🔄 Recarregando dados do candidato...")
+      await loadPerfil()
+      
+      return data
+    } catch (error) {
+      console.error("❌ Erro na função saveExperiencias:", error)
+      throw error
+    }
+  }
+
+  // Função para normalizar tipo_pcd: remover acentos e converter para minúsculas
+  const normalizeTipoPCD = (tipo: string): string => {
+    return tipo
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+  }
+
+  const savePCD = async (token: string) => {
+    try {
+      console.log("🔍 [savePCD] Dados no formData:")
+      console.log("   - formData.is_pcd:", formData.is_pcd, typeof formData.is_pcd)
+      console.log("   - formData.tipo_pcd:", formData.tipo_pcd, typeof formData.tipo_pcd)
+      console.log("   - formData.necessidades_adaptacao:", formData.necessidades_adaptacao, typeof formData.necessidades_adaptacao)
+
+      const payload = {
+        is_pcd: formData.is_pcd,
+        tipo_pcd: formData.is_pcd && formData.tipo_pcd ? normalizeTipoPCD(formData.tipo_pcd) : "",
+        necessidades_adaptacao: formData.is_pcd && formData.necessidades_adaptacao ? formData.necessidades_adaptacao : ""
+      }
+
+      console.log("♿ [savePCD] Dados PCD a enviar no payload:")
+      console.log("   - is_pcd:", payload.is_pcd, typeof payload.is_pcd)
+      console.log("   - tipo_pcd:", payload.tipo_pcd, typeof payload.tipo_pcd)
+      console.log("   - necessidades_adaptacao:", payload.necessidades_adaptacao, typeof payload.necessidades_adaptacao)
+      console.log("📤 [savePCD] Payload completo:", JSON.stringify(payload, null, 2))
+      console.log("📍 [savePCD] URL:", `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-pessoais`)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-pessoais`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      console.log("📊 [savePCD] Status da resposta PCD:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error("❌ [savePCD] Erro ao salvar dados PCD:")
+        console.error("   Status:", response.status)
+        console.error("   Resposta:", errorData)
+        throw new Error(`Erro ao salvar dados PCD: ${response.status} - ${errorData}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ [savePCD] Resposta com sucesso:', JSON.stringify(data, null, 2))
+      console.log('✅ [savePCD] Dados PCD salvos com sucesso!')
+      
+      // Recarregar dados completos do candidato
+      console.log("🔄 [savePCD] Recarregando dados do candidato...")
+      await loadPerfil()
+      
+      return data
+    } catch (error) {
+      console.error("❌ Erro na função savePCD:", error)
+      throw error
+    }
+  }
+
   const handleSave = async () => {
     if (!candidato || !user) return
 
+    console.log("💾 Iniciando salvamento com formData:", formData)
+    console.log("🔍 Valores PCD no formData:")
+    console.log("   - is_pcd:", formData.is_pcd, typeof formData.is_pcd)
+    console.log("   - tipo_pcd:", formData.tipo_pcd, typeof formData.tipo_pcd)
+    console.log("   - necessidades_adaptacao:", formData.necessidades_adaptacao, typeof formData.necessidades_adaptacao)
+    
     setIsSaving(true)
     try {
       const token = localStorage.getItem('token')
@@ -243,18 +459,16 @@ export default function PerfilPage() {
         birth_date: formData.birth_date,
         genero: formData.genero,
         estado_civil: formData.estado_civil,
-        cidade: formData.cidade,
-        estado: formData.estado,
         cep: formData.cep,
         logradouro: formData.logradouro,
         numero: formData.numero,
         complemento: formData.complemento,
         bairro: formData.bairro,
-        location: formData.location,
-        is_pcd: formData.is_pcd,
-        tipo_pcd: formData.tipo_pcd,
-        necessidades_adaptacao: formData.necessidades_adaptacao,
+        cidade: formData.cidade,
+        estado: formData.estado
       }
+
+      console.log("📝 Dados pessoais a enviar:", dadosPessoais)
 
       // Salvar dados pessoais
       const responsePessoais = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/me`, {
@@ -266,26 +480,24 @@ export default function PerfilPage() {
         body: JSON.stringify(dadosPessoais)
       })
 
+      console.log("📊 Status PUT dados pessoais:", responsePessoais.status)
+
       if (!responsePessoais.ok) {
         const errorData = await responsePessoais.text()
-        console.error('Erro ao salvar dados pessoais:', responsePessoais.status, errorData)
+        console.error('❌ Erro ao salvar dados pessoais:', responsePessoais.status, errorData)
+      } else {
+        const responseJson = await responsePessoais.json()
+        console.log("✅ Resposta da API ao salvar dados pessoais:", responseJson)
       }
 
-      // Dados profissionais com habilidades (POST /api/v1/candidates/onboarding/dados-profissionais)
-      // Validar e formatar habilidades
-      const habilidadesFormatadas = (candidato?.habilidades || []).map(h => ({
-        habilidade: String(h.habilidade || ""),
-        nivel: Number(h.nivel) as 1 | 2 | 3 | 4 | 5,
-        anos_experiencia: Number(h.anos_experiencia || 0)
-      }))
-
+      // Dados profissionais (POST /api/v1/candidates/onboarding/dados-profissionais)
       const dadosProfissionais = {
         bio: formData.bio || "",
         linkedin_url: formData.linkedin_url || "",
         portfolio_url: formData.portfolio_url || "",
         experiencia_profissional: formData.experiencia_profissional || "",
         formacao_escolaridade: formData.formacao_escolaridade || "",
-        habilidades: habilidadesFormatadas
+        experiencias: candidato?.experiencias || []
       }
 
       console.log("Enviando dados profissionais:", dadosProfissionais)
@@ -295,14 +507,7 @@ export default function PerfilPage() {
 
       console.log("FormData enviado (perfil/handleSave):")
       console.log("  - dados:", JSON.stringify(dadosProfissionais))
-      console.log("  - habilidades no dados:", habilidadesFormatadas)
       console.log("  - URL:", `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`)
-      
-      // Log completo do FormData
-      console.log("Conteúdo completo do FormData:")
-      for (let [key, value] of formDataProfissional.entries()) {
-        console.log(`  ${key}:`, typeof value === 'string' ? value : value.name)
-      }
 
       const responseProfissional = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`, {
         method: 'POST',
@@ -322,8 +527,32 @@ export default function PerfilPage() {
 
       const updatedCandidato = await responseProfissional.json()
       console.log('Candidato atualizado:', updatedCandidato)
-      console.log('⚠️ Backend retornou habilidades?', updatedCandidato.habilidades)
       
+      // Salvar formações acadêmicas no endpoint específico
+      if (candidato?.educacao && candidato.educacao.length > 0) {
+        try {
+          await saveFormacoes(candidato.educacao, token)
+        } catch (error) {
+          console.warn("⚠️ Aviso ao salvar formações acadêmicas:", error)
+        }
+      }
+      
+      // Salvar experiências profissionais no endpoint específico
+      if (candidato?.experiencias && candidato.experiencias.length > 0) {
+        try {
+          await saveExperiencias(candidato.experiencias, token)
+        } catch (error) {
+          console.warn("⚠️ Aviso ao salvar experiências profissionais:", error)
+        }
+      }
+
+      // Salvar dados PCD no endpoint específico
+      try {
+        await savePCD(token)
+      } catch (error) {
+        console.warn("⚠️ Aviso ao salvar dados PCD:", error)
+      }
+
       // WORKAROUND: Se backend retorna habilidades como null/undefined,
       // preservar as que estão no estado local (já foram enviadas com sucesso)
       setCandidato(prev => ({
@@ -345,45 +574,6 @@ export default function PerfilPage() {
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const addHabilidade = () => {
-    if (!novaHabilidade.habilidade.trim() || !candidato) return
-    
-    // Verificar se já existe
-    if (candidato.habilidades?.some(h => h.habilidade === novaHabilidade.habilidade.trim())) {
-      toast({
-        variant: "destructive",
-        title: "Duplicada",
-        description: "Esta habilidade já foi adicionada"
-      })
-      return
-    }
-
-    const updatedCandidato: Candidato = {
-      ...candidato,
-      habilidades: [
-        ...(candidato.habilidades || []),
-        {
-          habilidade: novaHabilidade.habilidade.trim(),
-          nivel: novaHabilidade.nivel as 1 | 2 | 3 | 4 | 5,
-          anos_experiencia: novaHabilidade.anos_experiencia,
-        }
-      ]
-    }
-    
-    setCandidato(updatedCandidato)
-    setNovaHabilidade({ habilidade: "", nivel: 3, anos_experiencia: 0 })
-    setHabilidadeDialogOpen(false)
-  }
-
-  const removeHabilidade = (habilidade: string) => {
-    if (!candidato) return
-    const updatedCandidato: Candidato = {
-      ...candidato,
-      habilidades: candidato.habilidades?.filter((h) => h.habilidade !== habilidade) || [],
-    }
-    setCandidato(updatedCandidato)
   }
 
   // Handlers para upload de currículo
@@ -469,20 +659,13 @@ export default function PerfilPage() {
       }
 
       // Preparar dados profissionais em JSON conforme esperado pela API
-      // Validar e formatar habilidades
-      const habilidadesFormatadas = (candidato?.habilidades || []).map(h => ({
-        habilidade: String(h.habilidade || ""),
-        nivel: Number(h.nivel) as 1 | 2 | 3 | 4 | 5,
-        anos_experiencia: Number(h.anos_experiencia || 0)
-      }))
-
       const dadosProfissionais = {
         bio: formData.bio || "",
         linkedin_url: formData.linkedin_url || "",
         portfolio_url: formData.portfolio_url || "",
         experiencia_profissional: formData.experiencia_profissional || "",
         formacao_escolaridade: formData.formacao_escolaridade || "",
-        habilidades: habilidadesFormatadas
+        experiencias: candidato?.experiencias || []
       }
 
       console.log("Upload - Enviando dados profissionais:", dadosProfissionais)
@@ -494,7 +677,6 @@ export default function PerfilPage() {
 
       console.log("FormData enviado (perfil/uploadCurriculo):")
       console.log("  - dados:", JSON.stringify(dadosProfissionais))
-      console.log("  - habilidades no dados:", habilidadesFormatadas)
       console.log("  - curriculo:", file.name, `(${(file.size / 1024 / 1024).toFixed(2)}MB)`)
       console.log("  - URL:", `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`)
       
@@ -530,6 +712,16 @@ export default function PerfilPage() {
         ...data,
         habilidades: data.habilidades ?? prev?.habilidades ?? []
       }))
+      
+      // Salvar formações acadêmicas no endpoint específico
+      if (candidato?.educacao && candidato.educacao.length > 0) {
+        await saveFormacoes(candidato.educacao, token)
+      }
+      
+      // Salvar experiências profissionais no endpoint específico
+      if (candidato?.experiencias && candidato.experiencias.length > 0) {
+        await saveExperiencias(candidato.experiencias, token)
+      }
       
       // Atualizar formData com todos os campos retornados
       setFormData({
@@ -612,6 +804,7 @@ export default function PerfilPage() {
       curso: novaEducacao.curso,
       nivel: novaEducacao.nivel,
       status: novaEducacao.status,
+      ano_conclusao: novaEducacao.ano_conclusao,
     }
 
     const updatedCandidato: Candidato = {
@@ -625,6 +818,7 @@ export default function PerfilPage() {
       curso: "",
       nivel: "Superior",
       status: "Completo",
+      ano_conclusao: new Date().getFullYear(),
     })
     setEducacaoDialogOpen(false)
   }
@@ -644,8 +838,8 @@ export default function PerfilPage() {
       empresa: novaExperiencia.empresa,
       cargo: novaExperiencia.cargo,
       descricao: novaExperiencia.descricao || "",
-      dataInicio: new Date(),
-      dataFim: undefined,
+      dataInicio: novaExperiencia.dataInicio || "",
+      dataFim: novaExperiencia.atual ? null : (novaExperiencia.dataFim || null),
       atual: novaExperiencia.atual,
     }
 
@@ -659,6 +853,8 @@ export default function PerfilPage() {
       empresa: "",
       cargo: "",
       descricao: "",
+      dataInicio: "",
+      dataFim: "",
       atual: false,
     })
     setExperienciaDialogOpen(false)
@@ -736,14 +932,6 @@ export default function PerfilPage() {
                     <div className={`w-4 h-4 rounded-full ${onboardingProgresso.dados_profissionais_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                     <span className="text-sm">Dados Profissionais</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.teste_habilidades_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    <span className="text-sm">Teste Habilidades</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full ${onboardingProgresso.onboarding_completo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    <span className="text-sm">Onboarding Completo</span>
-                  </div>
                 </div>
               </div>
             </CardContent>
@@ -754,7 +942,6 @@ export default function PerfilPage() {
           <TabsList>
             <TabsTrigger value="dados">Dados Pessoais</TabsTrigger>
             <TabsTrigger value="profissional">Profissional</TabsTrigger>
-            <TabsTrigger value="pcd">PCD</TabsTrigger>
             <TabsTrigger value="educacao">Educação</TabsTrigger>
             <TabsTrigger value="experiencia">Experiência</TabsTrigger>
           </TabsList>
@@ -883,6 +1070,55 @@ export default function PerfilPage() {
                     />
                   </div>
                 </div>
+
+                {/* Seção de Acessibilidade (PCD) */}
+                <div className="mt-8 pt-8 border-t">
+                  <h3 className="text-lg font-semibold mb-4">Informações de Acessibilidade</h3>
+                  <div className="flex items-center gap-2 mb-4">
+                    <input
+                      type="checkbox"
+                      id="isPCD"
+                      checked={formData.is_pcd}
+                      onChange={(e) => setFormData({ ...formData, is_pcd: e.target.checked })}
+                      disabled={!isEditing}
+                    />
+                    <Label htmlFor="isPCD" className="cursor-pointer">
+                      Sou uma Pessoa com Deficiência (PCD)
+                    </Label>
+                  </div>
+
+                  {formData.is_pcd && (
+                    <>
+                      <div className="space-y-2 mb-4">
+                        <Label htmlFor="tipoPCD">Tipo de Deficiência</Label>
+                        <Select value={formData.tipo_pcd} onValueChange={(value) => setFormData({ ...formData, tipo_pcd: value as TipoPCD })}>
+                          <SelectTrigger id="tipoPCD" disabled={!isEditing}>
+                            <SelectValue placeholder="Selecione o tipo de deficiência" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIPOS_PCD.map((tipo) => (
+                              <SelectItem key={tipo} value={tipo}>
+                                {tipo}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="necessidadesAdaptacao">Necessidades de Adaptação</Label>
+                        <Textarea
+                          id="necessidadesAdaptacao"
+                          value={formData.necessidades_adaptacao}
+                          onChange={(e) => setFormData({ ...formData, necessidades_adaptacao: e.target.value })}
+                          disabled={!isEditing}
+                          rows={4}
+                          placeholder="Descreva as adaptações que você necessita no ambiente de trabalho..."
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -927,48 +1163,6 @@ export default function PerfilPage() {
                     disabled={!isEditing}
                     placeholder="https://seuportifolio.com"
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="habilidades">Habilidades</Label>
-                  {isEditing && (
-                    <Button 
-                      type="button" 
-                      onClick={() => setHabilidadeDialogOpen(true)}
-                      className="mb-2"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Habilidade
-                    </Button>
-                  )}
-                  <div className="space-y-2">
-                    {candidato?.habilidades?.map((h) => (
-                      <div
-                        key={h.habilidade}
-                        className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border"
-                      >
-                        <div className="flex-1">
-                          <div className="font-semibold">{h.habilidade}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Nível: {h.nivel} • {h.anos_experiencia} ano(s) de experiência
-                          </div>
-                        </div>
-                        {isEditing && (
-                          <button
-                            type="button"
-                            onClick={() => removeHabilidade(h.habilidade)}
-                            className="ml-2 text-destructive hover:text-destructive/80"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {(!candidato?.habilidades || candidato.habilidades.length === 0) && (
-                      <div className="text-center py-4 text-muted-foreground">
-                        Nenhuma habilidade adicionada ainda
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 {/* Seção de Upload de Currículo */}
@@ -1045,57 +1239,6 @@ export default function PerfilPage() {
             </Card>
           </TabsContent>
 
-          {/* Tab PCD */}
-          <TabsContent value="pcd" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Informações de Acessibilidade</CardTitle>
-                <CardDescription>Dados sobre deficiência e necessidades de adaptação</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isPCD"
-                    checked={formData.is_pcd}
-                    onChange={(e) => setFormData({ ...formData, is_pcd: e.target.checked })}
-                    disabled={!isEditing}
-                  />
-                  <Label htmlFor="isPCD" className="cursor-pointer">
-                    Sou uma Pessoa com Deficiência (PCD)
-                  </Label>
-                </div>
-
-                {formData.is_pcd && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="tipoPCD">Tipo de Deficiência</Label>
-                      <Input
-                        id="tipoPCD"
-                        value={formData.tipo_pcd}
-                        onChange={(e) => setFormData({ ...formData, tipo_pcd: e.target.value })}
-                        disabled={!isEditing}
-                        placeholder="Ex: Mobilidade Reduzida, Visual, Auditiva, etc."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="necessidadesAdaptacao">Necessidades de Adaptação</Label>
-                      <Textarea
-                        id="necessidadesAdaptacao"
-                        value={formData.necessidades_adaptacao}
-                        onChange={(e) => setFormData({ ...formData, necessidades_adaptacao: e.target.value })}
-                        disabled={!isEditing}
-                        rows={4}
-                        placeholder="Descreva as adaptações que você necessita no ambiente de trabalho..."
-                      />
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Tab Educação */}
           <TabsContent value="educacao" className="space-y-4">
             <Card>
@@ -1168,8 +1311,8 @@ export default function PerfilPage() {
                             <h4 className="font-semibold">{exp.cargo}</h4>
                             <p className="text-sm text-muted-foreground">{exp.empresa}</p>
                             <p className="text-sm text-muted-foreground">
-                              {exp.dataInicio.toLocaleDateString("pt-BR")} -{" "}
-                              {exp.atual ? "Atual" : exp.dataFim?.toLocaleDateString("pt-BR")}
+                              {exp.dataInicio instanceof Date ? exp.dataInicio.toLocaleDateString("pt-BR") : exp.dataInicio} -{" "}
+                              {exp.atual ? "Atual" : (exp.dataFim instanceof Date ? exp.dataFim.toLocaleDateString("pt-BR") : exp.dataFim) || ""}
                             </p>
                             {exp.descricao && <p className="text-sm mt-2">{exp.descricao}</p>}
                           </div>
@@ -1207,70 +1350,6 @@ export default function PerfilPage() {
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Dialog Adicionar Habilidade */}
-        <Dialog open={habilidadeDialogOpen} onOpenChange={setHabilidadeDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Habilidade</DialogTitle>
-              <DialogDescription>Adicione uma nova habilidade com nível e experiência</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="habilidade-nome">Habilidade</Label>
-                <Input
-                  id="habilidade-nome"
-                  value={novaHabilidade.habilidade}
-                  onChange={(e) => setNovaHabilidade({ ...novaHabilidade, habilidade: e.target.value })}
-                  placeholder="Ex: Python, React, Design, etc."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="habilidade-nivel">Nível de Proficiência</Label>
-                <Select
-                  value={String(novaHabilidade.nivel)}
-                  onValueChange={(v) =>
-                    setNovaHabilidade({
-                      ...novaHabilidade,
-                      nivel: parseInt(v) as 1 | 2 | 3 | 4 | 5,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 - Iniciante</SelectItem>
-                    <SelectItem value="2">2 - Básico</SelectItem>
-                    <SelectItem value="3">3 - Intermediário</SelectItem>
-                    <SelectItem value="4">4 - Avançado</SelectItem>
-                    <SelectItem value="5">5 - Especialista</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="habilidade-anos">Anos de Experiência</Label>
-                <Input
-                  id="habilidade-anos"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={novaHabilidade.anos_experiencia}
-                  onChange={(e) => setNovaHabilidade({ ...novaHabilidade, anos_experiencia: parseInt(e.target.value) || 0 })}
-                  placeholder="0"
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={() => setHabilidadeDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="button" onClick={addHabilidade}>
-                  Adicionar
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
 
         <Dialog open={educacaoDialogOpen} onOpenChange={setEducacaoDialogOpen}>
           <DialogContent>
@@ -1342,6 +1421,18 @@ export default function PerfilPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="ano_conclusao">Ano de Conclusão</Label>
+                <Input
+                  id="ano_conclusao"
+                  type="number"
+                  min="1900"
+                  max={new Date().getFullYear() + 10}
+                  value={novaEducacao.ano_conclusao}
+                  onChange={(e) => setNovaEducacao({ ...novaEducacao, ano_conclusao: parseInt(e.target.value) || new Date().getFullYear() })}
+                  placeholder="2023"
+                />
+              </div>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setEducacaoDialogOpen(false)}>
                   Cancelar
@@ -1388,6 +1479,25 @@ export default function PerfilPage() {
                   onChange={(e) => setNovaExperiencia({ ...novaExperiencia, descricao: e.target.value })}
                   rows={4}
                   placeholder="Descreva suas responsabilidades"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dataInicio">Data de Início</Label>
+                <Input
+                  id="dataInicio"
+                  type="date"
+                  value={novaExperiencia.dataInicio}
+                  onChange={(e) => setNovaExperiencia({ ...novaExperiencia, dataInicio: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dataFim">Data de Término</Label>
+                <Input
+                  id="dataFim"
+                  type="date"
+                  value={novaExperiencia.dataFim}
+                  onChange={(e) => setNovaExperiencia({ ...novaExperiencia, dataFim: e.target.value })}
+                  disabled={novaExperiencia.atual}
                 />
               </div>
               <div className="flex items-center gap-2">

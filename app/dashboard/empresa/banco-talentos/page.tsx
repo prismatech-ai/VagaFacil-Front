@@ -524,8 +524,8 @@ export default function BancoTalentosPage() {
                           <p className="font-medium">{exp.cargo}</p>
                           <p className="text-sm text-muted-foreground">{exp.empresa}</p>
                           <p className="text-sm text-muted-foreground">
-                            {exp.dataInicio.toLocaleDateString("pt-BR")} -{" "}
-                            {exp.atual ? "Atual" : exp.dataFim?.toLocaleDateString("pt-BR")}
+                            {exp.dataInicio instanceof Date ? exp.dataInicio.toLocaleDateString("pt-BR") : exp.dataInicio} -{" "}
+                            {exp.atual ? "Atual" : (exp.dataFim instanceof Date ? exp.dataFim.toLocaleDateString("pt-BR") : exp.dataFim)}
                           </p>
                           {exp.descricao && <p className="text-sm mt-2">{exp.descricao}</p>}
                         </div>
