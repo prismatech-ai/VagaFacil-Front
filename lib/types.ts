@@ -221,3 +221,28 @@ export type TicketSuporte = {
   createdAt: Date
   updatedAt: Date
 }
+// Tipos para Dashboard de Candidato
+export type Interesse = {
+  id: string
+  dataInteresse: string
+  status: "novo" | "aceito" | "rejeitado"
+  descricao: string
+}
+
+export type TesteTecnico = {
+  id: string
+  nome: string
+  data: string
+  status: "concluido" | "pendente" | "expirado"
+  duracao?: string
+}
+
+export type Convite = {
+  id: string
+  candidatoId: string
+  empresaNome: string
+  vagaTitulo: string
+  dataConvite: string
+  competenciasRequeridas: string[]
+  status: "pendente" | "aceito" | "rejeitado"
+}
