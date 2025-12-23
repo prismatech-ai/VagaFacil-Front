@@ -46,7 +46,7 @@ export default function LandingPage() {
               Login
             </Link>
             <Link href="/auth/quick-register">
-              <Button variant="outline" size="sm" className="hidden sm:flex hover:bg-primary/5 bg-transparent">
+              <Button variant="outline" size="sm" className="shadow-sm hover:shadow-md transition-shadow">
                 Sou candidato
               </Button>
             </Link>
