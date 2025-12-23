@@ -2,7 +2,10 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { AceiteEntrevista } from "@/components/aceite-entrevista"
-import { Suspense, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
+
+// Disable static pre-rendering for this page since it uses dynamic search params
+export const dynamic = "force-dynamic"
 
 function InterviewAcceptanceContent() {
   const router = useRouter()
@@ -50,9 +53,5 @@ function InterviewAcceptanceContent() {
 }
 
 export default function InterviewAcceptancePage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
-      <InterviewAcceptanceContent />
-    </Suspense>
-  )
+  return <InterviewAcceptanceContent />
 }
