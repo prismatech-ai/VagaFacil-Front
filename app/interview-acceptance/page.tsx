@@ -2,9 +2,9 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { AceiteEntrevista } from "@/components/aceite-entrevista"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 
-export default function InterviewAcceptancePage() {
+function InterviewAcceptanceContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
@@ -46,5 +46,13 @@ export default function InterviewAcceptancePage() {
       onAccept={handleAccept}
       onReject={handleReject}
     />
+  )
+}
+
+export default function InterviewAcceptancePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <InterviewAcceptanceContent />
+    </Suspense>
   )
 }
