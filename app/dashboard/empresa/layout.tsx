@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import { AdminSidebar } from "@/components/admin-sidebar"
+import { EmpresaSidebar } from "@/components/empresa-sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -23,7 +23,7 @@ import { Logo } from "@/components/logo"
 import { Badge } from "@/components/ui/badge"
 import { Toaster } from "sonner"
 
-export default function AdminLayout({
+export default function EmpresaLayout({
   children,
 }: {
   children: React.ReactNode
@@ -31,21 +31,18 @@ export default function AdminLayout({
   const router = useRouter()
   const { user, isLoading, logout } = useAuth()
 
-  const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0)
-
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login")
       return
     }
 
-    if (user && user.role !== "admin") {
+    if (user && user.role !== "empresa") {
       router.push("/dashboard")
     }
   }, [user, isLoading, router])
 
-
-  if (isLoading || !user || user.role !== "admin") {
+  if (isLoading || !user || user.role !== "empresa") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -72,7 +69,7 @@ export default function AdminLayout({
 
   return (
     <SidebarProvider>
-      <AdminSidebar />
+      <EmpresaSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-10 border-b bg-card">
           <div className="flex h-16 items-center gap-4 px-4">
@@ -87,22 +84,13 @@ export default function AdminLayout({
                   variant="ghost"
                   size="icon"
                   className="relative"
-                  onClick={() => router.push("/admin/notificacoes")}
                 >
                   <Bell className="h-5 w-5" />
-                  {notificacoesNaoLidas > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                    >
-                      {notificacoesNaoLidas}
-                    </Badge>
-                  )}
                 </Button>
 
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-medium">{user?.nome}</p>
-                  <p className="text-xs text-muted-foreground">Administrador</p>
+                  <p className="text-xs text-muted-foreground">Empresa</p>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

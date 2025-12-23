@@ -106,9 +106,9 @@ export function OnboardingProgress({ progresso, showDetails = true, compact = fa
         )}
 
         {!progresso.onboarding_completo && (
-          <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-blue-800">
+          <div className="flex items-start gap-2 p-3 bg-[#25D9B8]/10 rounded-lg border border-[#24BFB0]/30">
+            <AlertCircle className="h-4 w-4 text-[#03565C] mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-[#03565C]">
               Complete as etapas pendentes para finalizar seu onboarding e ter acesso a todas as vagas.
             </p>
           </div>
