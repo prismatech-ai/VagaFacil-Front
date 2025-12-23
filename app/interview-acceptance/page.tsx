@@ -23,12 +23,14 @@ export default function InterviewAcceptancePage() {
 
   const handleAccept = (id: string) => {
     // Salvar aceitação (integraria com API aqui)
-    // Navega de volta ao dashboard
+    console.log("Entrevista aceita:", id)
+    // Após aceitar entrevista, retorna ao dashboard do candidato
     router.push("/dashboard/candidato")
   }
 
   const handleReject = (id: string) => {
-    // Navega de volta ao dashboard
+    console.log("Entrevista rejeitada:", id)
+    // Ao rejeitar, retorna ao dashboard do candidato
     router.push("/dashboard/candidato")
   }
 

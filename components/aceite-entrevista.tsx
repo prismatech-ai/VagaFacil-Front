@@ -52,18 +52,18 @@ export function AceiteEntrevista({
         {/* Step 1: Confirmação de Interesse */}
         {step === "confirmacao" && (
           <Card className="shadow-lg border-0">
-            <CardHeader className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-t-lg">
+            <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
               <CardTitle className="text-2xl">Uma Empresa Está Interessada em Você!</CardTitle>
-              <CardDescription className="text-indigo-100">
+              <CardDescription className="text-white/80">
                 Você recebeu um convite para participar de uma entrevista
               </CardDescription>
             </CardHeader>
 
             <CardContent className="pt-8 space-y-6">
               {/* Alert Principal */}
-              <Alert className="border-indigo-200 bg-indigo-50">
-                <AlertCircle className="h-4 w-4 text-indigo-600" />
-                <AlertDescription className="text-indigo-800 text-base font-medium">
+              <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+                <AlertCircle className="h-4 w-4 text-[#03565C]" />
+                <AlertDescription className="text-[#03565C] text-base font-medium">
                   Ao aceitar esta entrevista, você autoriza o compartilhamento de seus dados pessoais
                   com a empresa para que ela possa entrar em contato e agendar a entrevista.
                 </AlertDescription>
@@ -87,7 +87,7 @@ export function AceiteEntrevista({
                     {competenciasRequeridas.map((comp) => (
                       <span
                         key={comp}
-                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                        className="px-3 py-1 bg-[#25D9B8]/20 text-[#03565C] rounded-full text-sm font-medium"
                       >
                         ✓ {comp}
                       </span>
@@ -114,7 +114,7 @@ export function AceiteEntrevista({
                 <Button
                   onClick={handleAccept}
                   disabled={isLoading}
-                  className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base text-white"
+                  className="flex-1 gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base text-white"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   Aceitar Entrevista
@@ -171,12 +171,12 @@ export function AceiteEntrevista({
                   </div>
                 </div>
 
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-4 bg-[#25D9B8]/10 border border-[#24BFB0]/30 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <Shield className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <Shield className="h-5 w-5 text-[#03565C] flex-shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-bold text-blue-900 mb-1">Proteção de Dados</h4>
-                      <p className="text-sm text-blue-800">
+                      <h4 className="font-bold text-[#03565C] mb-1">Proteção de Dados</h4>
+                      <p className="text-sm text-[#024147]">
                         A empresa está comprometida com a Lei Geral de Proteção de Dados (LGPD). Seus
                         dados serão usados apenas para fins do processo de seleção.
                       </p>
@@ -195,7 +195,7 @@ export function AceiteEntrevista({
                         setShowConfirmDialog(true)
                       }
                     }}
-                    className="w-4 h-4 mt-1 rounded border-gray-300 text-blue-600"
+                    className="w-4 h-4 mt-1 rounded border-gray-300 text-[#03565C]"
                   />
                   <span className="text-sm text-gray-700">
                     <strong>Entendo e aceito</strong> que meus dados pessoais serão compartilhados com
@@ -205,9 +205,9 @@ export function AceiteEntrevista({
               </div>
 
               {/* Info */}
-              <Alert className="border-blue-200 bg-blue-50">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800 text-sm">
+              <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+                <AlertCircle className="h-4 w-4 text-[#03565C]" />
+                <AlertDescription className="text-[#03565C] text-sm">
                   A empresa pode entrar em contato por email para agendar a entrevista.
                 </AlertDescription>
               </Alert>
@@ -268,9 +268,9 @@ export function AceiteEntrevista({
                 </ol>
               </div>
 
-              <Alert className="border-blue-200 bg-blue-50">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800 text-sm">
+              <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+                <AlertCircle className="h-4 w-4 text-[#03565C]" />
+                <AlertDescription className="text-[#03565C] text-sm">
                   <strong>Nenhuma ação adicional necessária.</strong> Você pode continuar explorando outras
                   oportunidades enquanto aguarda o contato da empresa.
                 </AlertDescription>

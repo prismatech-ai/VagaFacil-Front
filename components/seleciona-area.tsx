@@ -27,11 +27,11 @@ export function SelecionaArea({ onComplete, isLoading = false }: SelecionaAreaPr
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
-      <Card className="w-full max-w-2xl shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-          <CardTitle className="text-2xl">Qual é sua área de atuação?</CardTitle>
-          <CardDescription className="text-blue-100">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30 py-8">
+      <Card className="w-full max-w-2xl shadow-lg overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
+          <CardTitle className="text-2xl text-white">Qual é sua área de atuação?</CardTitle>
+          <CardDescription className="text-white/90">
             Selecione a área onde você tem maior experiência
           </CardDescription>
         </CardHeader>
@@ -57,14 +57,14 @@ export function SelecionaArea({ onComplete, isLoading = false }: SelecionaAreaPr
                   disabled={isLoading}
                   className={`p-4 rounded-lg border-2 transition-all text-left ${
                     selectedArea === area.id
-                      ? "border-blue-600 bg-blue-50 shadow-md"
+                      ? "border-[#24BFB0] bg-[#25D9B8]/10 shadow-md"
                       : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   } ${isLoading ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                 >
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className={`font-semibold transition-colors ${
-                        selectedArea === area.id ? "text-blue-600" : "text-gray-900"
+                        selectedArea === area.id ? "text-[#03565C]" : "text-gray-900"
                       }`}>
                         {area.nome}
                       </h3>
@@ -73,7 +73,7 @@ export function SelecionaArea({ onComplete, isLoading = false }: SelecionaAreaPr
                     <div
                       className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-3 transition-all ${
                         selectedArea === area.id
-                          ? "border-blue-600 bg-blue-600"
+                          ? "border-[#03565C] bg-[#03565C]"
                           : "border-gray-300"
                       }`}
                     >
@@ -87,9 +87,9 @@ export function SelecionaArea({ onComplete, isLoading = false }: SelecionaAreaPr
             </div>
 
             {/* Info */}
-            <Alert className="border-blue-200 bg-blue-50">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 text-sm">
+            <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+              <AlertCircle className="h-4 w-4 text-[#03565C]" />
+              <AlertDescription className="text-[#03565C] text-sm">
                 Você poderá ajustar sua área de atuação depois, durante a autoavaliação de competências.
               </AlertDescription>
             </Alert>
@@ -98,7 +98,7 @@ export function SelecionaArea({ onComplete, isLoading = false }: SelecionaAreaPr
             <Button
               type="submit"
               disabled={!selectedArea || isLoading}
-              className="w-full gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base"
+              className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
             >
               {isLoading ? "Carregando..." : "Continuar com " + (selectedArea ? AREAS_DISPONIVEIS.find(a => a.id === selectedArea)?.nome : "seleção")}
               <ChevronRight className="h-4 w-4" />

@@ -76,10 +76,10 @@ const MOCK_CANDIDATOS: CandidatoKanban[] = [
 ]
 
 const COLUNAS = [
-  { id: "comp-assessment", titulo: "Autoavaliação de Competências", cor: "bg-blue-50" },
+  { id: "comp-assessment", titulo: "Autoavaliação de Competências", cor: "bg-[#25D9B8]/10" },
   { id: "testes-done", titulo: "Testes Concluídos", cor: "bg-green-50" },
   { id: "testes-pending", titulo: "Testes Pendentes", cor: "bg-yellow-50" },
-  { id: "company-interest", titulo: "Interesse da Empresa", cor: "bg-purple-50" },
+  { id: "company-interest", titulo: "Interesse da Empresa", cor: "bg-[#24BFB0]/10" },
   { id: "interview-accepted", titulo: "Entrevista Aceita", cor: "bg-emerald-50" },
 ]
 
@@ -135,7 +135,7 @@ export function KanbanVaga({
               <p className="text-gray-600 mt-1">Kanban de Candidatos</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-blue-600">{candidatosFiltrados.length}</p>
+              <p className="text-2xl font-bold text-[#03565C]">{candidatosFiltrados.length}</p>
               <p className="text-sm text-gray-600">candidatos alinhados</p>
             </div>
           </div>
@@ -175,9 +175,9 @@ export function KanbanVaga({
         </div>
 
         {/* Info Alert */}
-        <Alert className="border-blue-200 bg-blue-50 mb-8">
-          <AlertCircle className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
+        <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10 mb-8">
+          <AlertCircle className="h-4 w-4 text-[#03565C]" />
+          <AlertDescription className="text-[#03565C]">
             <strong>IDs Anônimos:</strong> Os candidatos só aparecem com seus UUIDs até que você
             demonstre interesse. Após demonstrar interesse, você poderá ver competências e testes.
             Dados pessoais só são liberados após aceitar entrevista.
@@ -223,7 +223,7 @@ export function KanbanVaga({
                     candidatosColuna.map((candidato) => (
                       <Card
                         key={candidato.id}
-                        className="p-3 cursor-pointer hover:shadow-md transition-shadow border border-gray-200 hover:border-blue-400"
+                        className="p-3 cursor-pointer hover:shadow-md transition-shadow border border-gray-200 hover:border-[#24BFB0]"
                         onClick={() => onViewCandidato(candidato.candidatoId)}
                       >
                         <p className="font-mono text-xs text-gray-600 mb-2">
@@ -264,7 +264,7 @@ export function KanbanVaga({
 
                           {candidato.demonstrouInteresse && (
                             <div className="pt-2 border-t border-gray-300">
-                              <Badge className="bg-purple-600 text-white text-xs">
+                              <Badge className="bg-[#03565C] text-white text-xs">
                                 Interesse da Empresa
                               </Badge>
                               {candidato.dataDemonstrouInteresse && (

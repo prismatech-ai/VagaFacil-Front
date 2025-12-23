@@ -85,11 +85,11 @@ export function OnboardingConcluido({
           </Alert>
 
           {/* Proximos Passos */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+          <div className="bg-[#25D9B8]/10 border border-[#24BFB0]/30 rounded-lg p-6 mb-8">
             <h3 className="font-bold text-gray-900 mb-4">Próximos passos:</h3>
             <ol className="space-y-3 text-sm text-gray-700">
               <li className="flex items-start gap-3">
-                <Badge className="bg-blue-600 text-white w-6 h-6 flex items-center justify-center flex-shrink-0 rounded-full p-0 text-xs">
+                <Badge className="bg-[#03565C] text-white w-6 h-6 flex items-center justify-center flex-shrink-0 rounded-full p-0 text-xs">
                   1
                 </Badge>
                 <span>
@@ -97,7 +97,7 @@ export function OnboardingConcluido({
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <Badge className="bg-blue-600 text-white w-6 h-6 flex items-center justify-center flex-shrink-0 rounded-full p-0 text-xs">
+                <Badge className="bg-[#03565C] text-white w-6 h-6 flex items-center justify-center flex-shrink-0 rounded-full p-0 text-xs">
                   2
                 </Badge>
                 <span>
@@ -105,7 +105,7 @@ export function OnboardingConcluido({
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <Badge className="bg-blue-600 text-white w-6 h-6 flex items-center justify-center flex-shrink-0 rounded-full p-0 text-xs">
+                <Badge className="bg-[#03565C] text-white w-6 h-6 flex items-center justify-center flex-shrink-0 rounded-full p-0 text-xs">
                   3
                 </Badge>
                 <span>
@@ -116,9 +116,9 @@ export function OnboardingConcluido({
           </div>
 
           {/* Privacidade Info */}
-          <Alert className="border-purple-200 bg-purple-50 mb-8">
-            <CheckCircle2 className="h-4 w-4 text-purple-600" />
-            <AlertDescription className="text-purple-800 text-sm">
+          <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10 mb-8">
+            <CheckCircle2 className="h-4 w-4 text-[#03565C]" />
+            <AlertDescription className="text-[#03565C] text-sm">
               <strong>Privacidade garantida:</strong> Suas informações pessoais permanecerão anônimas
               até que você decida compartilhá-las com uma empresa, após aceitar uma entrevista.
             </AlertDescription>

@@ -48,7 +48,7 @@ export default function JobsListPage() {
   }
 
   const handleViewDetails = (jobId: string) => {
-    router.push(`/empresa/jobs/${jobId}/details`)
+    router.push(`/empresa/jobs/${jobId}`)
   }
 
   const handleViewKanban = (jobId: string) => {

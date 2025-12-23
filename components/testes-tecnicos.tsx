@@ -104,11 +104,11 @@ export function TestesTecnicos({
   const tempoTotalEstimado = testesLocais.reduce((acc, t) => acc + t.tempoLimite, 0)
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30 py-8">
       <Card className="w-full max-w-3xl shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+        <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
           <CardTitle className="text-2xl">Testes Técnicos</CardTitle>
-          <CardDescription className="text-blue-100">
+          <CardDescription className="text-white/80">
             Etapa 3 de 3 - Valide suas competências com testes práticos
           </CardDescription>
         </CardHeader>
@@ -159,9 +159,9 @@ export function TestesTecnicos({
           </div>
 
           {/* Tempo Estimado */}
-          <Alert className="border-blue-200 bg-blue-50 mb-8">
-            <Clock className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800">
+          <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10 mb-8">
+            <Clock className="h-4 w-4 text-[#03565C]" />
+            <AlertDescription className="text-[#03565C]">
               <div className="font-semibold">Tempo estimado total: ~{tempoTotalEstimado} minutos</div>
               <p className="text-sm mt-1">
                 Você pode fazer os testes em qualquer ordem e retomar a qualquer momento.
@@ -176,7 +176,7 @@ export function TestesTecnicos({
                 key={teste.id}
                 className={`p-4 rounded-lg border-2 transition-all ${
                   testEmFoco === teste.id
-                    ? "border-blue-500 bg-blue-50"
+                    ? "border-[#24BFB0] bg-[#25D9B8]/10"
                     : teste.status === "concluido"
                       ? "border-green-200 bg-green-50"
                       : "border-gray-200 bg-white hover:border-gray-300"
@@ -243,9 +243,9 @@ export function TestesTecnicos({
           </div>
 
           {/* Info */}
-          <Alert className="border-blue-200 bg-blue-50 mb-8">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800 text-sm">
+          <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10 mb-8">
+            <AlertCircle className="h-4 w-4 text-[#03565C]" />
+            <AlertDescription className="text-[#03565C] text-sm">
               Os testes são múltipla escolha e baseados no nível de proficiência que você declarou.
               Seu desempenho será visível apenas para você e para empresas com as quais você
               decidir compartilhar seus dados.
@@ -256,7 +256,7 @@ export function TestesTecnicos({
           <Button
             onClick={onAllTestsComplete}
             disabled={concluidosCount !== testesLocais.length || isLoading}
-            className="w-full gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base"
+            className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
           >
             {isLoading ? "Processando..." : "Continuar para Dashboard"}
             <ChevronRight className="h-4 w-4" />

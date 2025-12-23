@@ -161,12 +161,12 @@ export function CandidatoDashboard({
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2 text-gray-700">
-                <Sparkles className="h-5 w-5 text-blue-600" />
+                <Sparkles className="h-5 w-5 text-[#03565C]" />
                 Interesse de Empresas
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="text-3xl font-bold text-blue-600">{interessesNovos}</div>
+              <div className="text-3xl font-bold text-[#03565C]">{interessesNovos}</div>
               <p className="text-sm text-gray-600">
                 {interessesNovos === 1
                   ? "empresa demonstrou interesse"
@@ -184,12 +184,12 @@ export function CandidatoDashboard({
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2 text-gray-700">
-                <Clock className="h-5 w-5 text-orange-600" />
+                <Clock className="h-5 w-5 text-[#24BFB0]" />
                 Testes Realizados
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="text-3xl font-bold text-orange-600">
+              <div className="text-3xl font-bold text-[#03565C]">
                 {MOCK_TESTES.filter((t) => t.status === "concluido").length}
               </div>
               <p className="text-sm text-gray-600">
@@ -205,9 +205,9 @@ export function CandidatoDashboard({
         </div>
 
         {/* Privacy Alert */}
-        <Alert className="border-purple-200 bg-purple-50">
-          <AlertCircle className="h-4 w-4 text-purple-600" />
-          <AlertDescription className="text-purple-800 text-sm">
+        <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+          <AlertCircle className="h-4 w-4 text-[#03565C]" />
+          <AlertDescription className="text-[#03565C] text-sm">
             <strong>Sua privacidade:</strong> Nenhum dado de empresas ou vagas é revelado nesta página.
             Você controla totalmente quais informações compartilha.
           </AlertDescription>
@@ -244,7 +244,7 @@ export function CandidatoDashboard({
                     key={interesse.id}
                     className={`border-0 shadow-sm transition-all ${
                       interesse.status === "novo"
-                        ? "bg-blue-50 border-l-4 border-blue-500"
+                        ? "bg-[#25D9B8]/10 border-l-4 border-[#24BFB0]"
                         : interesse.status === "aceito"
                           ? "bg-emerald-50 border-l-4 border-emerald-500"
                           : "bg-gray-50"
@@ -279,7 +279,7 @@ export function CandidatoDashboard({
                               <AlertDialogTrigger asChild>
                                 <Button
                                   size="sm"
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  className="bg-[#03565C] hover:bg-[#024147] text-white"
                                 >
                                   Aceitar
                                 </Button>
@@ -296,7 +296,7 @@ export function CandidatoDashboard({
                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => handleAceitarEntrevista(interesse.id)}
-                                    className="bg-blue-600 hover:bg-blue-700"
+                                    className="bg-[#03565C] hover:bg-[#024147]"
                                   >
                                     Prosseguir
                                   </AlertDialogAction>

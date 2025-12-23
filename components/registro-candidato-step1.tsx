@@ -44,11 +44,11 @@ export function RegistroCandidatoStep1({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-          <CardTitle className="text-2xl">Bem-vindo!</CardTitle>
-          <CardDescription className="text-blue-100">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30 py-8">
+      <Card className="w-full max-w-md shadow-lg overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
+          <CardTitle className="text-2xl text-white">Bem-vindo!</CardTitle>
+          <CardDescription className="text-white/90">
             Cadastro rápido em menos de 30 segundos
           </CardDescription>
         </CardHeader>
@@ -137,9 +137,9 @@ export function RegistroCandidatoStep1({
             </div>
 
             {/* Info */}
-            <Alert className="border-blue-200 bg-blue-50 mt-6">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 text-sm">
+            <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10 mt-6">
+              <AlertCircle className="h-4 w-4 text-[#03565C]" />
+              <AlertDescription className="text-[#03565C] text-sm">
                 Nenhuma validação complexa agora. Você preencherá mais informações na próxima etapa.
               </AlertDescription>
             </Alert>
@@ -148,7 +148,7 @@ export function RegistroCandidatoStep1({
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full gap-2 bg-blue-600 hover:bg-blue-700 mt-6 py-6 text-base"
+              className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] mt-6 py-6 text-base"
             >
               {isLoading ? "Carregando..." : "Continuar"}
               <ChevronRight className="h-4 w-4" />
@@ -156,7 +156,7 @@ export function RegistroCandidatoStep1({
           </form>
 
           <p className="text-xs text-gray-500 text-center mt-4">
-            Já tem conta? <a href="/login" className="text-blue-600 hover:underline font-semibold">Entrar</a>
+            Já tem conta? <a href="/login" className="text-[#03565C] hover:underline font-semibold">Entrar</a>
           </p>
         </CardContent>
       </Card>

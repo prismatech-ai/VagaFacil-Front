@@ -40,9 +40,9 @@ const NIVEL_LABELS = {
 
 const NIVEL_CORES = {
   1: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  2: "bg-blue-100 text-blue-800 border-blue-300",
-  3: "bg-indigo-100 text-indigo-800 border-indigo-300",
-  4: "bg-purple-100 text-purple-800 border-purple-300",
+  2: "bg-[#25D9B8]/20 text-[#03565C] border-[#24BFB0]/30",
+  3: "bg-[#24BFB0]/20 text-[#03565C] border-[#24BFB0]/30",
+  4: "bg-[#03565C]/10 text-[#03565C] border-[#03565C]/30",
 }
 
 export function DetalhesCandidatoDadosLiberados({
@@ -123,7 +123,7 @@ export function DetalhesCandidatoDadosLiberados({
                         <p className="text-xs text-gray-600 mb-1">Email</p>
                         <a
                           href={`mailto:${dadosPessoais.email}`}
-                          className="text-lg font-bold text-blue-600 hover:underline"
+                          className="text-lg font-bold text-[#03565C] hover:underline"
                         >
                           {dadosPessoais.email}
                         </a>
@@ -164,7 +164,7 @@ export function DetalhesCandidatoDadosLiberados({
                             href={dadosPessoais.curriculo}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm font-bold text-blue-600 hover:underline"
+                            className="text-sm font-bold text-[#03565C] hover:underline"
                           >
                             Abrir Currículo
                           </a>
@@ -196,7 +196,7 @@ export function DetalhesCandidatoDadosLiberados({
                         href={dadosPessoais.linkedin}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#03565C] text-white rounded-lg hover:bg-[#024147] text-sm font-semibold"
                       >
                         <Briefcase className="h-4 w-4" />
                         LinkedIn
@@ -249,9 +249,9 @@ export function DetalhesCandidatoDadosLiberados({
             </div>
 
             {/* Info */}
-            <Alert className="border-blue-200 bg-blue-50">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 text-sm space-y-2">
+            <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+              <AlertCircle className="h-4 w-4 text-[#03565C]" />
+              <AlertDescription className="text-[#03565C] text-sm space-y-2">
                 <p>
                   <strong>Próximos passos:</strong> Você pode agora agendar a entrevista entrando em
                   contato pelo email ou telefone fornecido.
@@ -269,7 +269,7 @@ export function DetalhesCandidatoDadosLiberados({
                 href={`mailto:${dadosPessoais.email}`}
                 className="flex-1"
               >
-                <Button className="w-full gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base text-white">
+                <Button className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base text-white">
                   <Mail className="h-4 w-4" />
                   Enviar Email
                 </Button>

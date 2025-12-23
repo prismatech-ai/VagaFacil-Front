@@ -96,7 +96,7 @@ export function ListaVagasEmpresa({
             <Button
               onClick={onCreateVaga}
               disabled={isLoading}
-              className="gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base"
+              className="gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
             >
               <Plus className="h-4 w-4" />
               Nova Vaga
@@ -109,14 +109,14 @@ export function ListaVagasEmpresa({
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="border-l-4 border-l-blue-600">
+          <Card className="border-l-4 border-l-[#03565C]">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Vagas Abertas</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-1">{vagasAbertas}</p>
+                  <p className="text-3xl font-bold text-[#03565C] mt-1">{vagasAbertas}</p>
                 </div>
-                <Briefcase className="h-8 w-8 text-blue-600 opacity-20" />
+                <Briefcase className="h-8 w-8 text-[#03565C] opacity-20" />
               </div>
             </CardContent>
           </Card>
@@ -133,23 +133,23 @@ export function ListaVagasEmpresa({
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-purple-600">
+          <Card className="border-l-4 border-l-[#24BFB0]">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Com Interesse Marcado</p>
-                  <p className="text-3xl font-bold text-purple-600 mt-1">{totalComInteresse}</p>
+                  <p className="text-3xl font-bold text-[#03565C] mt-1">{totalComInteresse}</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-purple-600 opacity-20" />
+                <TrendingUp className="h-8 w-8 text-[#24BFB0] opacity-20" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Info */}
-        <Alert className="border-blue-200 bg-blue-50 mb-8">
-          <AlertCircle className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
+        <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10 mb-8">
+          <AlertCircle className="h-4 w-4 text-[#03565C]" />
+          <AlertDescription className="text-[#03565C]">
             <strong>Candidatos Alinhados:</strong> Número de candidatos que declaram ter as
             competências que você está buscando. Seus dados ainda estão anônimos até você demonstrar
             interesse em uma entrevista.
@@ -177,7 +177,7 @@ export function ListaVagasEmpresa({
                 ? "Nenhuma vaga corresponde aos seus critérios de busca"
                 : "Você não tem vagas abertas ainda"}
             </p>
-            <Button onClick={onCreateVaga} className="gap-2 bg-blue-600 hover:bg-blue-700">
+            <Button onClick={onCreateVaga} className="gap-2 bg-[#03565C] hover:bg-[#024147]">
               <Plus className="h-4 w-4" />
               Criar Primeira Vaga
             </Button>
@@ -209,7 +209,7 @@ export function ListaVagasEmpresa({
                       <div className="grid grid-cols-3 gap-4 p-3 bg-gray-50 rounded-lg">
                         <div>
                           <p className="text-xs text-gray-600">Candidatos Alinhados</p>
-                          <p className="text-lg font-bold text-blue-600">{vaga.candidatosAlinhados}</p>
+                          <p className="text-lg font-bold text-[#03565C]">{vaga.candidatosAlinhados}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-600">Com Interesse</p>
@@ -228,7 +228,7 @@ export function ListaVagasEmpresa({
                       <Button
                         onClick={() => onViewKanban(vaga.id)}
                         disabled={isLoading}
-                        className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-sm"
+                        className="gap-2 bg-[#03565C] hover:bg-[#024147] text-sm"
                       >
                         <Users className="h-4 w-4" />
                         Kanban

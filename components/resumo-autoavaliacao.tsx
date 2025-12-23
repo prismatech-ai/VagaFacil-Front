@@ -30,9 +30,9 @@ const NIVEL_LABELS = {
 
 const NIVEL_CORES = {
   1: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  2: "bg-blue-100 text-blue-800 border-blue-300",
-  3: "bg-indigo-100 text-indigo-800 border-indigo-300",
-  4: "bg-purple-100 text-purple-800 border-purple-300",
+  2: "bg-[#25D9B8]/20 text-[#03565C] border-[#24BFB0]",
+  3: "bg-[#24BFB0]/20 text-[#03565C] border-[#03565C]",
+  4: "bg-[#03565C]/10 text-[#03565C] border-[#03565C]",
 }
 
 // Estimativa de tempo de teste por nível
@@ -55,11 +55,11 @@ export function ResumoAutoavaliacao({
   )
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
-      <Card className="w-full max-w-2xl shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-          <CardTitle className="text-2xl">Resumo da Autoavaliação</CardTitle>
-          <CardDescription className="text-blue-100">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30 py-8">
+      <Card className="w-full max-w-2xl shadow-lg overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
+          <CardTitle className="text-2xl text-white">Resumo da Autoavaliação</CardTitle>
+          <CardDescription className="text-white/90">
             Revise suas competências antes de iniciar os testes
           </CardDescription>
         </CardHeader>
@@ -115,9 +115,9 @@ export function ResumoAutoavaliacao({
           </Alert>
 
           {/* Info */}
-          <Alert className="border-blue-200 bg-blue-50 mb-8">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800 text-sm">
+          <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10 mb-8">
+            <AlertCircle className="h-4 w-4 text-[#03565C]" />
+            <AlertDescription className="text-[#03565C] text-sm">
               Suas competências serão usadas para buscar vagas alinhadas com seus interesses. Quanto mais precisa sua autoavaliação, melhores as recomendações.
             </AlertDescription>
           </Alert>
@@ -136,7 +136,7 @@ export function ResumoAutoavaliacao({
             <Button
               onClick={onContinue}
               disabled={isLoading}
-              className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base"
+              className="flex-1 gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
             >
               {isLoading ? "Carregando..." : "Continuar"}
               <ChevronRight className="h-4 w-4" />

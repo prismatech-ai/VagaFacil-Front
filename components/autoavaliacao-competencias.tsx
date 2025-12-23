@@ -134,11 +134,11 @@ export function AutoavaliacaoCompetencias({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
-      <Card className="w-full max-w-3xl shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-          <CardTitle className="text-2xl">Autoavaliação de Competências</CardTitle>
-          <CardDescription className="text-blue-100">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30 py-8">
+      <Card className="w-full max-w-3xl shadow-lg overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
+          <CardTitle className="text-2xl text-white">Autoavaliação de Competências</CardTitle>
+          <CardDescription className="text-white/90">
             Etapa 2 de 3 - Selecione seu nível em cada competência (15 minutos)
           </CardDescription>
         </CardHeader>
@@ -167,7 +167,7 @@ export function AutoavaliacaoCompetencias({
                       key={competencia.id}
                       className={`p-4 rounded-lg border-2 transition-all ${
                         competencia.nivel
-                          ? "border-blue-300 bg-blue-50"
+                          ? "border-[#24BFB0] bg-[#25D9B8]/10"
                           : "border-gray-200 hover:border-gray-300 bg-white"
                       }`}
                     >
@@ -177,7 +177,7 @@ export function AutoavaliacaoCompetencias({
                           onClick={() => toggleCompetencia(categoria.id, competencia.id)}
                           disabled={isLoading}
                           className={`font-semibold text-left w-full ${
-                            competencia.nivel ? "text-blue-600" : "text-gray-900"
+                            competencia.nivel ? "text-[#03565C]" : "text-gray-900"
                           } hover:opacity-75 transition-opacity`}
                         >
                           {competencia.nome}
@@ -187,7 +187,7 @@ export function AutoavaliacaoCompetencias({
                       {competencia.nivel && (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-blue-600">
+                            <Badge className="bg-[#03565C]">
                               Nível {competencia.nivel} - {NIVEL_LABELS[competencia.nivel]}
                             </Badge>
                           </div>
@@ -203,7 +203,7 @@ export function AutoavaliacaoCompetencias({
                                 disabled={isLoading}
                                 className={`flex-1 py-2 rounded text-xs font-semibold transition-all ${
                                   competencia.nivel === nivel
-                                    ? "bg-blue-600 text-white"
+                                    ? "bg-[#03565C] text-white"
                                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                 }`}
                               >
@@ -226,9 +226,9 @@ export function AutoavaliacaoCompetencias({
             ))}
 
             {/* Info */}
-            <Alert className="border-blue-200 bg-blue-50">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 text-sm">
+            <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+              <AlertCircle className="h-4 w-4 text-[#03565C]" />
+              <AlertDescription className="text-[#03565C] text-sm">
                 Selecione apenas as competências que você realmente domina. Você receberá testes técnicos
                 para validar cada uma delas.
               </AlertDescription>
@@ -238,7 +238,7 @@ export function AutoavaliacaoCompetencias({
             <Button
               type="submit"
               disabled={competenciasDeclaradas.length === 0 || isLoading}
-              className="w-full gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base"
+              className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
             >
               {isLoading ? "Salvando..." : `Continuar com ${competenciasDeclaradas.length} competência(s)`}
               <ChevronRight className="h-4 w-4" />

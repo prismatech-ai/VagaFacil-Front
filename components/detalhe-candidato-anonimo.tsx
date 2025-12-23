@@ -31,9 +31,9 @@ const NIVEL_LABELS = {
 
 const NIVEL_CORES = {
   1: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  2: "bg-blue-100 text-blue-800 border-blue-300",
-  3: "bg-indigo-100 text-indigo-800 border-indigo-300",
-  4: "bg-purple-100 text-purple-800 border-purple-300",
+  2: "bg-[#25D9B8]/20 text-[#03565C] border-[#24BFB0]/30",
+  3: "bg-[#24BFB0]/20 text-[#03565C] border-[#24BFB0]/30",
+  4: "bg-[#03565C]/10 text-[#03565C] border-[#03565C]/30",
 }
 
 export function DetalhesCandidatoAnonimos({
@@ -68,12 +68,12 @@ export function DetalhesCandidatoAnonimos({
         </Button>
 
         <Card className="shadow-lg border-0 mb-6">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
             <CardTitle className="text-2xl flex items-center gap-2">
               <Lock className="h-5 w-5" />
               Perfil Anônimo do Candidato
             </CardTitle>
-            <CardDescription className="text-blue-100">
+            <CardDescription className="text-white/80">
               Dados pessoais ocultos até demonstrar interesse
             </CardDescription>
           </CardHeader>
@@ -141,9 +141,9 @@ export function DetalhesCandidatoAnonimos({
             </div>
 
             {/* Info */}
-            <Alert className="border-blue-200 bg-blue-50">
-              <Zap className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 text-sm space-y-2">
+            <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+              <Zap className="h-4 w-4 text-[#03565C]" />
+              <AlertDescription className="text-[#03565C] text-sm space-y-2">
                 <p>
                   <strong>Próximo passo:</strong> Se estiver interessado neste candidato, clique em
                   "Demonstrar Interesse". Você poderá então enviar um convite de entrevista.
@@ -160,7 +160,7 @@ export function DetalhesCandidatoAnonimos({
               <Button
                 onClick={handleDemonstraInteresse}
                 disabled={isLoading}
-                className="w-full gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base text-white"
+                className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base text-white"
               >
                 <Zap className="h-4 w-4" />
                 Demonstrar Interesse

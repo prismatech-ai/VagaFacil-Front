@@ -127,12 +127,12 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 px-4 py-8">
+    <div className="min-h-screen bg-secondary/30 px-4 py-8">
       <div className="max-w-3xl mx-auto">
         <Card className="shadow-lg border-0">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
             <CardTitle className="text-2xl">Registrar Nova Vaga</CardTitle>
-            <CardDescription className="text-blue-100">
+            <CardDescription className="text-white/80">
               Defina as competências que os candidatos devem ter
             </CardDescription>
           </CardHeader>
@@ -295,9 +295,9 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
               </div>
 
               {/* Info */}
-              <Alert className="border-blue-200 bg-blue-50">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800 text-sm">
+              <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
+                <AlertCircle className="h-4 w-4 text-[#03565C]" />
+                <AlertDescription className="text-[#03565C] text-sm">
                   <strong>Como funciona:</strong> Essa vaga será visível apenas para candidatos que
                   declarem as competências especificadas no nível mínimo (ou superior). Candidatos
                   permanecerão anônimos até que você demonstre interesse.
@@ -308,7 +308,7 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
               <Button
                 type="submit"
                 disabled={loading || isLoading}
-                className="w-full gap-2 bg-blue-600 hover:bg-blue-700 py-6 text-base"
+                className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
               >
                 {loading || isLoading ? "Criando..." : "Criar Vaga"}
                 {!(loading || isLoading) && <ChevronRight className="h-4 w-4" />}
