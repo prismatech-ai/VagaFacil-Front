@@ -11,7 +11,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Send, Users, Building2, Bell, Check } from "lucide-react"
-import { mockUsers, mockNotificacoes } from "@/lib/mock-data"
 import type { User, Empresa, Candidato, Notificacao } from "@/lib/types"
 
 type Audience = "todos" | "empresas" | "candidatos" | "especificos"

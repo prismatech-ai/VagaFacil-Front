@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Plus, Pencil, Trash2, PlayCircle, HelpCircle, Send, MessageSquare } from "lucide-react"
 import type { TicketSuporte, RespostaTicket } from "@/lib/types"
-import { mockUsers } from "@/lib/mock-data"
+
 
 type VideoTutorial = { id: string; titulo: string; url: string }
 type FaqItem = { id: string; pergunta: string; resposta: string }
