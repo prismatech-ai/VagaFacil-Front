@@ -37,12 +37,9 @@ const NIVEL_CORES = {
 }
 
 export function DetalhesCandidatoAnonimos({
-  candidatoId = "cand-uuid-001",
-  competencias = [
-    { nome: "React", nivelDeclarado: 3, testeScore: 8 },
-    { nome: "TypeScript", nivelDeclarado: 2, testeScore: 7 },
-  ],
-  dataCriacao = "2024-01-05",
+  candidatoId = "",
+  competencias = [],
+  dataCriacao = "",
   onDemonstraInteresse,
   onBack,
   isLoading = false,

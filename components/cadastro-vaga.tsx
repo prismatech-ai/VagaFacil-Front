@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { api } from "@/lib/api"
 
 interface CompetenciaFiltro {
   id: string
@@ -27,14 +28,16 @@ interface CadastroVagaProps {
 }
 
 const AREAS_DISPONIVEIS = [
-  "Frontend",
-  "Backend",
-  "Full Stack",
-  "DevOps",
-  "QA",
-  "Data Science",
-  "Mobile",
-  "Infraestrutura",
+  { id: "eletrica", nome: "Elétrica" },
+  { id: "manutencao", nome: "Manutenção" },
+  { id: "automacao", nome: "Automação" },
+  { id: "mecanica", nome: "Mecânica" },
+  { id: "hidraulica", nome: "Hidráulica" },
+  { id: "pneumatica", nome: "Pneumática" },
+  { id: "soldagem", nome: "Soldagem" },
+  { id: "usinagem", nome: "Usinagem" },
+  { id: "qualidade", nome: "Qualidade" },
+  { id: "planejamento", nome: "Planejamento" },
 ]
 
 const COMPETENCIAS_DISPONIVEIS = [
@@ -108,17 +111,34 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
     e.preventDefault()
     if (!validateForm()) return
 
-    setLoading(true)
-    try {
-      const vaga = {
-        titulo,
-        descricao,
-        area,
-        competenciasFiltros: competencias,
+    se// POST /empresa/vagas
+      const payload = {
+        title: titulo,
+        description: descricao,
+        area_atuacao: area,
+        requirements: descricao,
+        benefits: "A definir",
+        location: "A definir",
+        remote: true,
+        job_type: "CLT",
+        salary_min: 0,
+        salary_max: 0,
+        requisitos: competencias.map((comp) => ({
+          competencia_id: comp.id,
+          nivel_minimo: String(comp.nivelMinimo),
+          teste_obrigatorio: 0
+        }))
       }
 
-      onSubmit?.(vaga)
-      router.push("/empresa/jobs/list")
+      const response = await api.post("/empresa/vagas", payload)
+      
+      if (response.id) {
+        console.log("Vaga criada com ID:", response.id)
+        router.push("/empresa/jobs/list")
+      }
+    } catch (error) {
+      console.error("Erro ao criar vaga:", error)
+      setErrors({ ...errors, submit: "Erro ao criar vaga. Tente novamente." }
     } catch (error) {
       console.error("Erro ao criar vaga:", error)
     } finally {
@@ -148,8 +168,8 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                   value={titulo}
                   onChange={(e) => {
                     setTitulo(e.target.value)
-                    if (errors.titulo) setErrors({ ...errors, titulo: "" })
-                  }}
+                    if (errors.titulo) s.id} value={a.id}>
+                        {a.nome
                   disabled={loading || isLoading}
                   className={errors.titulo ? "border-red-500" : ""}
                 />

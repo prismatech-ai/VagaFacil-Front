@@ -27,45 +27,8 @@ interface ListaVagasEmpresaProps {
   isLoading?: boolean
 }
 
-// Mock de vagas
-const MOCK_VAGAS: Vaga[] = [
-  {
-    id: "vaga-1",
-    titulo: "Senior React Developer",
-    area: "Frontend",
-    descricao: "Procuramos um desenvolvedor React experiente com 5+ anos de experiência...",
-    dataCriacao: "2024-01-05",
-    candidatosAlinhados: 12,
-    candidatosComInteresse: 4,
-    competenciasFiltros: ["React", "TypeScript", "JavaScript"],
-    status: "aberta",
-  },
-  {
-    id: "vaga-2",
-    titulo: "Backend Developer - Node.js",
-    area: "Backend",
-    descricao: "Desenvolvedor backend com experiência em Node.js e arquitetura de APIs...",
-    dataCriacao: "2024-01-03",
-    candidatosAlinhados: 8,
-    candidatosComInteresse: 2,
-    competenciasFiltros: ["Node.js", "JavaScript", "Docker"],
-    status: "aberta",
-  },
-  {
-    id: "vaga-3",
-    titulo: "Full Stack Engineer",
-    area: "Full Stack",
-    descricao: "Procuramos alguém versátil que trabalhe com React e Node.js...",
-    dataCriacao: "2023-12-28",
-    candidatosAlinhados: 15,
-    candidatosComInteresse: 5,
-    competenciasFiltros: ["React", "Node.js", "TypeScript"],
-    status: "aberta",
-  },
-]
-
 export function ListaVagasEmpresa({
-  vagas = MOCK_VAGAS,
+  vagas = [],
   onCreateVaga,
   onViewVaga,
   onViewKanban,

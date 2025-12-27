@@ -18,26 +18,7 @@ interface Teste {
 export default function TestesPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-
-  // Mock de testes - em produção viriam do backend
-  const [testes, setTestes] = useState<Teste[]>([
-    {
-      id: "test-1",
-      competenciaId: "react",
-      competenciaNome: "React",
-      nivelTeste: 2,
-      status: "nao-iniciado",
-      tempoLimite: 20,
-    },
-    {
-      id: "test-2",
-      competenciaId: "js",
-      competenciaNome: "JavaScript",
-      nivelTeste: 2,
-      status: "nao-iniciado",
-      tempoLimite: 15,
-    },
-  ])
+  const [testes, setTestes] = useState<Teste[]>([])
 
   const handleTestStart = (testeId: string) => {
     setTestes(

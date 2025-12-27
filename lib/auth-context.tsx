@@ -76,8 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Tentando login com:", { email })
       const response = await api.post<{
         access_token: string
+        token_type?: string
         refresh_token?: string
-        user: any
+        user_id?: string
+        user?: any
       }>("/api/v1/auth/login", { email, password })
 
       console.log("Resposta do backend (completa):", response)
@@ -145,9 +147,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Iniciando registro, enviando para backend...")
 
+      const registerPayload = {
+        email: data.email,
+        password: data.password,
+        user_type: data.role === "empresa" ? "empresa" : "candidato"
+      }
+
       const response = await api.post<any>(
         "/api/v1/auth/register",
-        data
+        registerPayload
       )
 
       console.log("Resposta do backend no registro (tipo):", typeof response)

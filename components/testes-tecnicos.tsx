@@ -40,36 +40,8 @@ const STATUS_CORES = {
   "concluido": "bg-green-100 text-green-800 border-green-300",
 }
 
-// Mock de testes
-const MOCK_TESTES: Teste[] = [
-  {
-    id: "test-1",
-    competenciaId: "react",
-    competenciaNome: "React",
-    nivelTeste: 2,
-    status: "nao-iniciado",
-    tempoLimite: 20,
-  },
-  {
-    id: "test-2",
-    competenciaId: "js",
-    competenciaNome: "JavaScript/TypeScript",
-    nivelTeste: 2,
-    status: "nao-iniciado",
-    tempoLimite: 15,
-  },
-  {
-    id: "test-3",
-    competenciaId: "git",
-    competenciaNome: "Git",
-    nivelTeste: 1,
-    status: "nao-iniciado",
-    tempoLimite: 10,
-  },
-]
-
 export function TestesTecnicos({
-  testes = MOCK_TESTES,
+  testes,
   onTestStart,
   onTestComplete,
   onAllTestsComplete,

@@ -39,62 +39,20 @@ interface CandidatoDashboardProps {
   nomeCompleto?: string
   perfilCompleto?: boolean
   onAceitarEntrevista?: (interesseId: string) => void
+  interesses?: Interesse[]
+  testes?: TesteTecnico[]
 }
-
-// Mock data
-const MOCK_INTERESSES: Interesse[] = [
-  {
-    id: "1",
-    dataInteresse: "2025-12-22",
-    status: "novo",
-    descricao: "Uma empresa demonstrou interesse em você",
-  },
-  {
-    id: "2",
-    dataInteresse: "2025-12-20",
-    status: "novo",
-    descricao: "Outra empresa se interessou pelo seu perfil",
-  },
-  {
-    id: "3",
-    dataInteresse: "2025-12-18",
-    status: "aceito",
-    descricao: "Você aceitou participar de uma entrevista",
-  },
-]
-
-const MOCK_TESTES: TesteTecnico[] = [
-  {
-    id: "1",
-    nome: "Teste de Frontend",
-    data: "2025-12-15",
-    status: "concluido",
-    duracao: "45 minutos",
-  },
-  {
-    id: "2",
-    nome: "Teste de JavaScript",
-    data: "2025-12-10",
-    status: "concluido",
-    duracao: "60 minutos",
-  },
-  {
-    id: "3",
-    nome: "Teste de React",
-    data: "2025-12-22",
-    status: "pendente",
-    duracao: "45 minutos",
-  },
-]
 
 export function CandidatoDashboard({
   areaAtuacao = "Frontend",
   nomeCompleto = "Usuário",
   perfilCompleto = true,
   onAceitarEntrevista,
+  interesses: interessesInit = [],
+  testes: testesInit = [],
 }: CandidatoDashboardProps) {
   const router = useRouter()
-  const [interesses, setInteresses] = useState<Interesse[]>(MOCK_INTERESSES)
+  const [interesses, setInteresses] = useState<Interesse[]>(interessesInit)
 
   const handleAceitarEntrevista = (interesseId: string) => {
     setInteresses(
@@ -190,14 +148,14 @@ export function CandidatoDashboard({
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="text-3xl font-bold text-[#03565C]">
-                {MOCK_TESTES.filter((t) => t.status === "concluido").length}
+                {testesInit.filter((t) => t.status === "concluido").length}
               </div>
               <p className="text-sm text-gray-600">
-                de {MOCK_TESTES.length} teste{MOCK_TESTES.length > 1 ? "s" : ""}
+                de {testesInit.length} teste{testesInit.length > 1 ? "s" : ""}
               </p>
-              {MOCK_TESTES.some((t) => t.status === "pendente") && (
+              {testesInit.some((t) => t.status === "pendente") && (
                 <Badge variant="outline" className="w-fit bg-yellow-50 text-yellow-800 border-yellow-200">
-                  {MOCK_TESTES.filter((t) => t.status === "pendente").length} pendente
+                  {testesInit.filter((t) => t.status === "pendente").length} pendente
                 </Badge>
               )}
             </CardContent>
@@ -315,7 +273,7 @@ export function CandidatoDashboard({
 
           {/* Tab: Testes */}
           <TabsContent value="testes">
-            {MOCK_TESTES.length === 0 ? (
+            {testesInit.length === 0 ? (
               <Card className="border-0 shadow-sm">
                 <CardContent className="pt-8 pb-8 text-center">
                   <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -337,7 +295,7 @@ export function CandidatoDashboard({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {MOCK_TESTES.map((teste) => (
+                      {testesInit.map((teste) => (
                         <TableRow key={teste.id} className="border-gray-200">
                           <TableCell className="font-medium text-gray-900">
                             {teste.nome}

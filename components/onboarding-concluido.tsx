@@ -15,21 +15,9 @@ interface OnboardingConcluidoProps {
   isLoading?: boolean
 }
 
-// Mock de vagas por área
-const MOCK_VAGAS: Record<string, number> = {
-  frontend: 48,
-  backend: 62,
-  fullstack: 35,
-  devops: 18,
-  qa: 24,
-  datascience: 15,
-  mobile: 31,
-  infraestrutura: 12,
-}
-
 export function OnboardingConcluido({
   areaAtuacao = "frontend",
-  vagasDisponiveisPorArea = MOCK_VAGAS,
+  vagasDisponiveisPorArea = {},
   onGoDashboard,
   isLoading = false,
 }: OnboardingConcluidoProps) {

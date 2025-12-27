@@ -20,10 +20,10 @@ interface AceiteEntrevistaProps {
 
 export function AceiteEntrevista({
   conviteId,
-  empresaNome = "Empresa (Anônima)",
-  vagaTitulo = "Vaga em Frontend",
-  dataConvite = "2024-01-10",
-  competenciasRequeridas = ["React", "TypeScript"],
+  empresaNome = "",
+  vagaTitulo = "",
+  dataConvite = "",
+  competenciasRequeridas = [],
   onAccept,
   onReject,
   isLoading = false,

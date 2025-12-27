@@ -11,41 +11,9 @@ import { AlertCircle, Search, Star } from "lucide-react"
 export default function MinhasVagasPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroStatus, setFiltroStatus] = useState<"todas" | "interessado" | "aplicado">("todas")
+  const [vagas, setVagas] = useState([])
 
-  const mockVagas = [
-    {
-      id: "vaga-001",
-      titulo: "Desenvolvedor React Sênior",
-      empresa: "Tech Company",
-      area: "Frontend",
-      competenciasAlinhadas: ["React", "TypeScript"],
-      statusCandidato: "interessado",
-      descricao: "Procuramos um desenvolvedor React com experiência em TypeScript",
-      dataVaga: "2024-01-05",
-    },
-    {
-      id: "vaga-002",
-      titulo: "Full Stack Developer",
-      empresa: "Digital Solutions",
-      area: "Backend",
-      competenciasAlinhadas: ["Node.js", "PostgreSQL"],
-      statusCandidato: "aplicado",
-      descricao: "Desenvolvimento de APIs REST em Node.js",
-      dataVaga: "2024-01-03",
-    },
-    {
-      id: "vaga-003",
-      titulo: "Product Manager",
-      empresa: "Innovate Inc",
-      area: "Produto",
-      competenciasAlinhadas: ["Gestão", "Analytics"],
-      statusCandidato: "interessado",
-      descricao: "Lidere o desenvolvimento de novos produtos",
-      dataVaga: "2024-01-01",
-    },
-  ]
-
-  const vagasFiltradas = mockVagas.filter((v) => {
+  const vagasFiltradas = vagas.filter((v: any) => {
     const matchSearch =
       v.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.empresa.toLowerCase().includes(searchTerm.toLowerCase())

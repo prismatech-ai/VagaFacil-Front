@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -8,6 +8,7 @@ import { AlertCircle, ChevronRight } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { getAreaById, NIVEL_LABELS } from "@/lib/areas-competencias"
+import { api } from "@/lib/api"
 
 interface Competencia {
   id: string
@@ -83,6 +84,9 @@ export function AutoavaliacaoCompetencias({
   const [competencias, setCompetencias] = useState<CategoriaCompetencias[]>(
     categoriasInicial
   )
+  const [submitting, setSubmitting] = useState(false)
+  const [apiCompetencias, setApiCompetencias] = useState<any[]>([])
+  const [loadingApi, setLoadingApi] = useState(false)
 
   const handleNivelChange = (categoriaId: string, competenciaId: string, nivel: 1 | 2 | 3 | 4) => {
     setCompetencias(
@@ -97,6 +101,32 @@ export function AutoavaliacaoCompetencias({
           : cat
       )
     )
+  }
+
+  // Buscar competências da API quando areaId mudar
+  useEffect(() => {
+    if (areaId) {
+      fetchCompetencias()
+    }
+  }, [areaId])
+
+  const fetchCompetencias = async () => {
+    try {
+      setLoadingApi(true)
+      // GET /candidato/competencias
+      const response = await api.get<{
+        total: number
+        competencias: any[]
+      }>("/candidato/competencias")
+      
+      if (response.competencias) {
+        setApiCompetencias(response.competencias)
+      }
+    } catch (error) {
+      console.error("Erro ao buscar competências:", error)
+    } finally {
+      setLoadingApi(false)
+    }
   }
 
   const toggleCompetencia = (categoriaId: string, competenciaId: string) => {
@@ -128,9 +158,31 @@ export function AutoavaliacaoCompetencias({
     cat.competencias.filter((comp) => comp.nivel !== null)
   )
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onComplete(competenciasDeclaradas)
+    setSubmitting(true)
+    try {
+      // Enviar autoavaliação para API: POST /candidato/autoavaliacao
+      const payload = {
+        competencias: competenciasDeclaradas.map((comp) => ({
+          competencia_id: comp.id,
+          nivel_declarado: String(comp.nivel)
+        }))
+      }
+      
+      try {
+        await api.post("/candidato/autoavaliacao", payload)
+      } catch (error: any) {
+        console.warn("Endpoint /candidato/autoavaliacao não implementado ou indisponível:", error?.message)
+        // Fallback: continuar com dados locais se o endpoint não estiver disponível
+      }
+      
+      onComplete(competenciasDeclaradas)
+    } catch (error) {
+      console.error("Erro ao salvar autoavaliação:", error)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -237,10 +289,10 @@ export function AutoavaliacaoCompetencias({
             {/* CTA */}
             <Button
               type="submit"
-              disabled={competenciasDeclaradas.length === 0 || isLoading}
+              disabled={competenciasDeclaradas.length === 0 || isLoading || submitting}
               className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
             >
-              {isLoading ? "Salvando..." : `Continuar com ${competenciasDeclaradas.length} competência(s)`}
+              {submitting ? "Salvando..." : isLoading || loadingApi ? "Carregando..." : `Continuar com ${competenciasDeclaradas.length} competência(s)`}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </form>

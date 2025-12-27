@@ -89,7 +89,7 @@ export default function LoginPage() {
     setIsResetting(true)
 
     try {
-      await api.post("/api/v1/auth/forgot-password", { email: resetEmail })
+      await api.post("/auth/forgot-password", { email: resetEmail })
       setResetSuccess(true)
       setResetEmail("")
     } catch (err: any) {

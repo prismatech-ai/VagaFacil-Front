@@ -27,54 +27,6 @@ interface KanbanVagaProps {
   isLoading?: boolean
 }
 
-// Mock de candidatos no kanban
-const MOCK_CANDIDATOS: CandidatoKanban[] = [
-  {
-    id: "kanban-1",
-    candidatoId: "cand-uuid-001",
-    competenciasDeclaradas: ["React", "TypeScript"],
-    testes: [
-      { competencia: "React", score: 8 },
-    ],
-    demonstrouInteresse: false,
-    aceituEntrevista: false,
-  },
-  {
-    id: "kanban-2",
-    candidatoId: "cand-uuid-002",
-    competenciasDeclaradas: ["React", "TypeScript", "JavaScript"],
-    testes: [
-      { competencia: "React", score: 9 },
-      { competencia: "TypeScript", score: 8 },
-    ],
-    demonstrouInteresse: false,
-    aceituEntrevista: false,
-  },
-  {
-    id: "kanban-3",
-    candidatoId: "cand-uuid-003",
-    competenciasDeclaradas: ["React", "TypeScript"],
-    testes: [
-      { competencia: "React", score: 7 },
-      { competencia: "TypeScript", score: 8 },
-    ],
-    demonstrouInteresse: true,
-    aceituEntrevista: false,
-    dataDemonstrouInteresse: "2024-01-10",
-  },
-  {
-    id: "kanban-4",
-    candidatoId: "cand-uuid-004",
-    competenciasDeclaradas: ["React", "TypeScript"],
-    testes: [
-      { competencia: "React", score: 9 },
-      { competencia: "TypeScript", score: 9 },
-    ],
-    demonstrouInteresse: true,
-    aceituEntrevista: true,
-  },
-]
-
 const COLUNAS = [
   { id: "comp-assessment", titulo: "Autoavaliação de Competências", cor: "bg-[#25D9B8]/10" },
   { id: "testes-done", titulo: "Testes Concluídos", cor: "bg-green-50" },
@@ -87,7 +39,7 @@ export function KanbanVaga({
   vagaId,
   vagaTitulo = "Senior React Developer",
   areaVaga = "Frontend",
-  candidatos = MOCK_CANDIDATOS,
+  candidatos = [],
   onViewCandidato,
   isLoading = false,
 }: KanbanVagaProps) {

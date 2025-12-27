@@ -74,8 +74,8 @@ function ResetPasswordContent() {
         token,
         newPassword: password,
       }
-      console.log('POST /api/v1/auth/reset-password', { body: { token: token?.slice(0, 20) + '...', newPassword: '***' } })
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/reset-password`, {
+      console.log('POST /auth/reset-password', { body: { token: token?.slice(0, 20) + '...', newPassword: '***' } })
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
