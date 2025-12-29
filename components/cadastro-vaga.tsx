@@ -168,8 +168,8 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                   value={titulo}
                   onChange={(e) => {
                     setTitulo(e.target.value)
-                    if (errors.titulo) s.id} value={a.id}>
-                        {a.nome
+                    if (errors.titulo) setErrors({ ...errors, titulo: "" })
+                  }}
                   disabled={loading || isLoading}
                   className={errors.titulo ? "border-red-500" : ""}
                 />

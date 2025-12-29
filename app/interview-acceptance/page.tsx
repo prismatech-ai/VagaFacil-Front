@@ -2,10 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { AceiteEntrevista } from "@/components/aceite-entrevista"
-import { useEffect, useState } from "react"
-
-// Disable static pre-rendering for this page since it uses dynamic search params
-export const dynamic = "force-dynamic"
+import { useEffect, useState, Suspense } from "react"
 
 function InterviewAcceptanceContent() {
   const router = useRouter()
@@ -79,5 +76,9 @@ function InterviewAcceptanceContent() {
 }
 
 export default function InterviewAcceptancePage() {
-  return <InterviewAcceptanceContent />
+  return (
+    <Suspense fallback={null}>
+      <InterviewAcceptanceContent />
+    </Suspense>
+  )
 }
