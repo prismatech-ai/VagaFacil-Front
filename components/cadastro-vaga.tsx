@@ -111,7 +111,9 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
     e.preventDefault()
     if (!validateForm()) return
 
-    se// POST /empresa/vagas
+    setLoading(true)
+    try {
+      // POST /empresa/vagas
       const payload = {
         title: titulo,
         description: descricao,
