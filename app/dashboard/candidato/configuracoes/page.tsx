@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,23 +10,106 @@ import { AlertCircle, Mail, Phone, MapPin, FileText } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+interface CandidatoData {
+  id: number
+  full_name: string
+  email: string
+  cpf: string
+  phone: string
+  rg: string
+  birth_date: string
+  genero: string
+  estado_civil: string
+  cep: string
+  logradouro: string
+  numero: string
+  complemento: string
+  bairro: string
+  cidade: string
+  estado: string
+  location: string
+  is_pcd: boolean
+  tipo_pcd: string
+  necessidades_adaptacao: string
+  bio: string
+  linkedin_url: string
+  portfolio_url: string
+  resume_url: string
+  area_atuacao: string
+  percentual_completude: number
+  onboarding_completo: boolean
+}
+
 export default function ConfiguracoesCandidatoPage() {
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [isSaved, setIsSaved] = useState(false)
+  const [error, setError] = useState("")
 
   const [formData, setFormData] = useState({
-    nome: "João Silva Santos",
-    email: "joao.silva@example.com",
-    telefone: "(11) 98765-4321",
-    localizacao: "São Paulo, SP",
-    genero: "masculino",
-    dataNascimento: "1990-05-15",
-    resumoProfissional: "Desenvolvedor Full Stack com 8 anos de experiência...",
-    linkedin: "https://linkedin.com/in/joaosilva",
-    github: "https://github.com/joaosilva",
-    site: "https://joaosilva.com",
-    curriculo: "curriculo-joao-silva.pdf",
+    nome: "",
+    email: "",
+    telefone: "",
+    genero: "",
+    dataNascimento: "",
+    resumoProfissional: "",
+    linkedin: "",
+    github: "",
+    site: "",
+    curriculo: "",
+    cpf: "",
+    cidade: "",
+    estado: "",
   })
+
+  useEffect(() => {
+    const carregarDados = async () => {
+      try {
+        setIsLoading(true)
+        const token = localStorage.getItem("token")
+        
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error(`Erro ${response.status} ao carregar dados`)
+        }
+
+        const data: CandidatoData = await response.json()
+        console.log("📋 Dados do candidato carregados:", data)
+
+        setFormData({
+          nome: data.full_name || "",
+          email: data.email || "",
+          telefone: data.phone || "",
+          genero: data.genero || "",
+          dataNascimento: data.birth_date || "",
+          resumoProfissional: data.bio || "",
+          linkedin: data.linkedin_url || "",
+          github: "",
+          site: data.portfolio_url || "",
+          curriculo: data.resume_url || "",
+          cpf: data.cpf || "",
+          cidade: data.cidade || "",
+          estado: data.estado || "",
+        })
+      } catch (err: any) {
+        console.error("Erro ao carregar dados:", err)
+        setError(err.message)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    carregarDados()
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -55,6 +138,17 @@ export default function ConfiguracoesCandidatoPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Configurações da Conta</h1>
+          <p className="text-gray-600 mt-2">Carregando seus dados...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
@@ -62,6 +156,16 @@ export default function ConfiguracoesCandidatoPage() {
         <h1 className="text-3xl font-bold text-gray-900">Configurações da Conta</h1>
         <p className="text-gray-600 mt-2">Gerencie suas informações pessoais e profissionais</p>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            ❌ {error}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Success Alert */}
       {isSaved && (
@@ -101,6 +205,16 @@ export default function ConfiguracoesCandidatoPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="cpf">CPF</Label>
+              <Input
+                id="cpf"
+                name="cpf"
+                value={formData.cpf}
+                disabled
+                className="bg-gray-50"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="telefone" className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 Telefone
@@ -109,18 +223,6 @@ export default function ConfiguracoesCandidatoPage() {
                 id="telefone"
                 name="telefone"
                 value={formData.telefone}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="localizacao" className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Localização
-              </Label>
-              <Input
-                id="localizacao"
-                name="localizacao"
-                value={formData.localizacao}
                 onChange={handleChange}
               />
             </div>
@@ -146,6 +248,37 @@ export default function ConfiguracoesCandidatoPage() {
                 type="date"
                 value={formData.dataNascimento}
                 onChange={handleChange}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Location Info */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle>Localização</CardTitle>
+          <CardDescription>Sua localização de atuação</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cidade">Cidade</Label>
+              <Input
+                id="cidade"
+                name="cidade"
+                value={formData.cidade}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estado">Estado</Label>
+              <Input
+                id="estado"
+                name="estado"
+                value={formData.estado}
+                onChange={handleChange}
+                maxLength={2}
               />
             </div>
           </div>

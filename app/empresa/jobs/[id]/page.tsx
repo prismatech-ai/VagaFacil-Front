@@ -1,6 +1,6 @@
 "use client"
 
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useState } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,42 +11,7 @@ export default function VagaDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const vagaId = params.id as string
-
-  // Mock data - em produção viria de uma API
-  const vaga = {
-    id: vagaId,
-    titulo: "Desenvolvedor React Sênior",
-    descricao: "Procuramos um desenvolvedor React com experiência em TypeScript e aplicações em larga escala",
-    area: "Frontend",
-    setor: "Tecnologia",
-    nivelSenioridade: "Sênior",
-    salarioMin: 8000,
-    salarioMax: 12000,
-    tipoContrato: "CLT",
-    local: "São Paulo, SP",
-    dataCriacao: "2024-01-05",
-    dataAtualizacao: "2024-01-15",
-    statusVaga: "aberta",
-    competenciasRequeridas: [
-      { nome: "React", nivelMinimo: 3 },
-      { nome: "TypeScript", nivelMinimo: 3 },
-      { nome: "Node.js", nivelMinimo: 2 },
-      { nome: "PostgreSQL", nivelMinimo: 2 },
-      { nome: "Git", nivelMinimo: 2 },
-    ],
-    beneficios: [
-      "Vale refeição",
-      "Vale transporte",
-      "Plano de saúde",
-      "Gympass",
-      "Home office",
-    ],
-    candidatosTotal: 5,
-    candidatosComTestes: 3,
-    candidatosComInteresse: 2,
-    responsavel: "Maria Santos",
-    emailResponsavel: "maria@company.com",
-  }
+  const [vaga, setVaga] = useState<any>(null)
 
   const getNivelLabel = (nivel: number) => {
     const niveis = {

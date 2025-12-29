@@ -10,35 +10,9 @@ import { AlertCircle, Search, Download } from "lucide-react"
 
 export default function CandidatosPage() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [candidatos, setCandidatos] = useState([])
 
-  const mockCandidatos = [
-    {
-      id: "cand-001",
-      nome: "João Silva",
-      email: "joao@example.com",
-      competencias: ["React", "TypeScript"],
-      statusProcesso: "entrevista-aceita",
-      dataContato: "2024-01-10",
-    },
-    {
-      id: "cand-002",
-      nome: "Maria Santos",
-      email: "maria@example.com",
-      competencias: ["Node.js", "PostgreSQL"],
-      statusProcesso: "com-interesse",
-      dataContato: "2024-01-08",
-    },
-    {
-      id: "cand-003",
-      nome: "Pedro Costa",
-      email: "pedro@example.com",
-      competencias: ["React", "Node.js"],
-      statusProcesso: "entrevista-aceita",
-      dataContato: "2024-01-05",
-    },
-  ]
-
-  const candidatosFiltrados = mockCandidatos.filter((c) =>
+  const candidatosFiltrados = candidatos.filter((c: any) =>
     c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.email.toLowerCase().includes(searchTerm.toLowerCase())
   )

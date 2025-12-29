@@ -13,6 +13,7 @@ function InterviewAcceptanceContent() {
   const [mounted, setMounted] = useState(false)
 
   // Params da URL para dados da entrevista
+  const vagaId = searchParams.get("vaga_id") || "1"
   const conviteId = searchParams.get("id") || "conv-001"
   const empresaNome = searchParams.get("empresa") || "TechCorp"
   const vagaTitulo = searchParams.get("vaga") || "Desenvolvedor React Sênior"
@@ -24,17 +25,42 @@ function InterviewAcceptanceContent() {
     setMounted(true)
   }, [])
 
-  const handleAccept = (id: string) => {
-    // Salvar aceitação (integraria com API aqui)
-    console.log("Entrevista aceita:", id)
-    // Após aceitar entrevista, retorna ao dashboard do candidato
-    router.push("/dashboard/candidato")
+  const handleAccept = async (id: string) => {
+    try {
+      // POST /candidato/aceitar-entrevista/{vaga_id}
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/candidato/aceitar-entrevista/${vagaId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+          },
+          body: JSON.stringify({
+            consentimento: true
+          })
+        }
+      )
+      
+      if (response.ok) {
+        console.log("Entrevista aceita:", id)
+        router.push("/dashboard/candidato")
+      } else {
+        console.error("Erro ao aceitar entrevista:", response.status)
+      }
+    } catch (error) {
+      console.error("Erro ao aceitar entrevista:", error)
+    }
   }
 
-  const handleReject = (id: string) => {
-    console.log("Entrevista rejeitada:", id)
-    // Ao rejeitar, retorna ao dashboard do candidato
-    router.push("/dashboard/candidato")
+  const handleReject = async (id: string) => {
+    try {
+      console.log("Entrevista rejeitada:", id)
+      // Redirect sem enviar (consentimento = false implícito)
+      router.push("/dashboard/candidato")
+    } catch (error) {
+      console.error("Erro ao rejeitar entrevista:", error)
+    }
   }
 
   if (!mounted) return null

@@ -101,18 +101,20 @@ export default function CadastroEmpresaPage() {
       const companyData = {
         email,
         password,
-        cnpj: cnpj.replace(/\D/g, ""),
-        razao_social: razaoSocial,
-        nome_fantasia: nomeFantasia,
-        setor: setor || undefined,
-        site: site || undefined,
-        descricao: descricao || undefined,
+        nome: nomeFantasia || razaoSocial,
+        role: "empresa",
+        razaoSocial: razaoSocial || "",
+        cnpj: cnpj.replace(/\D/g, "") || "",
+        setor: setor || "",
+        cepempresa: "",
+        pessoaDeContato: "",
+        foneempresa: "",
       };
 
       console.log("ENVIADO PARA BACKEND (EMPRESA):", companyData);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/companies/register`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`,
         {
           method: "POST",
           headers: {

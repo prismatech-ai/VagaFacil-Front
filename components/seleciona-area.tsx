@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, ChevronRight } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { TODAS_AREAS } from "@/lib/areas-competencias"
+import { api } from "@/lib/api"
 
 interface SelecionaAreaProps {
   onComplete: (areaId: string) => void
@@ -18,11 +19,24 @@ const AREAS_DISPONIVEIS = TODAS_AREAS
 
 export function SelecionaArea({ onComplete, isLoading = false }: SelecionaAreaProps) {
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (selectedArea) {
-      onComplete(selectedArea)
+      setSubmitting(true)
+      try {
+        // Enviar para API: POST /candidato/area-atuacao
+        await api.post("/candidato/area-atuacao", { area: selectedArea })
+        onComplete(selectedArea)
+      } catch (error: any) {
+        console.warn("Endpoint /candidato/area-atuacao não implementado ou indisponível, usando dados locais:", error?.message)
+        // Fallback: usar dados locais se o endpoint não estiver disponível
+        // Em produção, o backend deve implementar este endpoint
+        onComplete(selectedArea)
+      } finally {
+        setSubmitting(false)
+      }
     }
   }
 
@@ -54,7 +68,7 @@ export function SelecionaArea({ onComplete, isLoading = false }: SelecionaAreaPr
                   key={area.id}
                   type="button"
                   onClick={() => setSelectedArea(area.id)}
-                  disabled={isLoading}
+                  disabled={isLoading || submitting}
                   className={`p-4 rounded-lg border-2 transition-all text-left ${
                     selectedArea === area.id
                       ? "border-[#24BFB0] bg-[#25D9B8]/10 shadow-md"
@@ -97,10 +111,10 @@ export function SelecionaArea({ onComplete, isLoading = false }: SelecionaAreaPr
             {/* CTA */}
             <Button
               type="submit"
-              disabled={!selectedArea || isLoading}
+              disabled={!selectedArea || isLoading || submitting}
               className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
             >
-              {isLoading ? "Carregando..." : "Continuar com " + (selectedArea ? AREAS_DISPONIVEIS.find(a => a.id === selectedArea)?.nome : "seleção")}
+              {submitting ? "Salvando..." : isLoading ? "Carregando..." : "Continuar com " + (selectedArea ? AREAS_DISPONIVEIS.find(a => a.id === selectedArea)?.nome : "seleção")}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </form>

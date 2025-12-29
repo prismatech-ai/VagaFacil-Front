@@ -46,21 +46,17 @@ const NIVEL_CORES = {
 }
 
 export function DetalhesCandidatoDadosLiberados({
-  candidatoId = "cand-uuid-001",
+  candidatoId = "",
   dadosPessoais = {
-    nome: "João Silva",
-    email: "joao@example.com",
-    telefone: "(11) 98765-4321",
-    curriculo: "https://drive.google.com/file/d/...",
-    github: "https://github.com/joaosilva",
-    linkedin: "https://linkedin.com/in/joaosilva",
+    nome: "",
+    email: "",
+    telefone: "",
+    curriculo: "",
+    github: "",
+    linkedin: "",
   },
-  competencias = [
-    { nome: "React", nivelDeclarado: 3, testeScore: 8 },
-    { nome: "TypeScript", nivelDeclarado: 2, testeScore: 7 },
-    { nome: "JavaScript", nivelDeclarado: 3, testeScore: 8 },
-  ],
-  dateAceituEntrevista = "2024-01-10",
+  competencias = [],
+  dateAceituEntrevista = "",
   onBack,
   isLoading = false,
 }: DetalhesCandidatoDadosLiberadosProps) {

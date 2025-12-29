@@ -14,15 +14,15 @@ export default function ConfiguracoesPage() {
   const [isSaved, setIsSaved] = useState(false)
 
   const [formData, setFormData] = useState({
-    razaoSocial: "Tech Company LTDA",
-    cnpj: "12.345.678/0001-90",
-    nomeFantasia: "Tech Company",
-    setor: "Tecnologia e Inovação",
-    email: "contato@techcompany.com",
-    telefone: "(11) 3000-0000",
-    localizacao: "São Paulo, SP",
-    website: "https://www.techcompany.com",
-    descricao: "Empresa líder em soluções de tecnologia...",
+    razaoSocial: "",
+    cnpj: "",
+    nomeFantasia: "",
+    setor: "",
+    email: "",
+    telefone: "",
+    localizacao: "",
+    website: "",
+    descricao: "",
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
