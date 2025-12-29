@@ -138,9 +138,7 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
       }
     } catch (error) {
       console.error("Erro ao criar vaga:", error)
-      setErrors({ ...errors, submit: "Erro ao criar vaga. Tente novamente." }
-    } catch (error) {
-      console.error("Erro ao criar vaga:", error)
+      setErrors({ ...errors, submit: "Erro ao criar vaga. Tente novamente." })
     } finally {
       setLoading(false)
     }
