@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { api } from "@/lib/api"
+import { COMPETENCIAS_DISPONIVEIS } from "@/lib/competencias"
 
 interface CompetenciaFiltro {
   id: string
@@ -40,20 +41,7 @@ const AREAS_DISPONIVEIS = [
   { id: "planejamento", nome: "Planejamento" },
 ]
 
-const COMPETENCIAS_DISPONIVEIS = [
-  "React",
-  "TypeScript",
-  "Node.js",
-  "PostgreSQL",
-  "Docker",
-  "Next.js",
-  "TailwindCSS",
-  "REST API",
-  "Python",
-  "SQL",
-  "Git",
-  "AWS",
-]
+const COMPETENCIAS_DISPONIVEIS_SIMPLES = Object.values(COMPETENCIAS_DISPONIVEIS).flat().map((comp) => comp.nome)
 
 export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps) {
   const router = useRouter()
@@ -113,11 +101,10 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
 
     setLoading(true)
     try {
-      // POST /empresa/vagas
+      // POST /api/v1/jobs/
       const payload = {
         title: titulo,
         description: descricao,
-        area_atuacao: area,
         requirements: descricao,
         benefits: "A definir",
         location: "A definir",
@@ -125,14 +112,11 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
         job_type: "CLT",
         salary_min: 0,
         salary_max: 0,
-        requisitos: competencias.map((comp) => ({
-          competencia_id: comp.id,
-          nivel_minimo: String(comp.nivelMinimo),
-          teste_obrigatorio: 0
-        }))
+        salary_currency: "BRL",
+        screening_questions: []
       }
 
-      const response = await api.post("/empresa/vagas", payload)
+      const response = await api.post("/api/v1/jobs/", payload)
       
       if (response.id) {
         console.log("Vaga criada com ID:", response.id)
@@ -185,8 +169,8 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                   </SelectTrigger>
                   <SelectContent>
                     {AREAS_DISPONIVEIS.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a}
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -233,7 +217,7 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                         <SelectValue placeholder="Selecione uma competência" />
                       </SelectTrigger>
                       <SelectContent>
-                        {COMPETENCIAS_DISPONIVEIS.map((comp) => (
+                        {COMPETENCIAS_DISPONIVEIS_SIMPLES.map((comp) => (
                           <SelectItem key={comp} value={comp}>
                             {comp}
                           </SelectItem>

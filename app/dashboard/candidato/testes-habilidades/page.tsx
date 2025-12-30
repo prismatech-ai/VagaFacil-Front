@@ -9,12 +9,7 @@ import { AlertCircle, CheckCircle2 } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
-
-interface Competencia {
-  nome: string
-  categoria: string
-  nivel?: number
-}
+import { COMPETENCIAS_DISPONIVEIS, type CompetenciasPorCategoria, type Competencia } from "@/lib/competencias"
 
 interface CandidatoData {
   id: number
@@ -26,52 +21,6 @@ interface CandidatoData {
   }>
   teste_habilidades_completado: boolean
   score_teste_habilidades: number
-}
-
-interface CompetenciasPorCategoria {
-  [categoria: string]: Competencia[]
-}
-
-const COMPETENCIAS_DISPONIVEIS: CompetenciasPorCategoria = {
-  "Linguagens de Programação": [
-    { nome: "JavaScript", categoria: "Linguagens de Programação" },
-    { nome: "TypeScript", categoria: "Linguagens de Programação" },
-    { nome: "Python", categoria: "Linguagens de Programação" },
-    { nome: "Java", categoria: "Linguagens de Programação" },
-    { nome: "C#", categoria: "Linguagens de Programação" },
-    { nome: "PHP", categoria: "Linguagens de Programação" },
-  ],
-  "Frontend": [
-    { nome: "React", categoria: "Frontend" },
-    { nome: "Vue.js", categoria: "Frontend" },
-    { nome: "Angular", categoria: "Frontend" },
-    { nome: "CSS/SCSS", categoria: "Frontend" },
-    { nome: "HTML5", categoria: "Frontend" },
-    { nome: "Tailwind CSS", categoria: "Frontend" },
-  ],
-  "Backend": [
-    { nome: "Node.js", categoria: "Backend" },
-    { nome: "Express", categoria: "Backend" },
-    { nome: "Django", categoria: "Backend" },
-    { nome: "Spring Boot", categoria: "Backend" },
-    { nome: "ASP.NET", categoria: "Backend" },
-    { nome: "REST API", categoria: "Backend" },
-  ],
-  "Bancos de Dados": [
-    { nome: "PostgreSQL", categoria: "Bancos de Dados" },
-    { nome: "MySQL", categoria: "Bancos de Dados" },
-    { nome: "MongoDB", categoria: "Bancos de Dados" },
-    { nome: "Redis", categoria: "Bancos de Dados" },
-    { nome: "Firebase", categoria: "Bancos de Dados" },
-  ],
-  "DevOps & Cloud": [
-    { nome: "Docker", categoria: "DevOps & Cloud" },
-    { nome: "Kubernetes", categoria: "DevOps & Cloud" },
-    { nome: "AWS", categoria: "DevOps & Cloud" },
-    { nome: "Azure", categoria: "DevOps & Cloud" },
-    { nome: "CI/CD", categoria: "DevOps & Cloud" },
-    { nome: "Git", categoria: "DevOps & Cloud" },
-  ],
 }
 
 export default function TestesHabilidadesPage() {

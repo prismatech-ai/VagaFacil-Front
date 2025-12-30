@@ -32,8 +32,6 @@ export default function CadastroEmpresaPage() {
   const [nomeFantasia, setNomeFantasia] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [setor, setSetor] = useState("");
-  const [site, setSite] = useState("");
-  const [descricao, setDescricao] = useState("");
 
   const formatCNPJ = (value: string) => {
     const cnpjNumbers = value.replace(/\D/g, "");
@@ -233,26 +231,6 @@ export default function CadastroEmpresaPage() {
                   placeholder="Ex: Tecnologia, Varejo, Saúde, Educação"
                   value={setor}
                   onChange={(e) => setSetor(e.target.value)}
-                />
-              </div>
-
-              {/* SITE */}
-              <div className="space-y-2">
-                <Label>Site</Label>
-                <Input
-                  placeholder="https://www.seusite.com.br"
-                  value={site}
-                  onChange={(e) => setSite(e.target.value)}
-                />
-              </div>
-
-              {/* DESCRIÇÃO */}
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Input
-                  placeholder="Breve descrição da empresa"
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
                 />
               </div>
 
