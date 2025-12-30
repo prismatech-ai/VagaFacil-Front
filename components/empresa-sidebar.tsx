@@ -36,19 +36,13 @@ export function EmpresaSidebar() {
       title: "Dashboard",
       url: "/dashboard/empresa",
       icon: LayoutDashboard,
-      active: pathname === "/dashboard/empresa",
+      active: pathname === "/dashboard/empresa" || pathname?.includes("/jobs"),
     },
     {
       title: "Minhas Vagas",
       url: "/empresa/jobs/list",
       icon: Briefcase,
       active: pathname?.includes("/jobs"),
-    },
-    {
-      title: "Candidatos",
-      url: "/empresa/candidatos",
-      icon: Users,
-      active: pathname?.includes("/candidatos"),
     },
     {
       title: "Configurações",
