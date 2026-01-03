@@ -16,7 +16,6 @@ import {
   FileCheck, 
   Settings,
   Brain,
-  Target,
   LogOut,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -46,22 +45,16 @@ export function CandidatoSidebar() {
       active: pathname?.includes("/minhas-vagas"),
     },
     {
-      title: "Selecionar Área",
-      url: "/dashboard/candidato/selecionar-area",
-      icon: Target,
-      active: pathname?.includes("/selecionar-area"),
-    },
-    {
       title: "Testes de Habilidades",
       url: "/dashboard/candidato/testes-habilidades",
       icon: Brain,
       active: pathname?.includes("/testes-habilidades"),
     },
     {
-      title: "Configurações",
-      url: "/dashboard/candidato/configuracoes",
+      title: "Meu Perfil",
+      url: "/dashboard/candidato/meu-perfil",
       icon: Settings,
-      active: pathname?.includes("/configuracoes"),
+      active: pathname?.includes("/meu-perfil") || pathname?.includes("/selecionar-area") || pathname?.includes("/configuracoes"),
     },
   ]
 

@@ -89,6 +89,25 @@ export function CandidatoDashboard({
           </p>
         </div>
 
+        {/* Alerta de Perfil Incompleto */}
+        {!perfilCompleto && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Seu perfil está incompleto. Complete agora para receber mais oportunidades!</span>
+                <Button
+                  size="sm"
+                  onClick={() => router.push("/dashboard/candidato/meu-perfil")}
+                  className="ml-4 bg-orange-600 hover:bg-orange-700"
+                >
+                  Completar Perfil
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Status Cards - 3 colunas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Card: Completude do Perfil */}

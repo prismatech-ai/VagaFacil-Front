@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { api } from "@/lib/api"
-import { COMPETENCIAS_DISPONIVEIS } from "@/lib/competencias"
+import { TODAS_AREAS, getAreaById } from "@/lib/areas-competencias"
 
 interface CompetenciaFiltro {
   id: string
@@ -28,26 +28,56 @@ interface CadastroVagaProps {
   isLoading?: boolean
 }
 
-const AREAS_DISPONIVEIS = [
-  { id: "eletrica", nome: "Elétrica" },
-  { id: "manutencao", nome: "Manutenção" },
-  { id: "automacao", nome: "Automação" },
-  { id: "mecanica", nome: "Mecânica" },
-  { id: "hidraulica", nome: "Hidráulica" },
-  { id: "pneumatica", nome: "Pneumática" },
-  { id: "soldagem", nome: "Soldagem" },
-  { id: "usinagem", nome: "Usinagem" },
-  { id: "qualidade", nome: "Qualidade" },
-  { id: "planejamento", nome: "Planejamento" },
+// Estados brasileiros
+const ESTADOS_BR = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO"
 ]
 
-const COMPETENCIAS_DISPONIVEIS_SIMPLES = Object.values(COMPETENCIAS_DISPONIVEIS).flat().map((comp) => comp.nome)
+const CIDADES_POR_ESTADO: Record<string, string[]> = {
+  "SP": ["São Paulo", "Campinas", "Sorocaba", "Santos", "Ribeirão Preto", "Araraquara"],
+  "RJ": ["Rio de Janeiro", "Niterói", "Duque de Caxias", "Nova Iguaçu"],
+  "MG": ["Belo Horizonte", "Contagem", "Betim", "Divinópolis"],
+  // ... adicionar mais cidades conforme necessário
+}
+
+const ESCOLARIDADE_OPCOES = [
+  "Ensino Fundamental",
+  "Ensino Médio",
+  "Técnico",
+  "Graduação",
+  "Pós-graduação",
+  "Mestrado",
+  "Doutorado",
+]
+
+// Agrupar competências por categoria dentro de uma área
+const getCompetenciasPorArea = (areaId: string) => {
+  const area = getAreaById(areaId)
+  if (!area) return {}
+  
+  // Retorna um objeto onde as chaves são nomes de categorias e os valores são arrays de nomes de competências
+  const competenciasPorCategoria: Record<string, string[]> = {}
+  
+  area.categorias.forEach((categoria) => {
+    competenciasPorCategoria[categoria.nome] = categoria.competencias.map((comp) => comp.nome)
+  })
+  
+  return competenciasPorCategoria
+}
 
 export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps) {
   const router = useRouter()
   const [titulo, setTitulo] = useState("")
   const [descricao, setDescricao] = useState("")
   const [area, setArea] = useState("")
+  const [estado, setEstado] = useState("")
+  const [cidade, setCidade] = useState("")
+  const [salarioMin, setSalarioMin] = useState("")
+  const [salarioMax, setSalarioMax] = useState("")
+  const [experienciaMinima, setExperienciaMinima] = useState("")
+  const [escolaridadeMinima, setEscolaridadeMinima] = useState("")
   const [competencias, setCompetencias] = useState<CompetenciaFiltro[]>([])
   const [competenciaTemp, setCompetenciaTemp] = useState<{ nome: string; nivelMinimo: 1 | 2 | 3 | 4 }>({
     nome: "",
@@ -55,6 +85,9 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+
+  const cidades = estado ? (CIDADES_POR_ESTADO[estado] || []) : []
+  const competenciasArea = area ? getCompetenciasPorArea(area) : {}
 
   const handleAddCompetencia = () => {
     if (!competenciaTemp.nome) {
@@ -89,6 +122,8 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
     if (!titulo.trim()) newErrors.titulo = "Título é obrigatório"
     if (!descricao.trim()) newErrors.descricao = "Descrição é obrigatória"
     if (!area) newErrors.area = "Área é obrigatória"
+    if (!estado) newErrors.estado = "Estado é obrigatório"
+    if (!cidade) newErrors.cidade = "Cidade é obrigatória"
     if (competencias.length === 0) newErrors.competencias = "Adicione pelo menos uma competência"
 
     setErrors(newErrors)
@@ -101,25 +136,32 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
 
     setLoading(true)
     try {
+      // Construir requisitos como string
+      const requisitos = [
+        experienciaMinima && `${experienciaMinima} anos de experiência`,
+        escolaridadeMinima && `Escolaridade: ${escolaridadeMinima}`,
+        competencias.length > 0 && `Competências: ${competencias.map(c => `${c.nome} (Nível ${c.nivelMinimo})`).join(", ")}`
+      ].filter(Boolean).join("\n")
+
       // POST /api/v1/jobs/
       const payload = {
         title: titulo,
         description: descricao,
-        requirements: descricao,
+        requirements: requisitos || descricao,
         benefits: "A definir",
-        location: "A definir",
-        remote: true,
+        location: `${cidade}, ${estado}`,
+        remote: false,
         job_type: "CLT",
-        salary_min: 0,
-        salary_max: 0,
+        salary_min: salarioMin ? parseInt(salarioMin) : 0,
+        salary_max: salarioMax ? parseInt(salarioMax) : 0,
         salary_currency: "BRL",
         screening_questions: []
       }
 
       const response = await api.post("/api/v1/jobs/", payload)
       
-      if (response.id) {
-        console.log("Vaga criada com ID:", response.id)
+      if (response && typeof response === "object" && "id" in response) {
+        console.log("Vaga criada com ID:", (response as any).id)
         router.push("/empresa/jobs/list")
       }
     } catch (error) {
@@ -131,9 +173,19 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
   }
 
   return (
-    <div className="min-h-screen bg-secondary/30 px-4 py-8">
-      <div className="max-w-3xl mx-auto">
-        <Card className="shadow-lg border-0">
+    <div className="min-h-screen bg-gradient-to-b from-[#25D9B8]/5 to-white px-4 py-8">
+      <div className="max-w-3xl mx-auto space-y-4">
+        {/* Botão Voltar */}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          className="gap-2 text-gray-900 border-gray-300 hover:bg-[#25D9B8] hover:text-white hover:border-[#25D9B8] font-medium"
+        >
+          ← Voltar para Vagas
+        </Button>
+
+        <Card className="shadow-sm border border-gray-200">
           <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
             <CardTitle className="text-2xl">Registrar Nova Vaga</CardTitle>
             <CardDescription className="text-white/80">
@@ -163,12 +215,18 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
               {/* Área */}
               <div className="space-y-2">
                 <Label htmlFor="area">Área de Atuação *</Label>
-                <Select value={area} onValueChange={setArea}>
+                <Select 
+                  value={area} 
+                  onValueChange={(value) => {
+                    setArea(value)
+                    setCompetencias([]) // Limpar competências ao mudar área
+                  }}
+                >
                   <SelectTrigger id="area" className={errors.area ? "border-red-500" : ""}>
                     <SelectValue placeholder="Selecione a área" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AREAS_DISPONIVEIS.map((a) => (
+                    {TODAS_AREAS.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.nome}
                       </SelectItem>
@@ -176,6 +234,43 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                   </SelectContent>
                 </Select>
                 {errors.area && <p className="text-sm text-red-500">{errors.area}</p>}
+              </div>
+
+              {/* Estado e Cidade */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="estado">Estado *</Label>
+                  <Select value={estado} onValueChange={setEstado}>
+                    <SelectTrigger id="estado" className={errors.estado ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ESTADOS_BR.map((uf) => (
+                        <SelectItem key={uf} value={uf}>
+                          {uf}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.estado && <p className="text-sm text-red-500">{errors.estado}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cidade">Cidade *</Label>
+                  <Select value={cidade} onValueChange={setCidade} disabled={!estado}>
+                    <SelectTrigger id="cidade" className={errors.cidade ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione a cidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cidades.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.cidade && <p className="text-sm text-red-500">{errors.cidade}</p>}
+                </div>
               </div>
 
               {/* Descrição */}
@@ -195,12 +290,67 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                 {errors.descricao && <p className="text-sm text-red-500">{errors.descricao}</p>}
               </div>
 
+              {/* Faixa Salarial */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="salarioMin">Salário Mínimo (R$)</Label>
+                  <Input
+                    id="salarioMin"
+                    type="number"
+                    placeholder="2.000"
+                    value={salarioMin}
+                    onChange={(e) => setSalarioMin(e.target.value)}
+                    disabled={loading || isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="salarioMax">Salário Máximo (R$)</Label>
+                  <Input
+                    id="salarioMax"
+                    type="number"
+                    placeholder="5.000"
+                    value={salarioMax}
+                    onChange={(e) => setSalarioMax(e.target.value)}
+                    disabled={loading || isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Experiência e Escolaridade */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="experiencia">Anos de Experiência Mínima</Label>
+                  <Input
+                    id="experiencia"
+                    type="number"
+                    placeholder="2"
+                    value={experienciaMinima}
+                    onChange={(e) => setExperienciaMinima(e.target.value)}
+                    disabled={loading || isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="escolaridade">Escolaridade Mínima</Label>
+                  <Select value={escolaridadeMinima} onValueChange={setEscolaridadeMinima}>
+                    <SelectTrigger id="escolaridade">
+                      <SelectValue placeholder="Selecione a escolaridade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ESCOLARIDADE_OPCOES.map((esc) => (
+                        <SelectItem key={esc} value={esc}>
+                          {esc}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {/* Divider */}
               <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Filtros de Competência</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Competências Requeridas</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Adicione as competências que você busca nos candidatos. Apenas candidatos que
-                  declarem essas competências no nível mínimo especificado poderão ser encontrados.
+                  Selecione as competências que você busca nos candidatos. {area && "Mostrando competências de: " + getAreaById(area)?.nome}
                 </p>
               </div>
 
@@ -212,16 +362,31 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                     <Select
                       value={competenciaTemp.nome}
                       onValueChange={(v) => setCompetenciaTemp({ ...competenciaTemp, nome: v })}
+                      disabled={!area}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Selecione uma competência" />
+                        <SelectValue placeholder={area ? "Selecione uma competência" : "Selecione uma área primeiro"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {COMPETENCIAS_DISPONIVEIS_SIMPLES.map((comp) => (
-                          <SelectItem key={comp} value={comp}>
-                            {comp}
-                          </SelectItem>
+                        {Object.entries(competenciasArea).map(([categoryName, competencies]) => (
+                          <React.Fragment key={categoryName}>
+                            {/* Category Header */}
+                            <div className="px-3 py-2 text-sm font-bold text-gray-900 bg-gray-50 border-b border-gray-200">
+                              {categoryName}
+                            </div>
+                            {/* Competencies in this category */}
+                            {competencies.map((comp) => (
+                              <SelectItem key={`${categoryName}-${comp}`} value={comp}>
+                                <span className="pl-2">{comp}</span>
+                              </SelectItem>
+                            ))}
+                          </React.Fragment>
                         ))}
+                        {Object.entries(competenciasArea).length === 0 && (
+                          <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                            Selecione uma área primeiro
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
 
@@ -245,7 +410,7 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                     <Button
                       type="button"
                       onClick={handleAddCompetencia}
-                      disabled={loading || isLoading}
+                      disabled={loading || isLoading || !area}
                       className="gap-2"
                     >
                       <Plus className="h-4 w-4" />
@@ -298,6 +463,65 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                 {errors.competencias && <p className="text-sm text-red-500">{errors.competencias}</p>}
               </div>
 
+              {/* Resumo dos Requisitos */}
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Resumo dos Requisitos</h3>
+                
+                <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  {/* Experiência */}
+                  {experienciaMinima && (
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-gray-900">Anos de Experiência</p>
+                        <p className="text-sm text-gray-600">{experienciaMinima} anos mínimos</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Escolaridade */}
+                  {escolaridadeMinima && (
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-gray-900">Escolaridade</p>
+                        <p className="text-sm text-gray-600">{escolaridadeMinima}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Competências */}
+                  {competencias.length > 0 && (
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-gray-900">Competências Técnicas</p>
+                        <div className="mt-2 space-y-1">
+                          {competencias.map((comp) => (
+                            <div key={comp.id} className="text-sm text-gray-600">
+                              <span className="font-medium">{comp.nome}</span>
+                              <span className="text-gray-500"> — Nível mínimo: {
+                                comp.nivelMinimo === 1
+                                  ? "Iniciante"
+                                  : comp.nivelMinimo === 2
+                                    ? "Intermediário"
+                                    : comp.nivelMinimo === 3
+                                      ? "Avançado"
+                                      : "Expert"
+                              }</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!experienciaMinima && !escolaridadeMinima && competencias.length === 0 && (
+                    <p className="text-sm text-gray-500 italic">Nenhum requisito adicionado ainda</p>
+                  )}
+                </div>
+              </div>
+
               {/* Info */}
               <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
                 <AlertCircle className="h-4 w-4 text-[#03565C]" />
@@ -309,14 +533,24 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
               </Alert>
 
               {/* CTA */}
-              <Button
-                type="submit"
-                disabled={loading || isLoading}
-                className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
-              >
-                {loading || isLoading ? "Criando..." : "Criar Vaga"}
-                {!(loading || isLoading) && <ChevronRight className="h-4 w-4" />}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  disabled={loading || isLoading}
+                  className="flex-1 gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
+                >
+                  {loading || isLoading ? "Criando..." : "Criar Vaga"}
+                  {!(loading || isLoading) && <ChevronRight className="h-4 w-4" />}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  className="px-6 py-6 text-base"
+                >
+                  Cancelar
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>

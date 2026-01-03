@@ -8,9 +8,18 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Search, Download } from "lucide-react"
 
+interface Candidato {
+  id: string
+  nome: string
+  email: string
+  statusProcesso: string
+  competencias: string[]
+  dataContato: string
+}
+
 export default function CandidatosPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [candidatos, setCandidatos] = useState([])
+  const [candidatos, setCandidatos] = useState<Candidato[]>([])
 
   const candidatosFiltrados = candidatos.filter((c: any) =>
     c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||

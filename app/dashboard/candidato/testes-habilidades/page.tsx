@@ -9,6 +9,8 @@ import { AlertCircle, CheckCircle2 } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
+import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 import { COMPETENCIAS_DISPONIVEIS, type CompetenciasPorCategoria, type Competencia } from "@/lib/competencias"
 
 interface CandidatoData {
@@ -25,6 +27,7 @@ interface CandidatoData {
 
 export default function TestesHabilidadesPage() {
   const { toast } = useToast()
+  const { user, isLoading: authLoading } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [candidato, setCandidato] = useState<CandidatoData | null>(null)
@@ -33,45 +36,42 @@ export default function TestesHabilidadesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    carregarDados()
-  }, [])
+    // Only load data when auth is ready and user is logged in
+    if (!authLoading && user) {
+      carregarDados()
+    }
+  }, [authLoading, user])
 
   const carregarDados = async () => {
     try {
       setIsLoading(true)
-      const token = localStorage.getItem("token")
+      setError("")
       
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` }),
-          },
+      try {
+        const data = await api.get<CandidatoData>("/api/v1/candidates/onboarding/dados-profissionais")
+        console.log("📋 Dados de competências carregados:", data)
+        
+        setCandidato(data)
+        
+        // Carregar competências já selecionadas
+        if (data.habilidades && data.habilidades.length > 0) {
+          const mapa = new Map<string, number>()
+          data.habilidades.forEach((h) => {
+            mapa.set(h.habilidade, h.nivel)
+          })
+          setCompetenciasEscolhidas(mapa)
         }
-      )
-
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status} ao carregar dados`)
-      }
-
-      const data: CandidatoData = await response.json()
-      console.log("📋 Dados de competências carregados:", data)
-      
-      setCandidato(data)
-      
-      // Carregar competências já selecionadas
-      if (data.habilidades && data.habilidades.length > 0) {
-        const mapa = new Map<string, number>()
-        data.habilidades.forEach((h) => {
-          mapa.set(h.habilidade, h.nivel)
+      } catch (fetchErr: any) {
+        console.error("Erro ao fazer requisição:", fetchErr)
+        // Inicializar com valores padrão em caso de erro
+        setCandidato({
+          id: 0,
+          full_name: "Você",
+          habilidades: [],
+          teste_habilidades_completado: false,
+          score_teste_habilidades: 0,
         })
-        setCompetenciasEscolhidas(mapa)
       }
-    } catch (err: any) {
-      console.error("Erro ao carregar dados:", err)
-      setError(err.message)
     } finally {
       setIsLoading(false)
     }
@@ -95,6 +95,17 @@ export default function TestesHabilidadesPage() {
     setCompetenciasEscolhidas(novasCompetencias)
   }
 
+  const getUserIdFromToken = (token: string): string | null => {
+    try {
+      const payload = token.split(".")[1]
+      const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
+      const data = JSON.parse(json)
+      return data?.sub || data?.user_id || data?.id || null
+    } catch {
+      return null
+    }
+  }
+
   const salvarAutoavaliacao = async () => {
     if (competenciasEscolhidas.size === 0) {
       toast({
@@ -107,8 +118,6 @@ export default function TestesHabilidadesPage() {
 
     setIsSubmitting(true)
     try {
-      const token = localStorage.getItem("token")
-      
       const habilidades = Array.from(competenciasEscolhidas.entries()).map(([nome, nivel]) => ({
         habilidade: nome,
         nivel: nivel,
@@ -121,22 +130,7 @@ export default function TestesHabilidadesPage() {
 
       console.log("📋 Salvando autoavaliação:", payload)
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` }),
-          },
-          body: JSON.stringify(payload),
-        }
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || `Erro ${response.status}`)
-      }
+      await api.post("/api/v1/candidates/onboarding/dados-profissionais", payload)
 
       console.log("✅ Autoavaliação salva com sucesso")
       

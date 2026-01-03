@@ -1,19 +1,18 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, ChevronRight } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
 import { getAreaById, NIVEL_LABELS } from "@/lib/areas-competencias"
 import { api } from "@/lib/api"
 
 interface Competencia {
   id: string
   nome: string
-  nivel: 1 | 2 | 3 | 4 | null
+  nivel: number | null
 }
 
 interface CategoriaCompetencias {
@@ -26,6 +25,7 @@ interface AutoavaliacaoCompetenciasProps {
   areaId?: string
   onComplete: (competencias: Competencia[]) => void
   isLoading?: boolean
+  showHeader?: boolean
 }
 
 // Mock competências por categoria
@@ -66,6 +66,7 @@ export function AutoavaliacaoCompetencias({
   areaId,
   onComplete,
   isLoading = false,
+  showHeader = true,
 }: AutoavaliacaoCompetenciasProps) {
   // Obter competências da área selecionada ou usar defaults
   const area = areaId ? getAreaById(areaId) : null
@@ -76,7 +77,7 @@ export function AutoavaliacaoCompetencias({
         competencias: cat.competencias.map((comp) => ({
           id: comp.id,
           nome: comp.nome,
-          nivel: null as (1 | 2 | 3 | 4 | null),
+          nivel: null,
         })),
       }))
     : CATEGORIAS_COMPETENCIAS
@@ -85,17 +86,16 @@ export function AutoavaliacaoCompetencias({
     categoriasInicial
   )
   const [submitting, setSubmitting] = useState(false)
-  const [apiCompetencias, setApiCompetencias] = useState<any[]>([])
-  const [loadingApi, setLoadingApi] = useState(false)
+  const [expandedCompetencia, setExpandedCompetencia] = useState<string | null>(null)
 
-  const handleNivelChange = (categoriaId: string, competenciaId: string, nivel: 1 | 2 | 3 | 4) => {
+  const handleNivelChange = (categoriaId: string, competenciaId: string, nivel: number) => {
     setCompetencias(
       competencias.map((cat) =>
         cat.id === categoriaId
           ? {
               ...cat,
               competencias: cat.competencias.map((comp) =>
-                comp.id === competenciaId ? { ...comp, nivel } : comp
+                comp.id === competenciaId ? { ...comp, nivel: nivel === 0 ? null : nivel } : comp
               ),
             }
           : cat
@@ -103,56 +103,8 @@ export function AutoavaliacaoCompetencias({
     )
   }
 
-  // Buscar competências da API quando areaId mudar
-  useEffect(() => {
-    if (areaId) {
-      fetchCompetencias()
-    }
-  }, [areaId])
-
-  const fetchCompetencias = async () => {
-    try {
-      setLoadingApi(true)
-      // GET /candidato/competencias
-      const response = await api.get<{
-        total: number
-        competencias: any[]
-      }>("/candidato/competencias")
-      
-      if (response.competencias) {
-        setApiCompetencias(response.competencias)
-      }
-    } catch (error) {
-      console.error("Erro ao buscar competências:", error)
-    } finally {
-      setLoadingApi(false)
-    }
-  }
-
-  const toggleCompetencia = (categoriaId: string, competenciaId: string) => {
-    const currentNivel = competencias
-      .find((c) => c.id === categoriaId)
-      ?.competencias.find((comp) => comp.id === competenciaId)?.nivel
-
-    if (currentNivel) {
-      // Se já tem nível, remove a competência
-      setCompetencias(
-        competencias.map((cat) =>
-          cat.id === categoriaId
-            ? {
-                ...cat,
-                competencias: cat.competencias.map((comp) =>
-                  comp.id === competenciaId ? { ...comp, nivel: null } : comp
-                ),
-              }
-            : cat
-        )
-      )
-    } else {
-      // Se não tem nível, adiciona nível 1
-      handleNivelChange(categoriaId, competenciaId, 1)
-    }
-  }
+  // Usar dados locais (mock data)
+  // Se areaId mudar no futuro, implementar API call
 
   const competenciasDeclaradas = competencias.flatMap((cat) =>
     cat.competencias.filter((comp) => comp.nivel !== null)
@@ -162,7 +114,7 @@ export function AutoavaliacaoCompetencias({
     e.preventDefault()
     setSubmitting(true)
     try {
-      // Enviar autoavaliação para API: POST /candidato/autoavaliacao
+      // Enviar autoavaliação para API: POST /api/v1/candidates/onboarding/dados-profissionais
       const payload = {
         competencias: competenciasDeclaradas.map((comp) => ({
           competencia_id: comp.id,
@@ -171,9 +123,10 @@ export function AutoavaliacaoCompetencias({
       }
       
       try {
-        await api.post("/candidato/autoavaliacao", payload)
+        // Endpoint da API corrigido - user_id será adicionado automaticamente pela função api
+        await api.post("/api/v1/candidates/onboarding/dados-profissionais", payload)
       } catch (error: any) {
-        console.warn("Endpoint /candidato/autoavaliacao não implementado ou indisponível:", error?.message)
+        console.warn("Erro ao enviar autoavaliação:", error?.message)
         // Fallback: continuar com dados locais se o endpoint não estiver disponível
       }
       
@@ -185,93 +138,116 @@ export function AutoavaliacaoCompetencias({
     }
   }
 
+  const totalCompetencias = competencias.reduce((acc, cat) => acc + cat.competencias.length, 0)
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30 py-8">
-      <Card className="w-full max-w-3xl shadow-lg overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
-          <CardTitle className="text-2xl text-white">Autoavaliação de Competências</CardTitle>
-          <CardDescription className="text-white/90">
-            Etapa 2 de 3 - Selecione seu nível em cada competência (15 minutos)
-          </CardDescription>
-        </CardHeader>
+    <>
+      {showHeader ? (
+        <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30 py-8">
+          <Card className="w-full max-w-2xl shadow-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-[#03565C] to-[#24BFB0] text-white">
+              <CardTitle className="text-2xl text-white">Avalie suas competências</CardTitle>
+              <CardDescription className="text-white/90">
+                Indique seu nível de proficiência em cada habilidade (escala de 1 a 5)
+              </CardDescription>
+            </CardHeader>
 
-        <CardContent className="pt-6">
-          {/* Progress Indicator */}
-          <div className="mb-8 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-700">
-                Etapa 2 de 3 - {competenciasDeclaradas.length} competência(s) selecionada(s)
-              </span>
-              <span className="text-gray-500">Autoavaliação</span>
-            </div>
-            <Progress value={66} className="h-2" />
-          </div>
+            <CardContent className="pt-6">
+              {/* Progress Indicator */}
+              <div className="mb-8 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">Etapa 2 de 3</span>
+                  <span className="text-gray-500">Autoavaliação de Competências</span>
+                </div>
+                <Progress value={66} className="h-2" />
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Categorias */}
             {competencias.map((categoria) => (
               <div key={categoria.id} className="space-y-4">
-                <h3 className="font-bold text-lg text-gray-900">{categoria.nome}</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-lg text-gray-900">{categoria.nome}</h3>
+                  <span className="text-sm bg-[#03565C] text-white px-3 py-1 rounded-full">
+                    {categoria.competencias.filter(c => c.nivel !== null).length}/{categoria.competencias.length}
+                  </span>
+                </div>
 
+                {/* Grid de Competências */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {categoria.competencias.map((competencia) => (
-                    <div
+                    <button
                       key={competencia.id}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        competencia.nivel
+                      type="button"
+                      onClick={() =>
+                        setExpandedCompetencia(
+                          expandedCompetencia === competencia.id ? null : competencia.id
+                        )
+                      }
+                      disabled={isLoading}
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                        expandedCompetencia === competencia.id
                           ? "border-[#24BFB0] bg-[#25D9B8]/10"
                           : "border-gray-200 hover:border-gray-300 bg-white"
-                      }`}
+                      } ${isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                     >
-                      <div className="mb-3">
-                        <button
-                          type="button"
-                          onClick={() => toggleCompetencia(categoria.id, competencia.id)}
-                          disabled={isLoading}
-                          className={`font-semibold text-left w-full ${
-                            competencia.nivel ? "text-[#03565C]" : "text-gray-900"
-                          } hover:opacity-75 transition-opacity`}
-                        >
+                      <div className="flex items-start justify-between mb-3">
+                        <h4 className={`font-semibold text-sm transition-colors ${
+                          expandedCompetencia === competencia.id
+                            ? "text-[#03565C]"
+                            : "text-gray-900"
+                        }`}>
                           {competencia.nome}
-                        </button>
+                        </h4>
+                        {competencia.nivel !== null && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
+                            {competencia.nivel}/5
+                          </span>
+                        )}
                       </div>
 
-                      {competencia.nivel && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-[#03565C]">
-                              Nível {competencia.nivel} - {NIVEL_LABELS[competencia.nivel]}
-                            </Badge>
-                          </div>
-
+                      {/* Slider expandido */}
+                      {expandedCompetencia === competencia.id && (
+                        <div className="space-y-4 pt-3 border-t border-gray-200">
                           <div className="flex gap-2">
-                            {[1, 2, 3, 4].map((nivel) => (
+                            {[1, 2, 3, 4, 5].map((nivel) => (
                               <button
                                 key={nivel}
                                 type="button"
-                                onClick={() =>
-                                  handleNivelChange(categoria.id, competencia.id, nivel as 1 | 2 | 3 | 4)
-                                }
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  handleNivelChange(categoria.id, competencia.id, nivel)
+                                }}
                                 disabled={isLoading}
-                                className={`flex-1 py-2 rounded text-xs font-semibold transition-all ${
+                                className={`flex-1 py-3 rounded font-semibold transition-all text-sm ${
                                   competencia.nivel === nivel
                                     ? "bg-[#03565C] text-white"
-                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                }`}
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-200"
+                                } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                               >
                                 {nivel}
                               </button>
                             ))}
                           </div>
+                          <div className="flex justify-between text-xs text-gray-500 px-0 mt-4 gap-1">
+                            <span className="flex-1 text-left">Nenhuma</span>
+                            <span className="flex-1 text-center">Intermediário</span>
+                            <span className="flex-1 text-right">Avançado</span>
+                          </div>
+                          {competencia.nivel !== null && (
+                            <div className="text-center">
+                              <span className="text-sm font-semibold text-[#03565C]">
+                                Nível: {competencia.nivel}/5
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {!competencia.nivel && (
-                        <p className="text-xs text-gray-500 italic">
-                          Clique no título para adicionar nível
-                        </p>
+                      {expandedCompetencia !== competencia.id && competencia.nivel === null && (
+                        <p className="text-xs text-gray-500 italic">Clique para avaliar</p>
                       )}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -281,8 +257,7 @@ export function AutoavaliacaoCompetencias({
             <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
               <AlertCircle className="h-4 w-4 text-[#03565C]" />
               <AlertDescription className="text-[#03565C] text-sm">
-                Selecione apenas as competências que você realmente domina. Você receberá testes técnicos
-                para validar cada uma delas.
+                Avalie seu nível atual de conhecimento em cada competência. Você receberá testes técnicos para validar suas habilidades.
               </AlertDescription>
             </Alert>
 
@@ -292,12 +267,118 @@ export function AutoavaliacaoCompetencias({
               disabled={competenciasDeclaradas.length === 0 || isLoading || submitting}
               className="w-full gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
             >
-              {submitting ? "Salvando..." : isLoading || loadingApi ? "Carregando..." : `Continuar com ${competenciasDeclaradas.length} competência(s)`}
+              {submitting ? "Salvando..." : isLoading ? "Carregando..." : `Continuar com ${competenciasDeclaradas.length} competência(s) avaliada(s)`}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Versão Compacta sem Header */}
+          {competencias.map((categoria) => (
+            <div key={categoria.id} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-lg text-gray-900">{categoria.nome}</h3>
+                <span className="text-sm bg-[#03565C] text-white px-3 py-1 rounded-full">
+                  {categoria.competencias.filter(c => c.nivel !== null).length}/{categoria.competencias.length}
+                </span>
+              </div>
+
+              {/* Grid de Competências */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {categoria.competencias.map((competencia) => (
+                  <button
+                    key={competencia.id}
+                    type="button"
+                    onClick={() =>
+                      setExpandedCompetencia(
+                        expandedCompetencia === competencia.id ? null : competencia.id
+                      )
+                    }
+                    disabled={isLoading}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      expandedCompetencia === competencia.id
+                        ? "border-[#24BFB0] bg-[#25D9B8]/10"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
+                    } ${isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className={`font-semibold text-sm transition-colors ${
+                        expandedCompetencia === competencia.id
+                          ? "text-[#03565C]"
+                          : "text-gray-900"
+                      }`}>
+                        {competencia.nome}
+                      </h4>
+                      {competencia.nivel !== null && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
+                          {competencia.nivel}/5
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Botões expandidos */}
+                    {expandedCompetencia === competencia.id && (
+                      <div className="space-y-4 pt-3 border-t border-gray-200">
+                        <div className="flex gap-2">
+                          {[1, 2, 3, 4, 5].map((nivel) => (
+                            <button
+                              key={nivel}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleNivelChange(categoria.id, competencia.id, nivel)
+                              }}
+                              disabled={isLoading}
+                              className={`flex-1 py-3 rounded font-semibold transition-all text-sm ${
+                                competencia.nivel === nivel
+                                  ? "bg-[#03565C] text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-200"
+                              } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
+                              {nivel}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 px-0 mt-4 gap-1">
+                          <span className="flex-1 text-left">Nenhuma</span>
+                          <span className="flex-1 text-center">Intermediário</span>
+                          <span className="flex-1 text-right">Avançado</span>
+                        </div>
+                        {competencia.nivel !== null && (
+                          <div className="text-center">
+                            <span className="text-sm font-semibold text-[#03565C]">
+                              Nível: {competencia.nivel}/5
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {expandedCompetencia !== competencia.id && competencia.nivel === null && (
+                      <p className="text-xs text-gray-500 italic">Clique para avaliar</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* CTA - Compacta */}
+          {competenciasDeclaradas.length > 0 && (
+            <Button
+              type="submit"
+              disabled={competenciasDeclaradas.length === 0 || isLoading || submitting}
+              className="w-full gap-2 bg-[#03565C] hover:bg-[#024147]"
+            >
+              {submitting ? "Salvando..." : "Confirmar"}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
+        </form>
+      )}
+    </>
   )
 }

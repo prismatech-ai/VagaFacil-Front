@@ -45,10 +45,10 @@ export function EmpresaSidebar() {
       active: pathname?.includes("/jobs"),
     },
     {
-      title: "Configurações",
-      url: "/empresa/configuracoes",
+      title: "Meu Perfil",
+      url: "/empresa/meu-perfil",
       icon: Settings,
-      active: pathname?.includes("/configuracoes"),
+      active: pathname?.includes("/meu-perfil") || pathname?.includes("/configuracoes"),
     },
   ]
 

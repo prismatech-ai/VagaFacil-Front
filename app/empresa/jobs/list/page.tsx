@@ -300,10 +300,18 @@ export default function JobsListPage() {
           <h1 className="text-3xl font-bold">Minhas Vagas</h1>
           <p className="text-gray-500">Gerencie todas as suas oportunidades de emprego</p>
         </div>
-        <Button onClick={() => router.push("/empresa/jobs/create")} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Vaga
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => router.push("/dashboard/empresa")} 
+            variant="outline"
+          >
+            Voltar ao Dashboard
+          </Button>
+          <Button onClick={() => router.push("/empresa/jobs/create")} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Vaga
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

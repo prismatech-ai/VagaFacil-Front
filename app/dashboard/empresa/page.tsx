@@ -49,20 +49,36 @@ export default function EmpresaDashboardPage() {
       const vagasList = (vagasResponse as any).data || vagasResponse
       
       const vagasAbertas = vagasList.filter((v: any) => v.status === "aberta")
-      const totalCandidatos = vagasList.reduce((acc: number, v: any) => acc + (v.candidatos_count || 0), 0)
 
       setVagas(vagasList.slice(0, 5))
       setAllVagas(vagasList)
+
+      // Fetch candidatos from candidatos-anonimos
+      let allCandidatos: Candidato[] = []
+      let totalCandidatos = 0
+      try {
+        const candidatosResponse = await api.get("/api/v1/companies/candidatos-anonimos")
+        const candidatosList = (candidatosResponse as any).data || candidatosResponse
+        
+        if (Array.isArray(candidatosList)) {
+          allCandidatos = candidatosList.map((c: any) => ({
+            id_anonimo: c.id_anonimo || c.id,
+            area_atuacao: c.area_atuacao,
+            estado: c.estado,
+            cidade: c.cidade,
+          }))
+          totalCandidatos = candidatosList.length
+        }
+      } catch (error) {
+        console.error("Erro ao buscar candidatos:", error)
+      }
+
+      setCandidatos(allCandidatos)
       setStats({
         totalVagas: vagasList.length,
         vagasAbertas: vagasAbertas.length,
         totalCandidatos: totalCandidatos,
       })
-
-      // Fetch candidatos
-      const candidatosResponse = await api.get("/api/v1/companies/candidatos-anonimos")
-      const candidatosList = (candidatosResponse as any).data || candidatosResponse
-      setCandidatos(candidatosList)
     } catch (error) {
       console.error("Erro ao buscar dados do dashboard:", error)
     } finally {
@@ -165,35 +181,40 @@ export default function EmpresaDashboardPage() {
             {/* Kanban Tab */}
             <TabsContent value="kanban" className="mt-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Kanban de Vagas</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Pré-visualização do Kanban</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {allVagas.length === 0 ? (
-                      <p className="text-gray-500 text-center py-8 col-span-full">Nenhuma vaga criada ainda</p>
-                    ) : (
-                      allVagas.map((vaga) => (
+                  {allVagas.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">Nenhuma vaga criada ainda</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {allVagas.map((vaga) => (
                         <div
                           key={vaga.id}
-                          className="p-4 border border-gray-200 rounded-lg hover:shadow-md cursor-pointer transition"
-                          onClick={() => router.push(`/empresa/jobs/${vaga.id}`)}
+                          className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition"
                         >
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-center justify-between">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-gray-900 mb-2">{vaga.titulo}</h3>
-                              <p className="text-sm text-gray-600">Candidatos: {vaga.candidatos_count}</p>
+                              <h3 className="font-semibold text-gray-900 mb-1">{vaga.titulo}</h3>
+                              <p className="text-sm text-gray-600">{vaga.candidatos_count} candidatos</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={getStatusColor(vaga.status)}>
+                                {vaga.status === "aberta" ? "Ativa" : vaga.status === "fechada" ? "Inativa" : "Rascunho"}
+                              </Badge>
+                              <button
+                                onClick={() => router.push(`/empresa/jobs/${vaga.id}`)}
+                                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
+                              >
+                                Ver Kanban
+                              </button>
                             </div>
                           </div>
-                          <div className="mt-3 flex justify-end">
-                            <Badge className={getStatusColor(vaga.status)}>
-                              {vaga.status === "aberta" ? "Ativa" : vaga.status === "fechada" ? "Inativa" : "Rascunho"}
-                            </Badge>
-                          </div>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

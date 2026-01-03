@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Mail, Phone, MapPin, FileText } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import api, { getUserIdFromToken } from "@/lib/api"
 
 interface CandidatoData {
   id: number
@@ -66,23 +67,10 @@ export default function ConfiguracoesCandidatoPage() {
       try {
         setIsLoading(true)
         const token = localStorage.getItem("token")
+        const userId = getUserIdFromToken(token)
         
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/candidates/onboarding/dados-profissionais`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token && { Authorization: `Bearer ${token}` }),
-            },
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error(`Erro ${response.status} ao carregar dados`)
-        }
-
-        const data: CandidatoData = await response.json()
+        // Usar a API client que automaticamente adiciona user_id
+        const data: CandidatoData = await api.get("/api/v1/candidates/onboarding/dados-profissionais")
         console.log("📋 Dados do candidato carregados:", data)
 
         setFormData({
@@ -127,12 +115,33 @@ export default function ConfiguracoesCandidatoPage() {
   }
 
   const handleSave = async () => {
-    setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      setIsLoading(true)
+      setError("")
+      
+      // Preparar dados para envio à API
+      const dataToSave = {
+        full_name: formData.nome,
+        email: formData.email,
+        phone: formData.telefone,
+        genero: formData.genero,
+        birth_date: formData.dataNascimento,
+        bio: formData.resumoProfissional,
+        linkedin_url: formData.linkedin,
+        portfolio_url: formData.site,
+        resume_url: formData.curriculo,
+        cidade: formData.cidade,
+        estado: formData.estado,
+      }
+      
+      // Enviar dados usando o cliente API que adiciona user_id automaticamente
+      await api.post("/api/v1/candidates/onboarding/dados-profissionais", dataToSave)
+      
       setIsSaved(true)
       setTimeout(() => setIsSaved(false), 3000)
+    } catch (err: any) {
+      console.error("Erro ao salvar configurações:", err)
+      setError(err.message || "Erro ao salvar. Tente novamente.")
     } finally {
       setIsLoading(false)
     }

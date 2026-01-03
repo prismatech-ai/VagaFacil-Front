@@ -89,18 +89,14 @@ export default function LandingPage() {
               <Link href="/auth/quick-register">
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto text-lg h-14 px-10 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 group"
+                  className="w-full sm:w-auto text-lg h-14 px-10 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 group bg-[#03565C] hover:bg-[#024147]"
                 >
                   Comece a contratar
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
               <Link href="/auth/quick-register">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto text-lg h-14 px-10 hover:bg-slate-50 border-2 group bg-transparent"
-                >
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg h-14 px-10 shadow-sm hover:shadow-md transition-shadow">
                   Ver vagas disponíveis
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
