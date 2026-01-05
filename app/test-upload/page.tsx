@@ -6,7 +6,7 @@
 
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ResumeUpload } from '@/components/resume-upload'
 import { LogoUpload } from '@/components/logo-upload'
 import { FileUpload } from '@/components/file-upload'
@@ -25,6 +25,14 @@ export default function TestUploadPage() {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [portfolioImageUrl, setPortfolioImageUrl] = useState<string | null>(null)
   const [messages, setMessages] = useState<Array<{ type: 'success' | 'error'; text: string }>>([])
+  const [windowLocation, setWindowLocation] = useState<string>('')
+  const [token, setToken] = useState<string>('')
+
+  useEffect(() => {
+    // Initialize browser-only values
+    setWindowLocation(window.location.href)
+    setToken(localStorage.getItem('token') || '')
+  }, [])
 
   const addMessage = (type: 'success' | 'error', text: string) => {
     setMessages((prev) => [...prev, { type, text }])
@@ -342,16 +350,14 @@ export default function TestUploadPage() {
         </CardHeader>
         <CardContent className="space-y-2 font-mono text-xs text-gray-600">
           <p>
-            <strong>Frontend URL:</strong> {window.location.href}
+            <strong>Frontend URL:</strong> {windowLocation}
           </p>
           <p>
             <strong>API URL:</strong> {process.env.NEXT_PUBLIC_API_URL || 'Não configurada'}
           </p>
           <p>
             <strong>Token:</strong>{' '}
-            {localStorage.getItem('token')
-              ? localStorage.getItem('token')?.substring(0, 20) + '...'
-              : 'Não encontrado'}
+            {token ? token.substring(0, 20) + '...' : 'Não encontrado'}
           </p>
           <p className="text-xs text-gray-500 mt-3">
             ℹ️ Abra o console do navegador (F12) para ver logs detalhados
