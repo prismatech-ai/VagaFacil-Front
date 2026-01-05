@@ -4,6 +4,16 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
+// Evento customizado para notificar quando token expirar
+export function dispatchTokenExpiredEvent(message: string = "Sua sessão expirou. Por favor, faça login novamente.") {
+  if (typeof window !== "undefined") {
+    const event = new CustomEvent("token-expired", {
+      detail: { message },
+    })
+    window.dispatchEvent(event)
+  }
+}
+
 // Decodifica payload JWT
 function decodeJwtPayload(token: string) {
   try {
@@ -34,33 +44,65 @@ async function tryRefreshToken(): Promise<string | null> {
   if (typeof window === "undefined") return null
 
   const refreshToken = localStorage.getItem("refresh_token")
-  if (!refreshToken) return null
+  if (!refreshToken) {
+    console.log("[API] Sem refresh_token no localStorage")
+    return null
+  }
 
   try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    })
+    console.log("[API] Tentando fazer refresh do token...")
+    const endpoints = [
+      `${API_URL}/api/v1/auth/refresh`,  // Com versão da API
+      `${API_URL}/auth/refresh`,          // Sem versão
+    ]
 
-    if (!res.ok) {
-      localStorage.removeItem("token")
-      localStorage.removeItem("refresh_token")
-      return null
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`[API] Tentando endpoint: ${endpoint}`)
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        })
+
+        if (res.ok) {
+          const data = await res.json().catch(() => null)
+          if (!data) {
+            console.warn(`[API] Resposta vazia do refresh em ${endpoint}`)
+            continue
+          }
+
+          const newAccess = data.access_token || data.token || null
+          const newRefresh = data.refresh_token || null
+
+          if (newAccess) {
+            localStorage.setItem("token", newAccess)
+            if (newRefresh) localStorage.setItem("refresh_token", newRefresh)
+            console.log("[API] ✅ Token refreshed com sucesso")
+            return newAccess
+          }
+        } else {
+          console.warn(`[API] Endpoint ${endpoint} retornou status ${res.status}`)
+        }
+      } catch (err) {
+        console.warn(`[API] Erro ao chamar ${endpoint}:`, err)
+        continue
+      }
     }
 
-    const data = await res.json().catch(() => null)
-    if (!data) return null
-
-    const newAccess = data.access_token || data.token || null
-    const newRefresh = data.refresh_token || null
-
-    if (newAccess) localStorage.setItem("token", newAccess)
-    if (newRefresh) localStorage.setItem("refresh_token", newRefresh)
-
-    return newAccess
+    // Se chegou aqui, nenhum endpoint funcionou
+    console.error("[API] ❌ Falha em todos os endpoints de refresh")
+    localStorage.removeItem("token")
+    localStorage.removeItem("refresh_token")
+    localStorage.removeItem("user")
+    dispatchTokenExpiredEvent("Sua sessão expirou. Por favor, faça login novamente.")
+    return null
   } catch (err) {
     console.error("[API] Erro no refresh:", err)
+    localStorage.removeItem("token")
+    localStorage.removeItem("refresh_token")
+    localStorage.removeItem("user")
+    dispatchTokenExpiredEvent("Erro ao renovar sessão. Por favor, faça login novamente.")
     return null
   }
 }
@@ -167,20 +209,34 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   if (!response.ok) {
     // Se desautorizado → tentar refresh
     if (response.status === 401) {
+      console.warn(`[API] Recebido 401, tentando refresh do token...`)
       const refreshed = await tryRefreshToken()
       if (refreshed) {
+        console.log(`[API] ✅ Refresh bem-sucedido, retry da requisição...`)
         config.headers = {
           ...config.headers,
           Authorization: `Bearer ${refreshed}`,
         }
 
         const retry = await fetch(url, config)
+        console.log(`[API] Retry status: ${retry.status}`)
+        
         if (retry.ok) {
           return retry.json()
+        } else {
+          console.error(`[API] Retry também falhou com status ${retry.status}`)
         }
 
         localStorage.removeItem("token")
         localStorage.removeItem("refresh_token")
+        localStorage.removeItem("user")
+        dispatchTokenExpiredEvent("Sua sessão expirou. Por favor, faça login novamente.")
+      } else {
+        console.error(`[API] ❌ Refresh falhou, limpando tokens`)
+        localStorage.removeItem("token")
+        localStorage.removeItem("refresh_token")
+        localStorage.removeItem("user")
+        dispatchTokenExpiredEvent("Sua sessão expirou. Por favor, faça login novamente.")
       }
     }
 
@@ -196,7 +252,12 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     } else if (response.status !== 404) {
       console.warn(`Erro API [${response.status}] ${url}:`, errorData)
     }
-    const errorMessage = errorData.detail || errorData.message || errorData.error || `Erro ${response.status}`
+    // Converte erro para string, tratando objetos
+    let errorMessage = `Erro ${response.status}`
+    if (errorData.detail) errorMessage = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail)
+    else if (errorData.message) errorMessage = typeof errorData.message === 'string' ? errorData.message : JSON.stringify(errorData.message)
+    else if (errorData.error) errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error)
+    console.error(`[API] Error message converted to string: ${errorMessage}`)
     throw new Error(errorMessage)
   }
 

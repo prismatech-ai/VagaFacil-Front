@@ -57,10 +57,23 @@ export default function VagaDetailsPage() {
       const jobData = (response as any).data || response
       setVaga(jobData)
     } catch (error: any) {
+      const errorMsg = error instanceof Error ? error.message : "Erro ao carregar detalhes da vaga"
+      
+      // Se for erro 401, redirecionar para login
+      if (errorMsg.includes("401") || errorMsg.includes("Não autenticado")) {
+        toast({
+          title: "Sessão expirada",
+          description: "Por favor, faça login novamente",
+          variant: "destructive",
+        })
+        router.push("/login")
+        return
+      }
+      
       console.error("❌ Erro ao carregar detalhes da vaga:", error)
       toast({
         title: "Erro",
-        description: "Erro ao carregar detalhes da vaga",
+        description: errorMsg,
         variant: "destructive",
       })
     } finally {
@@ -77,6 +90,14 @@ export default function VagaDetailsPage() {
       setCandidatos(Array.isArray(candidatosData) ? candidatosData : [])
       console.log("✅ Candidatos carregados:", candidatosData)
     } catch (error: any) {
+      const errorMsg = error instanceof Error ? error.message : "Erro ao carregar candidatos"
+      
+      // Se for erro 401, redirecionar para login
+      if (errorMsg.includes("401") || errorMsg.includes("Não autenticado")) {
+        router.push("/login")
+        return
+      }
+      
       console.error("❌ Erro ao carregar candidatos:", error)
       setCandidatos([])
     } finally {

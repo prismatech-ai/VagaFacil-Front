@@ -70,7 +70,7 @@ export default function ConfiguracoesCandidatoPage() {
         const userId = getUserIdFromToken(token)
         
         // Usar a API client que automaticamente adiciona user_id
-        const data: CandidatoData = await api.get("/api/v1/candidates/onboarding/dados-profissionais")
+        const data: CandidatoData = await api.get("/api/v1/candidates/me")
         console.log("📋 Dados do candidato carregados:", data)
 
         setFormData({

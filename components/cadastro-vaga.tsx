@@ -36,10 +36,33 @@ const ESTADOS_BR = [
 ]
 
 const CIDADES_POR_ESTADO: Record<string, string[]> = {
-  "SP": ["São Paulo", "Campinas", "Sorocaba", "Santos", "Ribeirão Preto", "Araraquara"],
-  "RJ": ["Rio de Janeiro", "Niterói", "Duque de Caxias", "Nova Iguaçu"],
-  "MG": ["Belo Horizonte", "Contagem", "Betim", "Divinópolis"],
-  // ... adicionar mais cidades conforme necessário
+  "AC": ["Rio Branco", "Cruzeiro do Sul", "Sena Madureira", "Tarauacá", "Feijó"],
+  "AL": ["Maceió", "Arapiraca", "Rio Largo", "Marechal Deodoro", "Delmiro Gouveia", "Pilar", "Santana do Ipanema"],
+  "AP": ["Macapá", "Santana", "Oiapoque", "Laranjal do Jari", "Calçoene"],
+  "AM": ["Manaus", "Parintins", "Itacoatiara", "Coari", "Tefé", "Taboca do Rio Negro", "São Gabriel da Cachoeira"],
+  "BA": ["Salvador", "Feira de Santana", "Vitória da Conquista", "Ilhéus", "Jequié", "Alagoinhas", "Camaçari", "Barreiras", "Teixeira de Freitas", "Santo Estêvão", "Brumado", "Valença", "Eunápolis"],
+  "CE": ["Fortaleza", "Caucaia", "Juazeiro do Norte", "Maracanaú", "Sobral", "Crato", "Maranguape", "Aquiraz", "Pacajus"],
+  "DF": ["Brasília", "Taguatinga", "Ceilândia", "Plano Piloto", "Guará", "Cruzeiro", "Candangolândia", "Brasília"],
+  "ES": ["Vitória", "Vila Velha", "Serra", "Cariacica", "Linhares", "Colatina", "São Mateus", "Aracruz"],
+  "GO": ["Goiânia", "Anápolis", "Aparecida de Goiânia", "Rio Verde", "Luziânia", "Águas Lindas de Goiás", "Senador Canedo", "Catalão"],
+  "MA": ["São Luís", "Imperatriz", "Timon", "Caxias", "Bacabal", "Codó", "Santa Inês", "Balsas"],
+  "MT": ["Cuiabá", "Várzea Grande", "Rondonópolis", "Sinop", "Sorriso", "Cáceres", "Tangará da Serra", "Alta Floresta"],
+  "MS": ["Campo Grande", "Dourados", "Três Lagoas", "Corumbá", "Maracaju", "Naviraí", "Rio Brilhante", "Sidrolândia"],
+  "MG": ["Belo Horizonte", "Contagem", "Betim", "Divinópolis", "Juiz de Fora", "Uberlândia", "Montes Claros", "Governador Valadares", "Ipatinga", "Pouso Alegre", "Lavras", "Viçosa", "Araxá", "Teófilo Otoni"],
+  "PA": ["Belém", "Ananindeua", "Marabá", "Parauapebas", "Castanhal", "Santarém", "Abaetetuba", "Itaituba"],
+  "PB": ["João Pessoa", "Campina Grande", "Santa Rita", "Bayeux", "Patos", "Guarabira", "Sousa", "Cabedelo"],
+  "PR": ["Curitiba", "Londrina", "Maringá", "Foz do Iguaçu", "Ponta Grossa", "Cascavel", "Bauru", "Colombo", "Limeira"],
+  "PE": ["Recife", "Jaboatão", "Olinda", "Caruaru", "Petrolina", "Paulista", "Cabo de Santo Agostinho", "Garanhuns"],
+  "PI": ["Teresina", "Parnaíba", "Picos", "Floriano", "Campo Maior", "Piripiri", "Altos", "São Raimundo Nonato"],
+  "RJ": ["Rio de Janeiro", "Niterói", "Duque de Caxias", "Nova Iguaçu", "São Gonçalo", "São João do Meriti", "Icaraí", "Itaboraí", "Macaé", "Campos dos Goitacazes"],
+  "RN": ["Natal", "Mossoró", "Parnamirim", "Assu", "Caicó", "Açu", "Ceará-Mirim"],
+  "RS": ["Porto Alegre", "Caxias do Sul", "Pelotas", "Santa Maria", "Canoas", "Novo Hamburgo", "Gravataí", "Almeida", "Rio Grande", "Uruguaiana"],
+  "RO": ["Porto Velho", "Ji-Paraná", "Ariquemes", "Cacoal", "Vilhena", "Costa Marques"],
+  "RR": ["Boa Vista", "Rorainópolis", "Caracaraí", "Amajari", "Iracema"],
+  "SC": ["Florianópolis", "Blumenau", "Joinville", "Chapecó", "Itajaí", "Criciúma", "Lages", "Concórdia"],
+  "SP": ["São Paulo", "Campinas", "Sorocaba", "Santos", "Ribeirão Preto", "Araraquara", "Piracicaba", "Bauru", "Jundiaí", "Limeira", "Marília", "Catanduva", "Botucatu", "Jaú", "Ourinhos", "Assis"],
+  "SE": ["Aracaju", "Nossa Senhora do Socorro", "Lagarto", "São Cristóvão", "Itabaiana"],
+  "TO": ["Palmas", "Araguaína", "Araguatins", "Gurupi", "Tocantinópolis", "Porto Nacional"]
 }
 
 const ESCOLARIDADE_OPCOES = [
@@ -323,9 +346,16 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                   <Input
                     id="experiencia"
                     type="number"
+                    min="0"
                     placeholder="2"
                     value={experienciaMinima}
-                    onChange={(e) => setExperienciaMinima(e.target.value)}
+                    onChange={(e) => {
+                      // Garante que o valor não seja negativo
+                      const value = e.target.value
+                      if (value === '' || parseInt(value) >= 0) {
+                        setExperienciaMinima(value)
+                      }
+                    }}
                     disabled={loading || isLoading}
                   />
                 </div>

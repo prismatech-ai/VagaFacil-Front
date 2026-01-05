@@ -41,6 +41,29 @@ interface CandidatoDashboardProps {
   onAceitarEntrevista?: (interesseId: string) => void
   interesses?: Interesse[]
   testes?: TesteTecnico[]
+  candidatoData?: {
+    id?: number
+    full_name?: string
+    email?: string
+    phone?: string
+    area_atuacao?: string
+    bio?: string
+    linkedin_url?: string
+    portfolio_url?: string
+    resume_url?: string
+    cep?: string
+    logradouro?: string
+    numero?: string
+    complemento?: string
+    bairro?: string
+    cidade?: string
+    estado?: string
+    birth_date?: string
+    cpf?: string
+    rg?: string
+    genero?: string
+    estado_civil?: string
+  }
 }
 
 export function CandidatoDashboard({
@@ -50,9 +73,42 @@ export function CandidatoDashboard({
   onAceitarEntrevista,
   interesses: interessesInit = [],
   testes: testesInit = [],
+  candidatoData,
 }: CandidatoDashboardProps) {
   const router = useRouter()
   const [interesses, setInteresses] = useState<Interesse[]>(interessesInit)
+
+  // Função para calcular o percentual de completude
+  const calcularCompletudePercentual = (): number => {
+    if (!candidatoData) return 0
+
+    const camposVerificacao = {
+      full_name: !!candidatoData.full_name,
+      email: !!candidatoData.email,
+      phone: !!candidatoData.phone,
+      area_atuacao: !!candidatoData.area_atuacao,
+      bio: !!candidatoData.bio,
+      linkedin_url: !!candidatoData.linkedin_url,
+      portfolio_url: !!candidatoData.portfolio_url,
+      resume_url: !!candidatoData.resume_url,
+      birth_date: !!candidatoData.birth_date,
+      cpf: !!candidatoData.cpf,
+      rg: !!candidatoData.rg,
+      cep: !!candidatoData.cep,
+      logradouro: !!candidatoData.logradouro,
+      numero: !!candidatoData.numero,
+      bairro: !!candidatoData.bairro,
+      cidade: !!candidatoData.cidade,
+      estado: !!candidatoData.estado,
+    }
+
+    const totalCampos = Object.keys(camposVerificacao).length
+    const camposPreenchidos = Object.values(camposVerificacao).filter(Boolean).length
+
+    return Math.round((camposPreenchidos / totalCampos) * 100)
+  }
+
+  const completudePerfil = calcularCompletudePercentual()
 
   const handleAceitarEntrevista = (interesseId: string) => {
     setInteresses(
@@ -74,7 +130,6 @@ export function CandidatoDashboard({
 
   const interessesNovos = interesses.filter((i) => i.status === "novo").length
   const interessesAceitos = interesses.filter((i) => i.status === "aceito").length
-  const completudePerfil = perfilCompleto ? 100 : 75
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
@@ -90,7 +145,7 @@ export function CandidatoDashboard({
         </div>
 
         {/* Alerta de Perfil Incompleto */}
-        {!perfilCompleto && (
+        {completudePerfil < 100 && (
           <Alert className="border-orange-200 bg-orange-50">
             <AlertCircle className="h-4 w-4 text-orange-600" />
             <AlertDescription className="text-orange-800">

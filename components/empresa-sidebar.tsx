@@ -45,6 +45,12 @@ export function EmpresaSidebar() {
       active: pathname?.includes("/jobs"),
     },
     {
+      title: "Kanban",
+      url: "/empresa/kanban-vaga",
+      icon: Users,
+      active: pathname?.includes("/kanban-vaga"),
+    },
+    {
       title: "Meu Perfil",
       url: "/empresa/meu-perfil",
       icon: Settings,
