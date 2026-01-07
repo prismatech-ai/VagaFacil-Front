@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Building2, MapPin, Briefcase, DollarSign, CheckCircle2, XCircle } from "lucide-react"
+import { Building2, MapPin, Briefcase, DollarSign, CheckCircle2, XCircle, Calendar, Clock, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -55,6 +55,7 @@ export default function VagasSugeridasPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [vagas, setVagas] = useState<VagaSugerida[]>([])
   const [isProcessing, setIsProcessing] = useState<number | null>(null)
+  const [vagasAceitadas, setVagasAceitadas] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -67,12 +68,10 @@ export default function VagasSugeridasPage() {
   const carregarVagas = async () => {
     try {
       setIsLoading(true)
-      console.log("📋 Carregando vagas sugeridas...")
       const response = await api.get<any>("/api/v1/candidato/vagas-sugeridas")
-      console.log("✅ Vagas carregadas:", response)
+     
       setVagas(response?.vagas_sugeridas || [])
     } catch (err: any) {
-      console.error("Erro ao carregar vagas:", err)
       toast({
         title: "❌ Erro",
         description: "Erro ao carregar vagas sugeridas",
@@ -83,24 +82,16 @@ export default function VagasSugeridasPage() {
     }
   }
 
-  const aceitarInteresse = async (vaga_id: number) => {
+  const aceitarInteresse = (vaga_id: number) => {
     setIsProcessing(vaga_id)
     try {
-      console.log("✅ Aceitando interesse para vaga:", vaga_id)
-      await api.post(`/api/v1/candidato/aceitar-interesse?vaga_id=${vaga_id}`, {})
-      
-      toast({
-        title: "✅ Sucesso",
-        description: "Você aceitou a entrevista! A empresa em breve agendará.",
-        variant: "default",
-      })
-      
-      carregarVagas()
+
+      // Redireciona para o modal de aceite de entrevista
+      router.push(`/interview-acceptance?vaga_id=${vaga_id}`)
     } catch (err: any) {
-      console.error("Erro ao aceitar interesse:", err)
       toast({
         title: "❌ Erro",
-        description: err.message || "Erro ao aceitar interesse",
+        description: "Erro ao abrir o formulário de aceitação",
         variant: "destructive",
       })
     } finally {
@@ -111,18 +102,17 @@ export default function VagasSugeridasPage() {
   const rejeitarInteresse = async (vaga_id: number) => {
     setIsProcessing(vaga_id)
     try {
-      console.log("❌ Rejeitando interesse para vaga:", vaga_id)
-      await api.post(`/api/v1/candidato/rejeitar-interesse?vaga_id=${vaga_id}`, {})
+      // POST /api/v1/candidato/recusar-entrevista/{vaga_id} - novo endpoint com email via Resend
+      await api.post(`/api/v1/candidato/recusar-entrevista/${vaga_id}`, {})
       
       toast({
         title: "✅ Rejeitado",
-        description: "Você rejeitou essa oportunidade.",
+        description: "Você rejeitou essa oportunidade. Email de notificação foi enviado para a empresa.",
         variant: "default",
       })
       
       carregarVagas()
     } catch (err: any) {
-      console.error("Erro ao rejeitar interesse:", err)
       toast({
         title: "❌ Erro",
         description: err.message || "Erro ao rejeitar interesse",
@@ -152,13 +142,21 @@ export default function VagasSugeridasPage() {
           <h1 className="text-3xl font-bold text-gray-900">Vagas Sugeridas</h1>
           <p className="text-gray-600 mt-2">Oportunidades de empresas interessadas em você</p>
         </div>
-        <Button 
-          variant="outline"
-          onClick={carregarVagas}
-          disabled={isLoading}
-        >
-          🔄 Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => router.push("/dashboard/candidato")}
+          >
+            ← Voltar ao Dashboard
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={carregarVagas}
+            disabled={isLoading}
+          >
+            🔄 Atualizar
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -272,61 +270,60 @@ export default function VagasSugeridasPage() {
                     </div>
                   </div>
 
-                  {vaga.entrevista?.agendada && (
+                  {vaga.entrevista?.agendada && vaga.entrevista.data && (
                     <div className="flex items-start gap-3">
                       <div className="flex flex-col items-center">
                         <div className="h-3 w-3 rounded-full bg-blue-500" />
-                        <div className="w-0.5 h-8 bg-gray-300" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="text-xs text-gray-600">Entrevista Agendada</p>
-                        <p className="text-sm font-medium">
-                          {new Date(vaga.entrevista.data!).toLocaleDateString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {vaga.resultado_final && (
-                    <div className="flex items-start gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className={`h-3 w-3 rounded-full ${vaga.resultado_final.foi_contratado ? "bg-green-500" : "bg-red-500"}`} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-600">Resultado Final</p>
-                        <p className={`text-sm font-medium ${vaga.resultado_final.foi_contratado ? "text-green-700" : "text-red-700"}`}>
-                          {vaga.resultado_final.foi_contratado ? "✅ Você foi contratado!" : "Não foi selecionado"}
-                        </p>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-600" />
+                            <p className="text-sm font-medium">
+                              {new Date(vaga.entrevista.data).toLocaleDateString("pt-BR", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-blue-600" />
+                            <p className="text-sm font-medium">
+                              {new Date(vaga.entrevista.data).toLocaleTimeString("pt-BR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* Ações */}
-                {!vaga.resultado_final && vaga.interesse.status === "interesse_empresa" && (
-                  <div className="flex gap-3 pt-4 border-t border-gray-200">
-                    <Button 
-                      variant="outline"
-                      onClick={() => rejeitarInteresse(vaga.vaga_id)}
-                      disabled={isProcessing === vaga.vaga_id}
-                      className="flex-1"
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      {isProcessing === vaga.vaga_id ? "Processando..." : "Rejeitar"}
-                    </Button>
-                    <Button 
-                      onClick={() => aceitarInteresse(vaga.vaga_id)}
-                      disabled={isProcessing === vaga.vaga_id}
-                      className="flex-1 bg-[#03565C] hover:bg-[#024147]"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {isProcessing === vaga.vaga_id ? "Processando..." : "Aceitar Entrevista"}
-                    </Button>
-                  </div>
-                )}
+                <div className="pt-4 border-t border-gray-200">
+                  <Button 
+                    onClick={() => aceitarInteresse(vaga.vaga_id)}
+                    disabled={isProcessing === vaga.vaga_id}
+                    className="w-full mb-3 bg-[#03565C] hover:bg-[#024147] text-white h-12 text-base font-semibold"
+                  >
+                    <CheckCircle2 className="h-5 w-5 mr-2" />
+                    {isProcessing === vaga.vaga_id ? "Processando..." : "Aceitar Interesse"}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => rejeitarInteresse(vaga.vaga_id)}
+                    disabled={isProcessing === vaga.vaga_id}
+                    className="w-full"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    {isProcessing === vaga.vaga_id ? "Processando..." : "Rejeitar"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

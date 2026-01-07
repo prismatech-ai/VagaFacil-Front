@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, ArrowLeft, Edit, Trash2, Users, CheckCircle2, Clock } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
-import { KanbanVaga } from "@/components/kanban-vaga"
 import { api } from "@/lib/api"
+import { prepareIdForApi, normalizeAnonymousId, extractNumericId } from "@/lib/id-helper"
 import { useToast } from "@/hooks/use-toast"
 
 export default function VagaDetailsPage() {
@@ -19,10 +19,13 @@ export default function VagaDetailsPage() {
   const vagaId = params.id as string
   const [vaga, setVaga] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [showKanban, setShowKanban] = useState(false)
   const [candidatos, setCandidatos] = useState<any[]>([])
   const [isLoadingCandidatos, setIsLoadingCandidatos] = useState(false)
   const [selectedCandidatoDetails, setSelectedCandidatoDetails] = useState<any>(null)
+  const [candidatosIdeais, setCandidatosIdeais] = useState<any[]>([])
+  const [isLoadingIdeais, setIsLoadingIdeais] = useState(false)
+  const [convites, setConvites] = useState<any[]>([])
+  const [isLoadingConvites, setIsLoadingConvites] = useState(false)
 
   const getNivelLabel = (nivel: number) => {
     const niveis = {
@@ -43,39 +46,70 @@ export default function VagaDetailsPage() {
     return statusMap[status] || { label: "Desconhecido", badge: "Desconhecido", badgeClass: "bg-gray-600" }
   }
 
+  // Contar convites realizados e aceitos baseado nos dados do objeto vaga
+  const convidesRealizados = vaga?.convites_enviados || convites.length || 0
+  const convitesAceitos = vaga?.convites_aceitos || convites.filter((c: any) => {
+    // Support different status formats: "aceito", "Aceito", "accepted", etc
+    const status = (c.status || c.aceito || c.accepted || "").toString().toLowerCase()
+    return status === "aceito" || status === "accepted" || c.aceito === true || c.accepted === true
+  }).length || 0
+
   useEffect(() => {
     if (vagaId) {
+      console.log("Iniciando carregamento da vaga:", vagaId)
       fetchVagaDetails()
-      fetchCandidatos()
+      // Comentado: Carregamento de candidatos inicialmente desabilitado para evitar bloqueios
+      // fetchCandidatos()
+      // fetchCandidatosIdeais()
     }
   }, [vagaId])
+
+  // Comentado: Carregar convites apenas quando solicitado
+  // useEffect(() => {
+  //   if (candidatosIdeais.length > 0) {
+  //     fetchConvites()
+  //   }
+  // }, [candidatosIdeais])
 
   const fetchVagaDetails = async () => {
     setIsLoading(true)
     try {
-      const response = await api.get(`/api/v1/jobs/${vagaId}`)
+      console.log("Fetching vaga details for ID:", vagaId)
+      
+      // Tenta ambos os endpoints para compatibilidade
+      let response
+      try {
+        console.log("Tentando /api/v1/jobs/" + vagaId)
+        response = await api.get(`/api/v1/jobs/${vagaId}`)
+      } catch (err1: any) {
+        console.warn("Erro no endpoint /api/v1/jobs:", err1.message)
+        try {
+          console.log("Tentando /api/v1/empresa/vagas/" + vagaId)
+          response = await api.get(`/api/v1/empresa/vagas/${vagaId}`)
+        } catch (err2: any) {
+          console.error("Erro em ambos endpoints:", err1.message, err2.message)
+          throw new Error("Não foi possível carregar a vaga")
+        }
+      }
+      
+      console.log("Vaga details response:", response)
       const jobData = (response as any).data || response
       setVaga(jobData)
     } catch (error: any) {
+      console.error("Erro ao carregar vaga:", error)
       const errorMsg = error instanceof Error ? error.message : "Erro ao carregar detalhes da vaga"
       
       // Se for erro 401, redirecionar para login
       if (errorMsg.includes("401") || errorMsg.includes("Não autenticado")) {
-        toast({
-          title: "Sessão expirada",
-          description: "Por favor, faça login novamente",
-          variant: "destructive",
-        })
+        console.log("Erro 401 - redirecionando para login")
         router.push("/login")
         return
       }
       
-      console.error("❌ Erro ao carregar detalhes da vaga:", error)
-      toast({
-        title: "Erro",
-        description: errorMsg,
-        variant: "destructive",
-      })
+      // Não exibe toast para evitar bloquear a UI
+      console.error("Erro ao carregar vaga detalhes:", errorMsg)
+      // Define um objeto vaga vazio para permitir exibição de erro
+      setVaga({})
     } finally {
       setIsLoading(false)
     }
@@ -88,7 +122,7 @@ export default function VagaDetailsPage() {
       const data = (response as any).data || response
       const candidatosData = data.candidatos || data
       setCandidatos(Array.isArray(candidatosData) ? candidatosData : [])
-      console.log("✅ Candidatos carregados:", candidatosData)
+    
     } catch (error: any) {
       const errorMsg = error instanceof Error ? error.message : "Erro ao carregar candidatos"
       
@@ -98,21 +132,158 @@ export default function VagaDetailsPage() {
         return
       }
       
-      console.error("❌ Erro ao carregar candidatos:", error)
       setCandidatos([])
     } finally {
       setIsLoadingCandidatos(false)
     }
   }
 
+  const fetchCandidatosIdeais = async () => {
+    setIsLoadingIdeais(true)
+    try {
+      // Buscar candidatos ideais com nova estrutura agrupada
+      const response = await api.get(`/api/v1/companies/candidatos-ideais/${vagaId}?min_compatibility=0.5&limit=50`)
+      const data = (response as any).data || response
+      
+      // Nova estrutura: { grupos: { certificados: {...}, autoavaliacao: {...} } }
+      let candidatosData: any[] = []
+      
+      if (data.grupos) {
+        // Nova estrutura com grupos
+        const certificados = data.grupos.certificados?.candidatos || []
+        const autoavaliacao = data.grupos.autoavaliacao?.candidatos || []
+        
+        // Combinar ambos os grupos: certificados primeiro (recomendados), depois autoavaliação
+        candidatosData = [
+          ...certificados.map((c: any) => ({ ...c, recomendado: true })),
+          ...autoavaliacao.map((c: any) => ({ ...c, recomendado: false }))
+        ]
+      } else if (Array.isArray(data.candidatos)) {
+        // Fallback para estrutura antiga se houver compatibilidade
+        candidatosData = data.candidatos
+      } else if (Array.isArray(data)) {
+        candidatosData = data
+      }
+      
+      // Buscar status de todos os candidatos em UMA requisição
+      if (Array.isArray(candidatosData) && candidatosData.length > 0) {
+        try {
+          const statusResponse = await api.get(`/api/v1/empresa/vagas/${vagaId}/candidatos`)
+          const candidatosComStatus = (statusResponse as any).data || statusResponse
+          
+          // Mapear candidatos ideais com seus status de aceite
+          candidatosData = candidatosData.map((candidato: any) => {
+            const statusInfo = Array.isArray(candidatosComStatus)
+              ? candidatosComStatus.find((c: any) => 
+                  c.id_anonimo === candidato.id_anonimo || 
+                  c.candidato_id === candidato.id ||
+                  c.id === candidato.id
+                )
+              : null
+            
+            return {
+              ...candidato,
+              consentimento: statusInfo?.consentimento || false,
+              data_consentimento: statusInfo?.data_consentimento,
+              dados_pessoais_liberados: statusInfo?.dados_pessoais_liberados || false
+            }
+          })
+        } catch (err) {
+          // Se falhar a busca de status, continua com candidatos sem status
+          candidatosData = candidatosData.map((c: any) => ({
+            ...c,
+            consentimento: false,
+            dados_pessoais_liberados: false
+          }))
+        }
+      }
+      
+      setCandidatosIdeais(Array.isArray(candidatosData) ? candidatosData : [])
+    } catch (error: any) {
+      const errorMsg = error instanceof Error ? error.message : "Erro ao carregar candidatos ideais"
+      
+      // Se for erro de requisitos técnicos não definidos, ignorar
+      if (errorMsg.includes("requisitos técnicos") || errorMsg.includes("technical requirements")) {
+        setCandidatosIdeais([])
+        return
+      }
+      
+      // Se for erro 401, redirecionar para login
+      if (errorMsg.includes("401") || errorMsg.includes("Não autenticado")) {
+        router.push("/login")
+        return
+      }
+      
+      setCandidatosIdeais([])
+    } finally {
+      setIsLoadingIdeais(false)
+    }
+  }
+
+  const fetchConvites = async () => {
+    setIsLoadingConvites(true)
+    try {
+      
+      // Tentar o endpoint específico de convites primeiro
+      try {
+        const response = await api.get(`/api/v1/empresa/convites/${vagaId}`)
+        const data = response as any
+        
+        // Handle both data.convites and direct array responses
+        let convitesData = []
+        if (data.convites && Array.isArray(data.convites)) {
+          convitesData = data.convites
+        } else if (Array.isArray(data)) {
+          convitesData = data
+        } else if (data.data && Array.isArray(data.data)) {
+          convitesData = data.data
+        }
+        
+        // Filter out null/undefined entries and ensure all have status field
+        convitesData = convitesData.filter((c: any) => c !== null && c !== undefined)
+        
+        setConvites(convitesData)
+      } catch (convitesError) {
+        // Se falhar, tentar usar dados dos candidatos com consentimento
+       
+        
+        // Usar dados dos candidatos ideais que já contêm informações de aceite
+        const convitesDosCandidatos = candidatosIdeais
+          .filter((c: any) => c.consentimento || c.dados_pessoais_liberados)
+          .map((c: any) => ({
+            id: c.id || c.id_anonimo,
+            candidato_id: c.id_anonimo,
+            status: c.consentimento ? "aceito" : "pendente",
+            data_consentimento: c.data_consentimento
+          }))
+        
+        setConvites(convitesDosCandidatos)
+      }
+    } catch (error: any) {
+      const errorMsg = error instanceof Error ? error.message : "Erro ao carregar convites"
+      
+      // Se for erro 401, redirecionar para login
+      if (errorMsg.includes("401") || errorMsg.includes("Não autenticado")) {
+        router.push("/login")
+        return
+      }
+      
+      setConvites([])
+    } finally {
+      setIsLoadingConvites(false)
+    }
+  }
+
   const fetchCandidatoDetalhes = async (idAnonimo: string) => {
     try {
-      const response = await api.get(`/api/v1/companies/candidatos-anonimos/detalhes/${idAnonimo}`)
+      // Usar helper para preparar o ID corretamente
+      const candidatoId = prepareIdForApi({ id_anonimo: idAnonimo })
+     
+      
+      const response = await api.get(`/api/v1/companies/candidatos-anonimos/detalhes/${candidatoId}`)
       const detalhes = (response as any).data || response
       setSelectedCandidatoDetails(detalhes)
-      console.log("✅ Detalhes do candidato carregados:", detalhes)
     } catch (error: any) {
-      console.error("❌ Erro ao carregar detalhes do candidato:", error)
       toast({
         title: "Erro",
         description: "Erro ao carregar detalhes do candidato",
@@ -125,14 +296,17 @@ export default function VagaDetailsPage() {
     await fetchCandidatoDetalhes(candidatoId)
   }
 
-  const handleMoverCandidato = async (candidatoId: string, novaColuna: string) => {
-    try {
-      console.log(`📍 Movendo candidato ${candidatoId} para coluna ${novaColuna}`)
-      // Aqui você pode fazer uma chamada à API para salvar a posição
-      // await api.post(`/api/v1/companies/candidatos-anonimos/${candidatoId}/coluna`, { coluna: novaColuna })
-    } catch (error) {
-      console.error("❌ Erro ao mover candidato:", error)
-    }
+  
+
+  const getCompatibilidadeColor = (score: number) => {
+    if (score >= 0.9) return "bg-green-100 text-green-800 border-green-300"
+    if (score >= 0.7) return "bg-blue-100 text-blue-800 border-blue-300"
+    if (score >= 0.5) return "bg-yellow-100 text-yellow-800 border-yellow-300"
+    return "bg-red-100 text-red-800 border-red-300"
+  }
+
+  const getCompatibilidadePercent = (score: number) => {
+    return Math.round(score * 100)
   }
 
   const transformarCandidatos = (candidatosAnonimos: any[]) => {
@@ -164,13 +338,13 @@ export default function VagaDetailsPage() {
     )
   }
 
-  if (!vaga) {
+  if (!vaga || Object.keys(vaga).length === 0) {
     return (
       <div className="space-y-6">
         <Alert className="border-red-200 bg-red-50">
           <AlertCircle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-600">
-            Vaga não encontrada
+            Vaga não encontrada ou erro ao carregar. Tente novamente.
           </AlertDescription>
         </Alert>
         <Button onClick={() => router.back()}>Voltar</Button>
@@ -180,33 +354,8 @@ export default function VagaDetailsPage() {
 
   return (
     <div className="space-y-6">
-      {showKanban ? (
-        <>
-          <div className="flex items-center gap-3 mb-6">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowKanban(false)}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar aos Detalhes
-            </Button>
-          </div>
-          <KanbanVaga
-            vagaId={vagaId}
-            vagaTitulo={vaga.title}
-            areaVaga={vaga.location || ""}
-            candidatos={transformarCandidatos(candidatos)}
-            onViewCandidato={handleViewCandidato}
-            onMoverCandidato={handleMoverCandidato}
-            isLoading={isLoadingCandidatos}
-          />
-        </>
-      ) : (
-        <>
-          {/* Header with Back Button */}
-          <div className="flex items-start justify-between gap-4">
+      {/* Header with Back Button */}
+      <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <Button
@@ -259,7 +408,7 @@ export default function VagaDetailsPage() {
                   <div>
                     <p className="text-sm text-gray-600">Convites Realizados</p>
                     <p className="text-2xl font-bold text-[#03565C] mt-1">
-                      {vaga.views_count || 0}
+                      {convidesRealizados}
                     </p>
                   </div>
                   <Users className="h-6 w-6 text-[#03565C] opacity-20" />
@@ -273,7 +422,7 @@ export default function VagaDetailsPage() {
                   <div>
                     <p className="text-sm text-gray-600">Convites Aceitos</p>
                     <p className="text-2xl font-bold text-[#03565C] mt-1">
-                      {vaga.applications_count || 0}
+                      {convitesAceitos}
                     </p>
                   </div>
                   <CheckCircle2 className="h-6 w-6 text-green-600 opacity-20" />
@@ -396,11 +545,11 @@ export default function VagaDetailsPage() {
               {/* Actions */}
               <div className="space-y-2">
                 <Button 
-                  onClick={() => setShowKanban(true)}
+                  onClick={() => router.push(`/empresa/kanban-vaga`)}
                   className="w-full gap-2 bg-[#03565C] hover:bg-[#024147]"
                 >
                   <Users className="h-4 w-4" />
-                  Ver Kanban
+                  Ver Status
                 </Button>
                 <Button
                   variant="outline"
@@ -411,17 +560,113 @@ export default function VagaDetailsPage() {
                 </Button>
               </div>
 
-              {/* Info Alert */}
-              <Alert className="border-[#24BFB0]/30 bg-[#25D9B8]/10">
-                <AlertCircle className="h-4 w-4 text-[#03565C]" />
-                <AlertDescription className="text-[#03565C] text-sm">
-                  <strong>Candidatos:</strong> Aparecem apenas aqueles que atendem aos requisitos mínimos.
-                </AlertDescription>
-              </Alert>
+              {/* Info Alert - Candidatos Ideais */}
+              <Card className="border-[#24BFB0]/30 bg-[#25D9B8]/10 shadow-none">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-[#03565C]" />
+                    <CardTitle className="text-[#03565C]">Candidatos Ideais</CardTitle>
+                  </div>
+                  <CardDescription className="text-[#03565C]">
+                    Aparecem apenas aqueles que atendem aos requisitos mínimos
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingIdeais ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner />
+                    </div>
+                  ) : candidatosIdeais.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-gray-500 text-sm">Nenhum candidato encontrado com compatibilidade mínima</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Grupo de Certificados (Recomendados) */}
+                      {candidatosIdeais.some((c: any) => c.recomendado) && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-bold text-[#03565C] bg-yellow-100 px-2 py-1 rounded">⭐ CERTIFICADOS</span>
+                            <span className="text-xs text-gray-500">
+                              ({candidatosIdeais.filter((c: any) => c.recomendado).length})
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {candidatosIdeais.filter((c: any) => c.recomendado).slice(0, 5).map((candidato) => (
+                              <div
+                                key={candidato.id_anonimo}
+                                className="flex items-center justify-between p-2 bg-yellow-50 rounded border border-yellow-200 hover:bg-yellow-100 transition-colors"
+                              >
+                                <div className="flex-1">
+                                  <p className="font-semibold text-gray-900 text-sm">{normalizeAnonymousId(candidato.id_anonimo)}</p>
+                                  <p className="text-xs text-gray-600">
+                                    {candidato.dados_pessoais_liberados || candidato.consentimento
+                                      ? candidato.logradouro
+                                        ? `${candidato.logradouro}, ${candidato.numero || ""} - ${candidato.bairro || ""}, ${candidato.cidade || ""}, ${candidato.estado || ""}`
+                                        : `${candidato.cidade || ""}, ${candidato.estado || ""}`
+                                      : `${candidato.cidade || ""}, ${candidato.estado || ""}`
+                                    }
+                                  </p>
+                                </div>
+                                <div className={`px-2 py-1 rounded text-xs font-semibold border ${getCompatibilidadeColor(candidato.compatibilidade)}`}>
+                                  {getCompatibilidadePercent(candidato.compatibilidade)}%
+                                </div>
+                              </div>
+                            ))}
+                            {candidatosIdeais.filter((c: any) => c.recomendado).length > 5 && (
+                              <p className="text-xs text-gray-500 text-center pt-1">
+                                +{candidatosIdeais.filter((c: any) => c.recomendado).length - 5} certificados mais
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Grupo de Autoavaliação */}
+                      {candidatosIdeais.some((c: any) => !c.recomendado) && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2 pt-2 border-t">
+                            <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded">📝 AUTOAVALIAÇÃO</span>
+                            <span className="text-xs text-gray-500">
+                              ({candidatosIdeais.filter((c: any) => !c.recomendado).length})
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {candidatosIdeais.filter((c: any) => !c.recomendado).slice(0, 5).map((candidato) => (
+                              <div
+                                key={candidato.id_anonimo}
+                                className="flex items-center justify-between p-2 bg-white rounded border border-[#24BFB0]/20 hover:bg-[#25D9B8]/5 transition-colors"
+                              >
+                                <div className="flex-1">
+                                  <p className="font-semibold text-gray-900 text-sm">{normalizeAnonymousId(candidato.id_anonimo)}</p>
+                                  <p className="text-xs text-gray-600">
+                                    {candidato.dados_pessoais_liberados || candidato.consentimento
+                                      ? candidato.logradouro
+                                        ? `${candidato.logradouro}, ${candidato.numero || ""} - ${candidato.bairro || ""}, ${candidato.cidade || ""}, ${candidato.estado || ""}`
+                                        : `${candidato.cidade || ""}, ${candidato.estado || ""}`
+                                      : `${candidato.cidade || ""}, ${candidato.estado || ""}`
+                                    }
+                                  </p>
+                                </div>
+                                <div className={`px-2 py-1 rounded text-xs font-semibold border ${getCompatibilidadeColor(candidato.compatibilidade)}`}>
+                                  {getCompatibilidadePercent(candidato.compatibilidade)}%
+                                </div>
+                              </div>
+                            ))}
+                            {candidatosIdeais.filter((c: any) => !c.recomendado).length > 5 && (
+                              <p className="text-xs text-gray-500 text-center pt-1">
+                                +{candidatosIdeais.filter((c: any) => !c.recomendado).length - 5} candidatos mais
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
-        </>
-      )}
     </div>
   )
 }

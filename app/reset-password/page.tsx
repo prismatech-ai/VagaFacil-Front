@@ -74,8 +74,9 @@ function ResetPasswordContent() {
         token,
         newPassword: password,
       }
-      console.log('POST /auth/reset-password', { body: { token: token?.slice(0, 20) + '...', newPassword: '***' } })
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
+
+      // Usar novo endpoint que envia email de confirmação via Resend
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,6 +91,7 @@ function ResetPasswordContent() {
       }
 
       setSuccess(true)
+      // Mostrar mensagem de sucesso antes de redirecionar
       setTimeout(() => {
         router.push('/login')
       }, 3000)

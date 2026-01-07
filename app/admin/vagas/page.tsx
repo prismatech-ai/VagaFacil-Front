@@ -17,10 +17,13 @@ import { toast } from "sonner"
 
 export default function AdminVagasPage() {
   const [vagas, setVagas] = useState<Vaga[]>([])
+  const [candidaturasPorVaga, setCandidaturasPorVaga] = useState<Record<string, Candidatura[]>>({})
   const [loading, setLoading] = useState(true)
+  const [loadingCandidaturas, setLoadingCandidaturas] = useState(false)
   const [error, setError] = useState('')
   const [busca, setBusca] = useState("")
   const [statusFiltro, setStatusFiltro] = useState<"" | "aberta" | "fechada">("")
+  const [currentPageVagas, setCurrentPageVagas] = useState(1)
   const [empresaFiltro, setEmpresaFiltro] = useState<string>("")
   const [periodoFiltro, setPeriodoFiltro] = useState<"" | "7" | "30">("")
 
@@ -56,7 +59,6 @@ export default function AdminVagasPage() {
       
       const token = localStorage.getItem('token')
       if (!token) {
-        console.warn('Token não encontrado')
         return
       }
       
@@ -67,19 +69,15 @@ export default function AdminVagasPage() {
           'Authorization': `Bearer ${token}`
         },
       })
-      
-      console.log('GET /api/v1/companies/', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
 
       if (response.ok) {
         const data = await response.json()
-        console.log('Empresas recebidas:', data)
+      
         const empresasData = Array.isArray(data) ? data : (data.companies || data.data || [])
         setEmpresas(empresasData)
       } else {
-        console.error('Erro ao carregar empresas:', response.status)
       }
     } catch (err) {
-      console.error('Erro ao buscar empresas:', err)
     } finally {
       setLoadingEmpresas(false)
     }
@@ -91,14 +89,12 @@ export default function AdminVagasPage() {
       setError('')
       
       if (typeof window === 'undefined') {
-        console.warn('localStorage não disponível no servidor')
         return
       }
       
       const token = localStorage.getItem('token')
       
       if (!token) {
-        console.warn('Token não encontrado no localStorage')
         setError('Token não encontrado. Faça login novamente.')
         setLoading(false)
         return
@@ -111,8 +107,7 @@ export default function AdminVagasPage() {
           'Authorization': `Bearer ${token}`
         },
       })
-      console.log('GET /api/v1/admin/vagas', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
-
+     
       if (!response.ok) {
         throw new Error(`Erro ${response.status}: Falha ao carregar vagas`)
       }
@@ -129,6 +124,7 @@ export default function AdminVagasPage() {
       const vagasMapeadas = vagasData.map((v: any) => ({
         id: v.id,
         empresaId: v.company_id || v.empresaId,
+        empresaNome: v.company?.name || v.company?.razao_social || v.empresa_nome || v.empresaNome || 'Empresa',
         titulo: v.title || v.titulo || '',
         descricao: v.description || v.descricao || '',
         requisitos: v.requirements || v.requisitos || '',
@@ -144,6 +140,7 @@ export default function AdminVagasPage() {
       }))
       
       setVagas(vagasMapeadas)
+      setCurrentPageVagas(1)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar vagas'
       setError(errorMessage)
@@ -180,7 +177,10 @@ export default function AdminVagasPage() {
       maxScore += 40
       const habilidadesCandidato = candidato.habilidades || []
       const habilidadesMatch = vaga.habilidadesRequeridas.filter((h) =>
-        habilidadesCandidato.some((hc) => hc.toLowerCase().includes(h.toLowerCase())),
+        habilidadesCandidato.some((hc) => {
+          const skillName = typeof hc === 'string' ? hc : (typeof hc === 'object' && hc ? ((hc as any).nome || (hc as any).name || (hc as any).titulo || String(hc)) : '')
+          return skillName.toLowerCase().includes(h.toLowerCase())
+        }),
       ).length
       score += (habilidadesMatch / vaga.habilidadesRequeridas.length) * 40
     }
@@ -217,9 +217,58 @@ export default function AdminVagasPage() {
     return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0
   }
 
-  const candidaturasPorVaga = useMemo<Record<string, Candidatura[]>>(() => {
-    return {}
-  }, [vagas])
+  const fetchCandidaturasDaVaga = async (vagaId: string) => {
+    try {
+      setLoadingCandidaturas(true)
+      
+      const token = localStorage.getItem('token')
+      if (!token) return
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas/${vagaId}/candidaturas`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Erro ao carregar candidaturas da vaga`)
+      }
+
+      const data = await response.json()
+      const candidaturasList = data.candidaturas || []
+      
+      // Mapear os dados para o formato esperado
+      const candidaturasMapeadas: Candidatura[] = candidaturasList.map((c: any) => ({
+        id: c.id,
+        vagaId: vagaId,
+        candidatoId: c.candidate?.id,
+        status: c.status,
+        createdAt: c.created_at ? new Date(c.created_at) : new Date(),
+        candidato: {
+          id: c.candidate?.id,
+          nome: c.candidate?.nome,
+          email: c.candidate?.email,
+          habilidades: typeof c.candidate?.habilidades === 'string' 
+            ? c.candidate.habilidades.split(',').map((h: string) => h.trim())
+            : c.candidate?.habilidades || []
+        }
+      }))
+
+      setCandidaturasPorVaga(prev => ({
+        ...prev,
+        [vagaId]: candidaturasMapeadas
+      }))
+    } catch (err) {
+      console.error('Erro ao carregar candidaturas:', err)
+    } finally {
+      setLoadingCandidaturas(false)
+    }
+  }
 
   const vagasFiltradas = useMemo(() => {
     const now = new Date()
@@ -239,19 +288,79 @@ export default function AdminVagasPage() {
     })
   }, [vagas, busca, statusFiltro, empresaFiltro, periodoFiltro])
 
-  const abrirDetalhes = (vaga: Vaga) => {
-    setVagaSelecionada(vaga)
+  const abrirDetalhes = async (vaga: Vaga) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setVagaSelecionada(vaga)
+        setDialogOpen(true)
+        fetchCandidaturasDaVaga(vaga.id)
+        return
+      }
+
+      // Buscar detalhes completos da vaga
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas/${vaga.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+        }
+      )
+
+      if (response.ok) {
+        const detalhes = await response.json()
+        
+        // Mapear detalhes completos para o objeto Vaga
+        const vagaCompleta: Vaga = {
+          id: detalhes.id,
+          titulo: detalhes.title || vaga.titulo,
+          descricao: detalhes.description || vaga.descricao,
+          requisitos: detalhes.requirements || vaga.requisitos,
+          localizacao: detalhes.location || vaga.localizacao,
+          tipo: detalhes.job_type || vaga.tipo,
+          empresaId: detalhes.company?.id || vaga.empresaId,
+          empresaNome: detalhes.company?.razao_social || vaga.empresaNome,
+          status: detalhes.status || vaga.status,
+          salarioMin: detalhes.salary_min || vaga.salarioMin,
+          salarioMax: detalhes.salary_max || vaga.salarioMax,
+          createdAt: detalhes.created_at ? new Date(detalhes.created_at) : vaga.createdAt,
+          habilidadesRequeridas: detalhes.required_skills || vaga.habilidadesRequeridas,
+          anosExperienciaMin: detalhes.years_experience_min || vaga.anosExperienciaMin,
+          anosExperienciaMax: detalhes.years_experience_max || vaga.anosExperienciaMax,
+        }
+        
+        setVagaSelecionada(vagaCompleta)
+      } else {
+        // Fallback para dados já carregados
+        setVagaSelecionada(vaga)
+      }
+    } catch (err) {
+      console.error('Erro ao buscar detalhes da vaga:', err)
+      // Fallback para dados já carregados
+      setVagaSelecionada(vaga)
+    }
+    
     setDialogOpen(true)
+    // Carregar candidaturas da vaga
+    fetchCandidaturasDaVaga(vaga.id)
   }
 
   const removerVaga = (id: string) => {
     handleDeleteVaga(parseInt(id))
   }
 
-  const empresaNome = (empresaId: string) => {
+  const empresaNome = (empresaId: string, vagaEmpresaNome?: string) => {
+    // Se já tem o nome da empresa na vaga, usa isso
+    if (vagaEmpresaNome && vagaEmpresaNome !== 'Empresa') {
+      return vagaEmpresaNome
+    }
+    // Senão, busca no array de empresas
     const e = empresas.find((u: any) => u.id === empresaId)
     // @ts-ignore
-    return (e?.nomeEmpresa as string) || e?.nome || "Empresa"
+    return (e?.nomeEmpresa as string) || e?.nome || e?.razao_social || "Empresa"
   }
 
   const contagemPorStatus = (lista: Candidatura[]) => {
@@ -334,7 +443,6 @@ export default function AdminVagasPage() {
       toast.success('Vaga deletada com sucesso')
       fetchVagas()
     } catch (err) {
-      console.error('Erro ao deletar vaga:', err)
       toast.error('Erro ao deletar vaga', {
         description: (err as Error).message,
         duration: 5000
@@ -372,7 +480,7 @@ export default function AdminVagasPage() {
       toast.success('Vaga publicada com sucesso')
       fetchVagas()
     } catch (err) {
-      console.error('Erro ao publicar vaga:', err)
+
       toast.error('Erro ao publicar vaga', {
         description: (err as Error).message,
         duration: 5000
@@ -410,7 +518,7 @@ export default function AdminVagasPage() {
       toast.success('Vaga fechada com sucesso')
       fetchVagas()
     } catch (err) {
-      console.error('Erro ao fechar vaga:', err)
+
       toast.error('Erro ao fechar vaga', {
         description: (err as Error).message,
         duration: 5000
@@ -439,8 +547,6 @@ export default function AdminVagasPage() {
         benefits: "",
       }
 
-      console.log(`PUT /api/v1/admin/vagas/${editingVagaId}?company_id=${parseInt(empresaIdForm)} - Payload:`, payload)
-
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas/${editingVagaId}?company_id=${parseInt(empresaIdForm)}`, {
         method: 'PUT',
         headers: {
@@ -458,9 +564,7 @@ export default function AdminVagasPage() {
 
       if (!response.ok) {
         const responseText = await response.text()
-        console.error('Erro ao atualizar vaga - Status:', response.status, response.statusText)
-        console.error('Erro ao atualizar vaga - Response:', responseText)
-        
+
         let errorMessage = `Erro ${response.status}: ${response.statusText}`
         try {
           const errorData = JSON.parse(responseText)
@@ -481,8 +585,7 @@ export default function AdminVagasPage() {
       }
 
       const vagaAtualizada = await response.json()
-      console.log('Vaga atualizada com sucesso:', vagaAtualizada)
-
+    
       setCreateOpen(false)
       resetForm()
       
@@ -493,7 +596,7 @@ export default function AdminVagasPage() {
 
       fetchVagas()
     } catch (err) {
-      console.error('Erro ao atualizar vaga:', err)
+
       toast.error('Erro ao atualizar vaga', {
         description: (err as Error).message,
         duration: 5000,
@@ -812,8 +915,6 @@ export default function AdminVagasPage() {
                         status: "rascunho"
                       }
 
-                      console.log('POST /api/v1/admin/vagas?company_id=' + parseInt(empresaIdForm) + ' - Payload:', payload)
-
                       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/vagas?company_id=${parseInt(empresaIdForm)}`, {
                         method: 'POST',
                         headers: {
@@ -836,9 +937,7 @@ export default function AdminVagasPage() {
 
                       if (!response.ok) {
                         const responseText = await response.text()
-                        console.error('Erro ao criar vaga - Status:', response.status, response.statusText)
-                        console.error('Erro ao criar vaga - Response:', responseText)
-                        
+
                         let errorMessage = `Erro ${response.status}: ${response.statusText}`
                         try {
                           const errorData = JSON.parse(responseText)
@@ -859,8 +958,7 @@ export default function AdminVagasPage() {
                     }
 
                     const novaVaga = await response.json()
-                    console.log('Vaga criada com sucesso:', novaVaga)
-
+                  
                     setCreateOpen(false)
                     resetForm()
                     
@@ -872,7 +970,7 @@ export default function AdminVagasPage() {
                       duration: 4000,
                     })
                     } catch (error) {
-                      console.error('Erro ao criar vaga:', error)
+
                       toast.error('Erro ao criar vaga', {
                         description: 'Não foi possível criar a vaga. Tente novamente.',
                         duration: 4000,
@@ -927,10 +1025,16 @@ export default function AdminVagasPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  vagasFiltradas.map((vaga) => {
-                    const totalCands = candidaturasPorVaga[vaga.id]?.length ?? 0
-                    return (
-                      <TableRow key={vaga.id}>
+                  (() => {
+                    const itemsPerPage = 10
+                    const startIndex = (currentPageVagas - 1) * itemsPerPage
+                    const endIndex = startIndex + itemsPerPage
+                    const vagasPaginadas = vagasFiltradas.slice(startIndex, endIndex)
+                    
+                    return vagasPaginadas.map((vaga) => {
+                      const totalCands = candidaturasPorVaga[vaga.id]?.length ?? 0
+                      return (
+                        <TableRow key={vaga.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Briefcase className="h-4 w-4 text-muted-foreground" />
@@ -940,7 +1044,7 @@ export default function AdminVagasPage() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4 text-muted-foreground" />
-                            {empresaNome(vaga.empresaId)}
+                            {empresaNome(vaga.empresaId, vaga.empresaNome)}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -970,10 +1074,51 @@ export default function AdminVagasPage() {
                       </TableRow>
                     )
                   })
+                  })()
                 )}
               </TableBody>
             </Table>
           </div>
+          
+          {/* Paginação */}
+          {vagasFiltradas.length > 10 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {((currentPageVagas - 1) * 10) + 1} a {Math.min(currentPageVagas * 10, vagasFiltradas.length)} de {vagasFiltradas.length} vagas
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={currentPageVagas === 1}
+                  onClick={() => setCurrentPageVagas(prev => Math.max(1, prev - 1))}
+                >
+                  Anterior
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.ceil(vagasFiltradas.length / 10) }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPageVagas === page ? "default" : "outline"}
+                      size="sm"
+                      className="w-9 h-9 p-0"
+                      onClick={() => setCurrentPageVagas(page)}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={currentPageVagas * 10 >= vagasFiltradas.length}
+                  onClick={() => setCurrentPageVagas(prev => prev + 1)}
+                >
+                  Próximo
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -983,7 +1128,7 @@ export default function AdminVagasPage() {
           <DialogHeader>
             <DialogTitle>Detalhes da Vaga</DialogTitle>
             <DialogDescription>
-              {vagaSelecionada?.titulo} • {vagaSelecionada && empresaNome(vagaSelecionada.empresaId)}
+              {vagaSelecionada?.titulo} • {vagaSelecionada && empresaNome(vagaSelecionada.empresaId, vagaSelecionada.empresaNome)}
             </DialogDescription>
           </DialogHeader>
           {vagaSelecionada && (
@@ -1047,6 +1192,77 @@ export default function AdminVagasPage() {
                   </CardContent>
                 </Card>
               </div>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Candidaturas</CardTitle>
+                  <CardDescription>Lista de candidatos que se candidataram</CardDescription>
+                </CardHeader>
+                  <CardContent>
+                    {loadingCandidaturas ? (
+                      <div className="text-center py-4 text-muted-foreground">Carregando candidaturas...</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(candidaturasPorVaga[vagaSelecionada.id] ?? []).length === 0 ? (
+                          <p className="text-sm text-muted-foreground">Nenhuma candidatura ainda</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b">
+                                  <th className="text-left py-2 px-2">Nome</th>
+                                  <th className="text-left py-2 px-2">Email</th>
+                                  <th className="text-left py-2 px-2">Habilidades</th>
+                                  <th className="text-left py-2 px-2">Status</th>
+                                  <th className="text-left py-2 px-2">Data</th>
+                                  <th className="text-right py-2 px-2">Ações</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(candidaturasPorVaga[vagaSelecionada.id] ?? []).map((cand) => (
+                                  <tr key={cand.id} className="border-b hover:bg-muted/50">
+                                    <td className="py-2 px-2">{cand.candidato?.nome || 'N/A'}</td>
+                                    <td className="py-2 px-2 text-xs">{cand.candidato?.email || 'N/A'}</td>
+                                    <td className="py-2 px-2">
+                                      <div className="flex flex-wrap gap-1">
+                                        {(cand.candidato?.habilidades || []).slice(0, 2).map((hab, idx) => (
+                                          <Badge key={`${idx}-${hab}`} variant="secondary" className="text-xs">
+                                            {hab}
+                                          </Badge>
+                                        ))}
+                                        {(cand.candidato?.habilidades || []).length > 2 && (
+                                          <Badge variant="outline" className="text-xs">+{(cand.candidato?.habilidades || []).length - 2}</Badge>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="py-2 px-2">
+                                      <Badge variant={cand.status === 'aprovado' ? 'default' : cand.status === 'em_analise' ? 'secondary' : 'outline'}>
+                                        {cand.status?.replace('_', ' ') || 'Sem status'}
+                                      </Badge>
+                                    </td>
+                                    <td className="py-2 px-2 text-xs text-muted-foreground">
+                                      {cand.createdAt ? new Date(cand.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
+                                    </td>
+                                    <td className="py-2 px-2 text-right">
+                                      <div className="flex justify-end gap-1">
+                                        <Button variant="ghost" size="sm">
+                                          <Eye className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="sm">
+                                          <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
               {vagaSelecionada.habilidadesRequeridas && vagaSelecionada.habilidadesRequeridas.length > 0 && (
                 <Card>
@@ -1084,67 +1300,6 @@ export default function AdminVagasPage() {
                   </CardContent>
                 </Card>
               )}
-
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base">Candidatos Compatíveis</CardTitle>
-                      <CardDescription>Matching baseado em habilidades, experiência e localização</CardDescription>
-                    </div>
-                    <Target className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {candidatos
-                      .map((candidato) => ({
-                        candidato,
-                        matchScore: calcularMatch(candidato, vagaSelecionada),
-                      }))
-                      .filter((item) => item.matchScore > 30)
-                      .sort((a, b) => b.matchScore - a.matchScore)
-                      .slice(0, 10)
-                      .map(({ candidato, matchScore }) => (
-                        <div key={candidato.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex-1">
-                            <p className="font-medium">{candidato.nome}</p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {(candidato.habilidades || []).slice(0, 3).map((hab) => (
-                                <Badge key={hab} variant="outline" className="text-xs">
-                                  {hab}
-                                </Badge>
-                              ))}
-                              {candidato.anosExperiencia !== undefined && (
-                                <Badge variant="outline" className="text-xs">
-                                  {candidato.anosExperiencia} anos exp
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-right">
-                              <div className="text-sm font-medium">{matchScore}% match</div>
-                              <div className="text-xs text-muted-foreground">
-                                {matchScore >= 80 ? "Excelente" : matchScore >= 60 ? "Bom" : "Moderado"}
-                              </div>
-                            </div>
-                            <div
-                              className={`w-2 h-2 rounded-full ${
-                                matchScore >= 80 ? "bg-green-500" : matchScore >= 60 ? "bg-yellow-500" : "bg-orange-500"
-                              }`}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    {candidatos.filter((c) => calcularMatch(c, vagaSelecionada) > 30).length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nenhum candidato com match acima de 30% encontrado
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
 
               <div className="flex gap-2 justify-end mt-4">
                 {vagaSelecionada.status === "rascunho" && (

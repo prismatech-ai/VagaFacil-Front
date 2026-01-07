@@ -14,10 +14,7 @@ export default function JobKanbanPage() {
     router.push(`/empresa/jobs/${jobId}/candidates/${candidateId}`)
   }
 
-  const handleMoveCandidate = (candidateId: string, newStatus: string) => {
-    console.log(`Moved candidate ${candidateId} to ${newStatus}`)
-    // In production, this would update the backend
-  }
+ 
 
   return (
     <KanbanVaga

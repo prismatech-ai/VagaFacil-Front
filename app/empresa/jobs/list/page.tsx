@@ -72,19 +72,10 @@ export default function JobsListPage() {
   const loadJobs = async () => {
     setIsLoading(true)
     try {
-      console.log("📋 Carregando todas as vagas...")
       const response = await api.get("/api/v1/jobs/")
       const jobsData = Array.isArray((response as any).data) ? (response as any).data : response
-      console.log("✅ Vagas carregadas:", jobsData)
-      if (Array.isArray(jobsData) && jobsData.length > 0) {
-        console.log("🏢 Company ID:", jobsData[0].company_id)
-        jobsData.forEach((job: Job) => {
-          console.log(`📌 Vaga: ${job.id} | Company: ${job.company_id} | Status: ${job.status} | Título: ${job.title}`)
-        })
-      }
       setJobs(Array.isArray(jobsData) ? jobsData : [])
     } catch (error: any) {
-      console.error("❌ Erro ao carregar vagas:", error)
       toast({
         title: "Erro",
         description: "Erro ao carregar vagas",
@@ -98,20 +89,16 @@ export default function JobsListPage() {
 
   const loadPublishedCount = async () => {
     try {
-      console.log("📋 Carregando contagem de vagas publicadas...")
       const response = await api.get("/api/v1/jobs/?status=aberta")
       const jobsData = Array.isArray((response as any).data) ? (response as any).data : response
       const count = Array.isArray(jobsData) ? jobsData.length : 0
-      console.log("✅ Vagas publicadas:", count)
       setPublishedCount(count)
     } catch (error: any) {
-      console.error("❌ Erro ao carregar contagem de vagas publicadas:", error)
       setPublishedCount(0)
     }
   }
 
   const handleEdit = (job: Job) => {
-    console.log(`✏️ Editando vaga | ID: ${job.id} | Company ID: ${job.company_id} | Título: ${job.title}`)
     setEditingJob(job)
     setIsEditDialogOpen(true)
     setFormData({
@@ -133,7 +120,6 @@ export default function JobsListPage() {
 
     setIsLoadingAction(true)
     try {
-      console.log(`📝 Salvando edição de vaga | ID: ${editingJob.id} | Company ID: ${editingJob.company_id}`)
       const payload = {
         title: formData.title,
         description: formData.description,
@@ -149,7 +135,6 @@ export default function JobsListPage() {
       }
 
       const response = await api.put(`/api/v1/jobs/${editingJob.id}`, payload)
-      console.log("✅ Vaga atualizada:", (response as any).data || response)
 
       setJobs(jobs.map(j => j.id === editingJob.id ? { ...j, ...formData } : j))
       setEditingJob(null)
@@ -160,7 +145,6 @@ export default function JobsListPage() {
         description: "Vaga atualizada com sucesso!",
       })
     } catch (error: any) {
-      console.error("❌ Erro ao salvar edição:", error)
       toast({
         title: "Erro",
         description: error.response?.data?.detail || "Erro ao atualizar vaga",
@@ -177,9 +161,7 @@ export default function JobsListPage() {
     setIsLoadingAction(true)
     try {
       const job = jobs.find(j => j.id === deletingJobId)
-      console.log(`🗑️ Deletando vaga | ID: ${deletingJobId} | Company ID: ${job?.company_id}`)
       await api.delete(`/api/v1/jobs/${deletingJobId}`)
-      console.log("✅ Vaga deletada")
 
       setJobs(jobs.filter(j => j.id !== deletingJobId))
       setDeletingJobId(null)
@@ -189,7 +171,6 @@ export default function JobsListPage() {
         description: "Vaga deletada com sucesso!",
       })
     } catch (error: any) {
-      console.error("❌ Erro ao deletar vaga:", error)
       toast({
         title: "Erro",
         description: error.response?.data?.detail || "Erro ao deletar vaga",
@@ -206,9 +187,7 @@ export default function JobsListPage() {
     setIsLoadingAction(true)
     try {
       const job = jobs.find(j => j.id === publishingJobId)
-      console.log(`📢 Publicando vaga | ID: ${publishingJobId} | Company ID: ${job?.company_id}`)
       const response = await api.post(`/api/v1/jobs/${publishingJobId}/publish`)
-      console.log("✅ Vaga publicada:", (response as any).data || response)
 
       setJobs(jobs.map(j => j.id === publishingJobId ? { ...j, status: "publicado" } : j))
       setPublishingJobId(null)
@@ -218,7 +197,6 @@ export default function JobsListPage() {
         description: "Vaga publicada com sucesso!",
       })
     } catch (error: any) {
-      console.error("❌ Erro ao publicar vaga:", error)
       toast({
         title: "Erro",
         description: error.response?.data?.detail || "Erro ao publicar vaga",
@@ -235,9 +213,7 @@ export default function JobsListPage() {
     setIsLoadingAction(true)
     try {
       const job = jobs.find(j => j.id === closingJobId)
-      console.log(`🔒 Fechando vaga | ID: ${closingJobId} | Company ID: ${job?.company_id}`)
       const response = await api.post(`/api/v1/jobs/${closingJobId}/close`)
-      console.log("✅ Vaga fechada:", (response as any).data || response)
 
       setJobs(jobs.map(j => j.id === closingJobId ? { ...j, status: "fechado" } : j))
       setClosingJobId(null)
@@ -247,7 +223,6 @@ export default function JobsListPage() {
         description: "Vaga fechada com sucesso!",
       })
     } catch (error: any) {
-      console.error("❌ Erro ao fechar vaga:", error)
       toast({
         title: "Erro",
         description: error.response?.data?.detail || "Erro ao fechar vaga",
@@ -370,10 +345,6 @@ export default function JobsListPage() {
                       </Badge>
                     </div>
                     <CardDescription>{job.location} {job.remote && "• Remoto"}</CardDescription>
-                  </div>
-                  <div className="text-right text-sm text-gray-500">
-                    <p>{job.applications_count} candidatos</p>
-                    <p>{job.views_count} visualizações</p>
                   </div>
                 </div>
               </CardHeader>

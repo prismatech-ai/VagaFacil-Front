@@ -158,7 +158,7 @@ export function KanbanVaga({
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{vagaTitulo}</h1>
-              <p className="text-gray-600 mt-1">Kanban de Candidatos</p>
+              <p className="text-gray-600 mt-1">Status de Candidatos</p>
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold text-[#03565C]">{candidatosFiltrados.length}</p>

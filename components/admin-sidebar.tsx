@@ -17,7 +17,6 @@ import {
   Building2,
   Briefcase,
   FileText,
-  Settings,
   LogOut,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -63,12 +62,6 @@ export function AdminSidebar() {
       url: "/admin/testes",
       icon: FileText,
       active: pathname?.includes("/testes"),
-    },
-    {
-      title: "Configurações",
-      url: "/admin/configuracoes",
-      icon: Settings,
-      active: pathname?.includes("/configuracoes"),
     },
   ]
 

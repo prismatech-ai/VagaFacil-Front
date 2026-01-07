@@ -133,6 +133,14 @@ export type Candidatura = {
   mensagem?: string
   createdAt: Date
   matchScore?: number
+  candidato?: {
+    id: string
+    nome: string
+    email: string
+    habilidades: string[]
+  }
+  jobTitle?: string
+  candidatoNome?: string
 }
 
 export type Teste = {

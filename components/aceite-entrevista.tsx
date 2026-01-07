@@ -104,9 +104,17 @@ export function AceiteEntrevista({
               {/* CTAs */}
               <div className="flex gap-3 pt-4">
                 <Button
-                  onClick={() => handleReject()}
+                  onClick={() => window.location.href = "/dashboard/candidato"}
                   disabled={isLoading}
                   variant="outline"
+                  className="flex-1 py-6 text-base"
+                >
+                  ← Voltar ao Dashboard
+                </Button>
+                <Button
+                  onClick={() => handleReject()}
+                  disabled={isLoading}
+                  variant="destructive"
                   className="flex-1 py-6 text-base"
                 >
                   Recusar

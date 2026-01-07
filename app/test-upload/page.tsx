@@ -44,42 +44,42 @@ export default function TestUploadPage() {
   const handleResumeSuccess = (url: string, fileName: string) => {
     setResumeUrl(url)
     addMessage('success', `✅ Currículo salvo: ${fileName}`)
-    console.log('Resume URL:', url)
+
   }
 
   const handleLogoSuccess = (url: string, fileName: string) => {
     setLogoUrl(url)
     addMessage('success', `✅ Logo salva: ${fileName}`)
-    console.log('Logo URL:', url)
+
   }
 
   const handleFileSuccess = (url: string, fileName: string) => {
     setFileUrl(url)
     addMessage('success', `✅ Arquivo salvo: ${fileName}`)
-    console.log('File URL:', url)
+
   }
 
   const handleProfileImageSuccess = (url: string, fileName: string) => {
     setProfileImageUrl(url)
     addMessage('success', `✅ Foto de perfil salva: ${fileName}`)
-    console.log('Profile Image URL:', url)
+
   }
 
   const handleDocumentSuccess = (url: string, fileName: string) => {
     setDocumentUrl(url)
     addMessage('success', `✅ Certificado salvo: ${fileName}`)
-    console.log('Document URL:', url)
+
   }
 
   const handlePortfolioImageSuccess = (url: string, fileName: string) => {
     setPortfolioImageUrl(url)
     addMessage('success', `✅ Imagem de portfólio salva: ${fileName}`)
-    console.log('Portfolio Image URL:', url)
+
   }
 
   const handleError = (error: Error) => {
     addMessage('error', `❌ Erro: ${error.message}`)
-    console.error('Upload error:', error)
+
   }
 
   return (

@@ -46,15 +46,12 @@ export default function LoginPage() {
 
     try {
       const success = await login(email, password)
-      console.log("Login retornou:", success)
 
       if (success) {
         const storedUser = localStorage.getItem("user")
-        console.log("Usuário armazenado:", storedUser)
 
         if (storedUser) {
           const user = JSON.parse(storedUser)
-          console.log("Usuário parseado:", user)
 
           // suportar diferentes formatos: `role` (novo), `user_type` (backend) ou `type`
           const role = user.user_type
@@ -74,7 +71,7 @@ export default function LoginPage() {
         setError("Email ou senha incorretos")
       }
     } catch (err: any) {
-      console.error("Erro no handleSubmit:", err)
+
       const errorMessage = err?.message || "Erro ao fazer login. Tente novamente."
       setError(errorMessage)
     } finally {
@@ -89,11 +86,11 @@ export default function LoginPage() {
     setIsResetting(true)
 
     try {
-      await api.post("/auth/forgot-password", { email: resetEmail })
+      // Usar novo endpoint que envia email via Resend
+      await api.post("/api/v1/auth/forgot-password", { email: resetEmail })
       setResetSuccess(true)
       setResetEmail("")
     } catch (err: any) {
-      console.error("Erro ao enviar email:", err)
       setResetError(err.message || "Erro ao enviar email de recuperação")
     } finally {
       setIsResetting(false)
@@ -171,7 +168,6 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              
             </form>
           </CardContent>
         </Card>

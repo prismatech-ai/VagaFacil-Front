@@ -17,6 +17,7 @@ import {
   Users,
   Settings,
   LogOut,
+  CheckCircle,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
@@ -45,7 +46,13 @@ export function EmpresaSidebar() {
       active: pathname?.includes("/jobs"),
     },
     {
-      title: "Kanban",
+      title: "Convites Aceitos",
+      url: "/empresa/convites",
+      icon: CheckCircle,
+      active: pathname?.includes("/convites"),
+    },
+    {
+      title: "Status",
       url: "/empresa/kanban-vaga",
       icon: Users,
       active: pathname?.includes("/kanban-vaga"),

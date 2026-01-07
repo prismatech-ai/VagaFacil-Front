@@ -48,10 +48,14 @@ export default function EmpresaDashboardPage() {
   const [allVagas, setAllVagas] = useState<VagaSummary[]>([])
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingConvites, setIsLoadingConvites] = useState(true)
   const [stats, setStats] = useState({
     totalVagas: 0,
     vagasAbertas: 0,
     totalCandidatos: 0,
+    convitesEnviados: 0,
+    convitesAceitos: 0,
+    taxaAceitacao: 0,
   })
   
   // Paginação de candidatos
@@ -70,13 +74,19 @@ export default function EmpresaDashboardPage() {
   
   // Pipeline states
   interface PipelineItem {
+    vaga_candidato_id: number
     candidate_id: number
-    candidato: { id: number; nome: string; email: string; area_atuacao: string }
-    job_id: number
-    titulo_vaga: string
+    vaga_id: number
+    vaga_titulo: string
+    candidate_nome: string
+    status: "pendente" | "em_progresso" | "contratado" | "rejeitado"
+    empresa_demonstrou_interesse: boolean
     data_interesse?: string
+    entrevista_agendada: boolean
     data_entrevista?: string
-    resultado?: boolean
+    foi_contratado?: boolean
+    data_resultado?: string
+    created_at: string
   }
   
   type StatusTab = "interesse" | "entrevistas" | "contratados"
@@ -90,6 +100,7 @@ export default function EmpresaDashboardPage() {
 
   useEffect(() => {
     fetchDashboardData()
+    carregarPipeline()
   }, [])
 
   // Recarrega dados quando a página mudar
@@ -104,13 +115,30 @@ export default function EmpresaDashboardPage() {
       setIsLoading(true)
       
       // Paralizar requisições para melhorar performance
-      const [vagasResponse, candidatosResponse] = await Promise.all([
+      const [dashboardResponse, vagasResponse, candidatosResponse] = await Promise.all([
+        api.get("/api/v1/empresa/dashboard").catch(err => ({ error: err })),
         api.get("/api/v1/jobs/").catch(err => ({ error: err })),
         api.get(`/api/v1/companies/candidatos-anonimos?skip=${(paginaAtual - 1) * CANDIDATOS_POR_PAGINA}&limit=${CANDIDATOS_POR_PAGINA}`).catch(err => ({ error: err }))
-      ])
+      ]) as [unknown, unknown, unknown]
+
+      // Processar dados do dashboard
+      if (dashboardResponse && typeof dashboardResponse === 'object' && !('error' in dashboardResponse)) {
+        try {
+          const dashboardData = dashboardResponse as any
+          
+          setStats(prev => ({
+            ...prev,
+            convitesEnviados: dashboardData.convites_enviados || 0,
+            convitesAceitos: dashboardData.convites_aceitos || 0,
+            taxaAceitacao: dashboardData.taxa_aceitacao || 0,
+          }))
+          setIsLoadingConvites(false)
+        } catch (error) {
+        }
+      }
 
       // Processar vagas
-      if (!('error' in vagasResponse)) {
+      if (vagasResponse && typeof vagasResponse === 'object' && !('error' in vagasResponse)) {
         try {
           const vagasList = (vagasResponse as any).data || vagasResponse
           const vagasAbertas = vagasList.filter((v: any) => v.status === "aberta")
@@ -118,13 +146,12 @@ export default function EmpresaDashboardPage() {
           setVagas(vagasList.slice(0, 5))
           setAllVagas(vagasList)
 
-          setStats({
+          setStats(prev => ({
+            ...prev,
             totalVagas: vagasList.length,
             vagasAbertas: vagasAbertas.length,
-            totalCandidatos: 0,
-          })
+          }))
         } catch (error) {
-          console.error("Erro ao processar vagas:", error)
           setVagas([])
           setAllVagas([])
         }
@@ -143,16 +170,14 @@ export default function EmpresaDashboardPage() {
       }
 
       // Processar candidatos
-      if (!('error' in candidatosResponse)) {
+      if (candidatosResponse && typeof candidatosResponse === 'object' && !('error' in candidatosResponse)) {
         try {
           processarCandidatasDashboard(candidatosResponse)
         } catch (error) {
-          console.error("Erro ao processar candidatos:", error)
           setCandidatos([])
         }
       }
     } catch (error) {
-      console.error("Erro ao buscar dados do dashboard:", error)
     } finally {
       setIsLoading(false)
     }
@@ -200,108 +225,25 @@ export default function EmpresaDashboardPage() {
     }
   }
 
-  const carregarCandidatosComFiltros = async () => {
-    try {
-      setIsLoading(true)
-      setPaginaAtual(1) // Reset para primeira página ao filtrar
-      
-      // Constrói os parâmetros de query
-      const params = new URLSearchParams()
-      if (filtroEstado) params.append("estado", filtroEstado)
-      if (filtroCidade) params.append("cidade", filtroCidade)
-      if (filtroIsPcd !== null) params.append("is_pcd", String(filtroIsPcd))
-      if (filtroHabilidade) params.append("habilidade", filtroHabilidade)
-      params.append("skip", "0")
-      params.append("limit", String(CANDIDATOS_POR_PAGINA))
-      
-      const query = params.toString()
-      const url = `/api/v1/companies/candidatos-anonimos?${query}`
-      const candidatosResponse = await api.get(url)
-      
-      let candidatosList = []
-      let totalCount = 0
-      if (candidatosResponse && typeof candidatosResponse === 'object') {
-        if (Array.isArray(candidatosResponse)) {
-          candidatosList = candidatosResponse
-        } else if ((candidatosResponse as any).data && Array.isArray((candidatosResponse as any).data)) {
-          candidatosList = (candidatosResponse as any).data
-          totalCount = (candidatosResponse as any).total || candidatosList.length
-        } else if ((candidatosResponse as any).candidatos && Array.isArray((candidatosResponse as any).candidatos)) {
-          candidatosList = (candidatosResponse as any).candidatos
-          totalCount = (candidatosResponse as any).total || candidatosList.length
-        } else {
-          const values = Object.values(candidatosResponse as any)
-          if (values.length > 0 && Array.isArray(values[0])) {
-            candidatosList = values[0] as any[]
-          }
-        }
-      }
-      
-      if (Array.isArray(candidatosList)) {
-        const allCandidatos = candidatosList.map((c: any) => ({
-          id_anonimo: c.id_anonimo || c.id,
-          area_atuacao: c.area_atuacao,
-          estado: c.estado,
-          cidade: c.cidade,
-        }))
-        setCandidatos(allCandidatos)
-        const totalPags = Math.ceil((totalCount || allCandidatos.length) / CANDIDATOS_POR_PAGINA)
-        setTotalPaginas(totalPags)
-        setStats(prev => ({
-          ...prev,
-          totalCandidatos: totalCount || allCandidatos.length,
-        }))
-        
-        if (allCandidatos.length === 0) {
-          toast({
-            title: "Sem resultados",
-            description: "Nenhum candidato encontrado com esses filtros",
-            variant: "default",
-          })
-        } else {
-          toast({
-            title: "Sucesso",
-            description: `${allCandidatos.length} candidatos encontrados`,
-          })
-        }
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Erro ao buscar candidatos"
-      console.error("Erro ao buscar candidatos:", error)
-      
-      if (!errorMsg.includes("401")) {
-        toast({
-          title: "Erro",
-          description: errorMsg,
-          variant: "destructive",
-        })
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const carregarPipeline = async () => {
     try {
       const response = await api.get("/api/v1/pipeline/meus-candidatos")
-      const data = (response as any).data || response
+      const data = (response as any)
+      
+      // A API retorna { candidatos: [...], por_vaga: [...], etc }
+      let candidatosData: PipelineItem[] = []
+      
       if (Array.isArray(data)) {
-        setPipeline(data)
-        toast({
-          title: "Sucesso",
-          description: "Pipeline carregado com sucesso!",
-        })
-      } else {
-        setPipeline([])
+        candidatosData = data
+      } else if (data.candidatos && Array.isArray(data.candidatos)) {
+        candidatosData = data.candidatos
+      } else if (data.por_vaga && Array.isArray(data.por_vaga)) {
+        // Flatten da estrutura por_vaga
+        candidatosData = data.por_vaga.flatMap((vaga: any) => vaga.candidatos || [])
       }
+      
+      setPipeline(candidatosData)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Erro ao carregar pipeline"
-      toast({
-        title: "Erro",
-        description: errorMessage,
-        variant: "destructive",
-      })
-      console.error("Erro ao carregar pipeline:", error)
       setPipeline([])
     }
   }
@@ -312,7 +254,7 @@ export default function EmpresaDashboardPage() {
       setIsProcessing(`${selectedCandidate.candidate_id}-entrevista`)
       await api.post(`/api/v1/pipeline/candidato/${selectedCandidate.candidate_id}/agendar-entrevista`, {
         data_entrevista: dataEntrevista,
-        job_id: selectedCandidate.job_id,
+        job_id: selectedCandidate.vaga_id,
       })
       setModalOpen(false)
       setDataEntrevista("")
@@ -329,7 +271,7 @@ export default function EmpresaDashboardPage() {
         description: errorMessage,
         variant: "destructive",
       })
-      console.error("Erro ao agendar entrevista:", error)
+
     } finally {
       setIsProcessing(null)
     }
@@ -354,7 +296,7 @@ export default function EmpresaDashboardPage() {
         description: errorMessage,
         variant: "destructive",
       })
-      console.error("Erro ao marcar resultado:", error)
+
     } finally {
       setIsProcessing(null)
     }
@@ -362,11 +304,11 @@ export default function EmpresaDashboardPage() {
 
   const filtrarPorStatus = () => {
     if (activeTab === "interesse") {
-      return pipeline.filter(p => !p.data_entrevista)
+      return pipeline.filter(p => p.status === "em_progresso" && !p.entrevista_agendada)
     } else if (activeTab === "entrevistas") {
-      return pipeline.filter(p => p.data_entrevista && p.resultado === undefined)
+      return pipeline.filter(p => p.entrevista_agendada && p.status === "em_progresso")
     } else {
-      return pipeline.filter(p => p.resultado !== undefined)
+      return pipeline.filter(p => p.status === "contratado" || p.status === "rejeitado")
     }
   }
 
@@ -393,7 +335,7 @@ export default function EmpresaDashboardPage() {
       ) : (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-600">Total de Vagas</CardTitle>
@@ -420,14 +362,50 @@ export default function EmpresaDashboardPage() {
                 <div className="text-3xl font-bold text-blue-600">{stats.totalCandidatos}</div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-600">Convites Enviados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingConvites ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#03565C]"></div>
+                  </div>
+                ) : (
+                  <div className="text-3xl font-bold text-[#03565C]">{stats.convitesEnviados}</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-600">Convites Aceitos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingConvites ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-emerald-600">{stats.convitesAceitos}</div>
+                    {stats.convitesEnviados > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Taxa: {((stats.convitesAceitos / stats.convitesEnviados) * 100).toFixed(1)}%
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Tabs */}
           <Tabs defaultValue="recentes" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="recentes">Vagas Recentes</TabsTrigger>
-              <TabsTrigger value="candidatos">Todos os Candidatos</TabsTrigger>
-              <TabsTrigger value="kanban">Kanban</TabsTrigger>
+              <TabsTrigger value="status">Status do Pipeline</TabsTrigger>
             </TabsList>
 
             {/* Vagas Recentes Tab */}
@@ -490,17 +468,7 @@ export default function EmpresaDashboardPage() {
                               </p>
                             </div>
 
-                            {/* Candidatos */}
-                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                              <p className="text-xs text-blue-600 font-medium mb-1">Candidatos</p>
-                              <p className="text-sm font-semibold text-blue-900">{vaga.applications_count || 0}</p>
-                            </div>
 
-                            {/* Visualizações */}
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <p className="text-xs text-gray-600 font-medium mb-1">Visualizações</p>
-                              <p className="text-sm font-semibold text-gray-900">{vaga.views_count || 0}</p>
-                            </div>
                           </div>
 
                           {/* Actions */}
@@ -549,332 +517,149 @@ export default function EmpresaDashboardPage() {
               )}
             </TabsContent>
 
-            {/* Pipeline Tab */}
-            {/* Todos os Candidatos Tab */}
-            <TabsContent value="candidatos" className="mt-4">
+            {/* Status do Pipeline Tab */}
+            <TabsContent value="status" className="mt-4">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Todos os Candidatos ({candidatos.length})</CardTitle>
-                </CardHeader>
-                
-                {/* Filtros */}
-                <CardContent className="border-b pb-4 space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-1 block">Estado</label>
-                      <Input
-                        placeholder="Ex: SP"
-                        value={filtroEstado}
-                        onChange={(e) => setFiltroEstado(e.target.value)}
-                        className="h-9"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-1 block">Cidade</label>
-                      <Input
-                        placeholder="Ex: São Paulo"
-                        value={filtroCidade}
-                        onChange={(e) => setFiltroCidade(e.target.value)}
-                        className="h-9"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-1 block">Habilidade</label>
-                      <Input
-                        placeholder="Ex: JavaScript"
-                        value={filtroHabilidade}
-                        onChange={(e) => setFiltroHabilidade(e.target.value)}
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="flex gap-2 items-end">
-                      <Button
-                        size="sm"
-                        onClick={() => carregarCandidatosComFiltros()}
-                        className="flex-1"
-                      >
-                        <Search className="h-4 w-4 mr-2" />
-                        Filtrar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setFiltroEstado("")
-                          setFiltroCidade("")
-                          setFiltroHabilidade("")
-                          setFiltroIsPcd(null)
-                          fetchDashboardData()
-                        }}
-                      >
-                        Limpar
-                      </Button>
-                    </div>
+                <CardHeader>
+                  <CardTitle>Pipeline de Candidatos</CardTitle>
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      variant={activeTab === "interesse" ? "default" : "outline"}
+                      onClick={() => setActiveTab("interesse")}
+                      className="flex-1"
+                    >
+                      Interesse
+                    </Button>
+                    <Button
+                      variant={activeTab === "entrevistas" ? "default" : "outline"}
+                      onClick={() => setActiveTab("entrevistas")}
+                      className="flex-1"
+                    >
+                      Entrevistas
+                    </Button>
+                    <Button
+                      variant={activeTab === "contratados" ? "default" : "outline"}
+                      onClick={() => setActiveTab("contratados")}
+                      className="flex-1"
+                    >
+                      Contratados
+                    </Button>
                   </div>
-                </CardContent>
-                
-                <CardContent className="pt-4">
-                  {isLoading ? (
-                    <p className="text-gray-500 text-center py-8">Carregando candidatos...</p>
-                  ) : candidatos.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">Nenhum candidato encontrado. Crie uma vaga para receber candidatos!</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50 border-b">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">ID Anônimo</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Localização</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Área de Atuação</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {candidatos.map((candidato) => (
-                            <tr key={candidato.id_anonimo} className="hover:bg-gray-50 transition">
-                              <td className="px-4 py-3 text-sm text-gray-700">
-                                <Badge variant="outline">{candidato.id_anonimo}</Badge>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">
-                                {candidato.cidade && candidato.estado 
-                                  ? `${candidato.cidade}, ${candidato.estado}`
-                                  : candidato.estado || candidato.cidade || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">{candidato.area_atuacao || "-"}</td>
-                              <td className="px-4 py-3 text-sm">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => router.push(`/empresa/candidatos/${candidato.id_anonimo}`)}
-                                  className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-400"
-                                >
-                                  Ver Detalhes
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                </CardHeader>
+
+                <CardContent>
+                  {pipeline.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-4">Nenhum candidato neste estágio</p>
+                      <Button 
+                        onClick={() => carregarPipeline()}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Atualizar
+                      </Button>
                     </div>
-                  )}
-                  
-                  {/* Paginação */}
-                  {candidatos.length > 0 && totalPaginas > 1 && (
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <div className="text-sm text-gray-600">
-                        Página <span className="font-semibold">{paginaAtual}</span> de <span className="font-semibold">{totalPaginas}</span> 
-                        ({stats.totalCandidatos} candidatos no total)
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            if (paginaAtual > 1) {
-                              setPaginaAtual(paginaAtual - 1)
-                            }
-                          }}
-                          disabled={paginaAtual === 1 || isLoading}
-                        >
-                          ← Anterior
-                        </Button>
-                        
-                        <div className="flex gap-1">
-                          {Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
-                            let pageNum: number
-                            if (totalPaginas <= 5) {
-                              pageNum = i + 1
-                            } else if (paginaAtual <= 3) {
-                              pageNum = i + 1
-                            } else if (paginaAtual >= totalPaginas - 2) {
-                              pageNum = totalPaginas - 4 + i
-                            } else {
-                              pageNum = paginaAtual - 2 + i
-                            }
-                            
-                            return (
-                              <Button
-                                key={pageNum}
-                                size="sm"
-                                variant={paginaAtual === pageNum ? "default" : "outline"}
-                                onClick={() => setPaginaAtual(pageNum)}
-                                disabled={isLoading}
-                              >
-                                {pageNum}
-                              </Button>
-                            )
-                          })}
-                        </div>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            if (paginaAtual < totalPaginas) {
-                              setPaginaAtual(paginaAtual + 1)
-                            }
-                          }}
-                          disabled={paginaAtual === totalPaginas || isLoading}
-                        >
-                          Próxima →
-                        </Button>
-                      </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filtrarPorStatus().map((item: PipelineItem) => (
+                        <Card key={`${item.vaga_candidato_id}`} className="border-l-4 border-[#03565C]/50">
+                          <CardContent className="pt-6">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900 mb-1">
+                                  {item.candidate_nome || `Candidato ${item.candidate_id}`}
+                                </h4>
+                                <p className="text-sm text-gray-600 mb-2">
+                                  <strong>Vaga:</strong> {item.vaga_titulo || "Vaga desconhecida"}
+                                </p>
+                                
+                                {activeTab === "interesse" && (
+                                  <p className="text-xs text-gray-500 mb-3">
+                                    <strong>Interesse desde:</strong> {item.data_interesse ? new Date(item.data_interesse).toLocaleDateString("pt-BR") : "-"}
+                                  </p>
+                                )}
+                                
+                                {activeTab === "entrevistas" && (
+                                  <p className="text-xs text-gray-500 mb-3">
+                                    <strong>Entrevista agendada para:</strong> {item.data_entrevista ? new Date(item.data_entrevista).toLocaleDateString("pt-BR") : "-"}
+                                  </p>
+                                )}
+                                
+                                {activeTab === "contratados" && (
+                                  <p className="text-xs text-gray-500 mb-3">
+                                    <strong>Resultado:</strong> {item.foi_contratado ? "✅ Contratado" : "❌ Rejeitado"}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2">
+                                {activeTab === "interesse" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedCandidate(item)
+                                      setModalOpen(true)
+                                    }}
+                                    disabled={isProcessing !== null}
+                                    className="gap-2 bg-[#03565C] hover:bg-[#024147]"
+                                  >
+                                    {isProcessing === `${item.candidate_id}-entrevista` ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                        Agendando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Calendar className="h-4 w-4" />
+                                        Agendar
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                                
+                                {activeTab === "entrevistas" && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => marcarContratacao(item.candidate_id, item.vaga_id, true)}
+                                      disabled={isProcessing !== null}
+                                      className="gap-2 bg-green-600 hover:bg-green-700"
+                                    >
+                                      {isProcessing === `${item.candidate_id}-resultado` ? (
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                      ) : (
+                                        <CheckCircle2 className="h-4 w-4" />
+                                      )}
+                                      Aprovar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => marcarContratacao(item.candidate_id, item.vaga_id, false)}
+                                      disabled={isProcessing !== null}
+                                      variant="outline"
+                                      className="gap-2 text-red-600 hover:text-red-700 border-red-200"
+                                    >
+                                      {isProcessing === `${item.candidate_id}-resultado` ? (
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                                      ) : (
+                                        <XCircle className="h-4 w-4" />
+                                      )}
+                                      Rejeitar
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* Kanban Tab */}
-            <TabsContent value="kanban" className="mt-4">
-              <div className="space-y-6">
-                {/* Filtros */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Filtros por Candidato</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">Escolaridade</label>
-                        <Input 
-                          placeholder="Ex: Ensino Médio"
-                          value={filtroHabilidade}
-                          onChange={(e) => setFiltroHabilidade(e.target.value)}
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">Gênero</label>
-                        <select className="w-full px-3 py-2 border rounded-md text-sm h-9">
-                          <option value="">Todos</option>
-                          <option value="masculino">Masculino</option>
-                          <option value="feminino">Feminino</option>
-                          <option value="outro">Outro</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">PCD</label>
-                        <select 
-                          className="w-full px-3 py-2 border rounded-md text-sm h-9"
-                          value={filtroIsPcd === null ? "" : filtroIsPcd ? "sim" : "nao"}
-                          onChange={(e) => {
-                            if (e.target.value === "sim") setFiltroIsPcd(true)
-                            else if (e.target.value === "nao") setFiltroIsPcd(false)
-                            else setFiltroIsPcd(null)
-                          }}
-                        >
-                          <option value="">Todos</option>
-                          <option value="sim">Com PCD</option>
-                          <option value="nao">Sem PCD</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">Experiência</label>
-                        <Input 
-                          placeholder="Ex: 2+ anos"
-                          value={filtroExperiencia}
-                          onChange={(e) => setFiltroExperiencia(e.target.value)}
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">Área de Atuação</label>
-                        <Input 
-                          placeholder="Ex: Elétrica"
-                          value={filtroAreaAtuacao}
-                          onChange={(e) => setFiltroAreaAtuacao(e.target.value)}
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                      <div className="flex items-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="w-full h-9"
-                          onClick={() => {
-                            setFiltroEstado("")
-                            setFiltroCidade("")
-                            setFiltroIsPcd(null)
-                            setFiltroHabilidade("")
-                            setFiltroGenero("")
-                            setFiltroExperiencia("")
-                            setFiltroAreaAtuacao("")
-                          }}
-                        >
-                          🔄 Limpar
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                {/* Vagas com Pipeline */}
-                {allVagas.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <p className="text-gray-500">Nenhuma vaga criada ainda</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  allVagas.map((vaga) => (
-                    <Card key={vaga.id} className="overflow-hidden">
-                      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-xl">{vaga.titulo}</CardTitle>
-                            <p className="text-sm text-gray-600 mt-1">Vagas gerenciadas e candidatos em progresso</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge className={getStatusColor(vaga.status)}>
-                              {vaga.status === "aberta" ? "Aberta" : vaga.status === "fechada" ? "Fechada" : "Rascunho"}
-                            </Badge>
-                            <Button
-                              size="sm"
-                              onClick={() => router.push(`/empresa/kanban-vaga`)}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              Ver Kanban Detalhado
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-6">
-                        <div className="grid grid-cols-4 gap-4">
-                          {/* Coluna: Total de Candidatos */}
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                            <div className="text-sm text-blue-700 font-medium mb-2">Total de Candidatos</div>
-                            <div className="text-3xl font-bold text-blue-900">{vaga.candidatos_count}</div>
-                            <p className="text-xs text-blue-600 mt-2">candidatos interessados</p>
-                          </div>
-
-                          {/* Coluna: Candidatos Convidados */}
-                          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-                            <div className="text-sm text-yellow-700 font-medium mb-2">Convidados</div>
-                            <div className="text-3xl font-bold text-yellow-900">0</div>
-                            <p className="text-xs text-yellow-600 mt-2">convites enviados</p>
-                          </div>
-
-                          {/* Coluna: Candidatos em Entrevista */}
-                          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
-                            <div className="text-sm text-orange-700 font-medium mb-2">Em Entrevista</div>
-                            <div className="text-3xl font-bold text-orange-900">0</div>
-                            <p className="text-xs text-orange-600 mt-2">em fase de entrevista</p>
-                          </div>
-
-                          {/* Coluna: Candidatos Contratados */}
-                          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                            <div className="text-sm text-green-700 font-medium mb-2">Contratados</div>
-                            <div className="text-3xl font-bold text-green-900">0</div>
-                            <p className="text-xs text-green-600 mt-2">candidatos contratados</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </TabsContent>
           </Tabs>
         </>
       )}

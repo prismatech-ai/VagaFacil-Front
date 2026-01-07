@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   title: "Vaga Facil - Vagas de Emprego",
   description: "Plataforma de vagas de emprego",
   generator: "v0.app",
+  icons: {
+    icon: "/img.png",
+  },
 }
 
 export default function RootLayout({

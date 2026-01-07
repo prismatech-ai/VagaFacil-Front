@@ -44,21 +44,11 @@ export function logCurrentUser() {
   
   const token = localStorage.getItem("token")
   if (!token) {
-    console.log("[USER] Nenhum token encontrado")
     return
   }
   
   const userInfo = getUserInfoFromToken(token)
   if (!userInfo) {
-    console.log("[USER] Não foi possível decodificar o token")
     return
   }
-  
-  console.log("[USER] Informações do usuário atual:")
-  console.log("  User ID:", userInfo.userId)
-  console.log("  Email:", userInfo.email)
-  console.log("  Name:", userInfo.name)
-  console.log("  Type:", userInfo.type)
-  console.log("  Token expires:", userInfo.exp)
-  console.log("  Full payload:", userInfo.rawPayload)
 }

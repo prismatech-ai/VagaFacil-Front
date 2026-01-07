@@ -122,6 +122,7 @@ export function ProfileImageUpload({
                   alt="Preview da foto"
                   fill
                   className="object-cover rounded-full"
+                  style={{ width: "auto", height: "auto" }}
                   priority
                 />
               </div>

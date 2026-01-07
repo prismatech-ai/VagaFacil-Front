@@ -194,7 +194,7 @@ export function ListaVagasEmpresa({
                         className="gap-2 bg-[#03565C] hover:bg-[#024147] text-sm"
                       >
                         <Users className="h-4 w-4" />
-                        Kanban
+                        Status
                       </Button>
                       <Button
                         onClick={() => onViewVaga(vaga.id)}

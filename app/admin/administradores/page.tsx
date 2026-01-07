@@ -78,14 +78,12 @@ export default function AdministradoresPage() {
       setError('')
       
       if (typeof window === 'undefined') {
-        console.warn('localStorage não disponível no servidor')
         return
       }
       
       const token = localStorage.getItem('token')
       
       if (!token) {
-        console.warn('Token não encontrado no localStorage')
         setError('Token não encontrado. Faça login novamente.')
         setLoadingPage(false)
         return
@@ -98,7 +96,7 @@ export default function AdministradoresPage() {
           'Authorization': `Bearer ${token}`
         },
       })
-      console.log('GET /api/v1/admin/list-admins', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
+     
 
       if (!response.ok) {
         throw new Error(`Erro ${response.status}: Falha ao carregar administradores`)
@@ -179,7 +177,7 @@ export default function AdministradoresPage() {
         email: formData.email,
         password: formData.senha,
       }
-      console.log('POST /api/v1/admin/create-admin', { body, Authorization: `Bearer ${token?.slice(0, 20)}...` })
+     
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/create-admin`, {
         method: 'POST',
         headers: {
@@ -225,7 +223,7 @@ export default function AdministradoresPage() {
     setError('')
 
     try {
-      console.log(`DELETE /api/v1/admin/administradores/${adminToDelete.id}`)
+     
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/administradores/${adminToDelete.id}`, {
         method: 'DELETE',
       })

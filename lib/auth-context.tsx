@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log("Tentando login com:", { email })
+
       const response = await api.post<{
         access_token: string
         token_type?: string
@@ -82,18 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user?: any
       }>("/api/v1/auth/login", { email, password })
 
-      console.log("Resposta do backend (completa):", response)
-      console.log("Tipo da resposta:", typeof response)
-      console.log("Chaves da resposta:", Object.keys(response))
-
       const { access_token, refresh_token, user } = response
 
       if (!access_token) {
-        console.error("access_token não encontrado na resposta")
+
         return false
       }
-      
-      console.log("Token recebido:", access_token.substring(0, 20) + "...")
 
       // Salvar tokens
       localStorage.setItem("token", access_token)
@@ -106,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!resolvedUser) {
         try {
           const payload = JSON.parse(atob(access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
-          console.log("JWT payload decodificado:", payload)
+
           resolvedUser = {
             id: payload.sub || payload.id || payload.user_id,
             email: payload.email,
@@ -114,12 +108,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user_type: payload.user_type || payload.role || payload.type,
           }
         } catch (decodeErr) {
-          console.warn("Não foi possível decodificar access_token:", decodeErr)
+
         }
       }
 
       if (!resolvedUser) {
-        console.error("Nenhum dado de usuário disponível no login response")
+
         return false
       }
 
@@ -134,18 +128,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData)
       localStorage.setItem("user", JSON.stringify(userData))
 
-      console.log("Login OK → usuário:", userData)
-
       return true
     } catch (error) {
-      console.error("Erro no login:", error)
+
       return false
     }
   }
 
   const register = async (data: RegisterData): Promise<boolean> => {
     try {
-      console.log("Iniciando registro, enviando para backend...")
 
       const registerPayload = {
         email: data.email,
@@ -158,17 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         registerPayload
       )
 
-      console.log("Resposta do backend no registro (tipo):", typeof response)
-      console.log("Resposta do backend no registro (conteúdo):", response)
-
       const responseKeys = response ? Object.keys(response) : []
-      console.log("Chaves disponíveis na resposta:", responseKeys)
-      console.log("Número de chaves:", responseKeys.length)
 
       // Checar primeiro se a resposta está vazia (201 Created sem corpo)
       if (!response || responseKeys.length === 0) {
-        console.warn("⚠️ Backend retornou 201 Created mas sem corpo JSON")
-        console.warn("Criando usuário localmente a partir dos dados enviados...")
 
         const userData: User = {
           id: data.email,
@@ -180,19 +164,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(userData)
         localStorage.setItem("user", JSON.stringify(userData))
 
-        console.log("✅ Usuário criado localmente com sucesso:", userData)
         return true
       }
 
       const token = response?.access_token || response?.token
       const refresh_token = response?.refresh_token
 
-      console.log("Token extraído:", token ? "presente" : "ausente")
-      console.log("Refresh token:", refresh_token ? "presente" : "ausente")
-
       if (!token) {
-        console.error("❌ Token não encontrado na resposta")
-        console.error("Resposta completa:", JSON.stringify(response))
+
         return false
       }
 
@@ -206,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!resolvedUser) {
         try {
           const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
-          console.log("JWT payload decodificado no registro:", payload)
+
           resolvedUser = {
             id: payload.sub || payload.id || payload.user_id,
             email: payload.email || data.email,
@@ -214,12 +193,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user_type: payload.user_type || payload.role || payload.type || data.role,
           }
         } catch (decodeErr) {
-          console.warn("Não foi possível decodificar access_token:", decodeErr)
+
         }
       }
 
       if (!resolvedUser) {
-        console.error("Nenhum dado de usuário disponível no registro")
+
         return false
       }
 
@@ -233,11 +212,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData)
       localStorage.setItem("user", JSON.stringify(userData))
 
-      console.log("Registro OK → usuário:", userData)
-
       return true
     } catch (error) {
-      console.error("Erro ao registrar:", error)
+
       return false
     }
   }

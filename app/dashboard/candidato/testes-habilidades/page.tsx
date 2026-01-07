@@ -66,22 +66,19 @@ export default function TestesHabilidadesPage() {
       
       try {
         const data = await api.get<CandidatoData>("/api/v1/candidates/me")
-        console.log("📋 Dados do candidato carregados:", data)
-        console.log("🔍 area_atuacao:", data.area_atuacao)
-        
+     
         setCandidato(data)
         
         // Buscar competências relacionadas à area_atuacao do candidato
         if (data.area_atuacao) {
-          console.log("🔎 Procurando área:", data.area_atuacao)
-          
+        
           // Tentar primeiro como ID, depois como nome (com normalização)
           let area = getAreaById(data.area_atuacao)
           
           if (!area) {
-            console.log("📊 Tentando por nome com normalização...")
+          
             const areaNormalizada = normalizarString(data.area_atuacao)
-            console.log("🔤 Area normalizada:", areaNormalizada)
+          
             
             area = TODAS_AREAS.find(a => 
               normalizarString(a.nome) === areaNormalizada || 
@@ -89,18 +86,18 @@ export default function TestesHabilidadesPage() {
             )
           }
           
-          console.log("✅ Área encontrada:", area?.nome)
+        
           
           if (area) {
             // Flatten competências de todas as categorias
             const competencias = area.categorias.flatMap(cat => cat.competencias)
-            console.log("📋 Competências carregadas:", competencias.length, competencias)
+           
             setCompetenciasDisponiveis(competencias)
             
             // Carregar autoavaliação anterior se existir
             try {
               const autoavaliacao = await api.get<any>("api/v1/autoavaliacao/minha")
-              console.log("✅ Autoavaliação anterior encontrada:", autoavaliacao)
+             
               setAutoavaliacaoAnterior(autoavaliacao)
               
               // Popular competências escolhidas com os dados anteriores
@@ -118,20 +115,17 @@ export default function TestesHabilidadesPage() {
                 setStep("testes")
               }
             } catch (autoErr: any) {
-              console.log("ℹ️ Nenhuma autoavaliação anterior encontrada (primeira vez):", autoErr.message)
+              
               // Isto é esperado na primeira vez - não é erro
             }
           } else {
-            console.warn("⚠️ Nenhuma área encontrada para:", data.area_atuacao)
-            console.log("🔍 Áreas disponíveis:", TODAS_AREAS.map(a => ({ id: a.id, nome: a.nome })))
+           
             setError("Área de atuação não encontrada no sistema")
           }
         } else {
-          console.warn("⚠️ area_atuacao não definida no candidato")
           setError("Área de atuação não definida. Complete seu perfil primeiro.")
         }
       } catch (fetchErr: any) {
-        console.error("Erro ao fazer requisição:", fetchErr)
         toast({
           title: "Erro",
           description: "Erro ao carregar dados do candidato",
@@ -199,11 +193,10 @@ export default function TestesHabilidadesPage() {
         respostas: respostas
       }
 
-      console.log("📋 Salvando autoavaliação com payload:", JSON.stringify(payload, null, 2))
-
+    
       // Se já tem autoavaliação anterior, fazer PUT para atualizar; senão fazer POST
       if (autoavaliacaoAnterior) {
-        console.log("🔄 Atualizando autoavaliação existente (ID:", autoavaliacaoAnterior.id, ")")
+      
         await api.post(`api/v1/autoavaliacao/salvar`, payload)
         toast({
           title: "✅ Sucesso",
@@ -211,7 +204,6 @@ export default function TestesHabilidadesPage() {
           variant: "default"
         })
       } else {
-        console.log("📝 Criando nova autoavaliação")
         await api.post("/api/v1/autoavaliacao/salvar", payload)
         toast({
           title: "✅ Sucesso",
@@ -220,12 +212,9 @@ export default function TestesHabilidadesPage() {
         })
       }
 
-      console.log("✅ Autoavaliação salva com sucesso")
-
       // Avançar para a próxima etapa
       setStep("testes")
     } catch (err: any) {
-      console.error("Erro ao salvar autoavaliação:", err)
       toast({
         title: "❌ Erro",
         description: err.message || "Erro ao salvar autoavaliação",
@@ -239,9 +228,8 @@ export default function TestesHabilidadesPage() {
   const buscarQuestoes = async (habilidade: string) => {
     setIsLoadingQuestoes(habilidade)
     try {
-      console.log("🔍 Buscando questões para:", habilidade)
       const response = await api.get<any>(`/api/v1/candidates/testes/questoes/filtrar?habilidade=${encodeURIComponent(habilidade)}`)
-      console.log("✅ Questões carregadas:", response)
+ 
       
       setTesteEmAndamento({
         habilidade: habilidade,
@@ -254,7 +242,6 @@ export default function TestesHabilidadesPage() {
         variant: "default"
       })
     } catch (err: any) {
-      console.error("Erro ao buscar questões:", err)
       toast({
         title: "❌ Erro",
         description: err.message || "Erro ao carregar questões",

@@ -44,7 +44,7 @@ export function SelecionaArea({ onComplete, isLoading = false, multiple = true, 
         await api.post("/candidato/area-atuacao", { areas: selectedAreas })
         onComplete(selectedAreas)
       } catch (error: any) {
-        console.warn("Endpoint /candidato/area-atuacao não implementado ou indisponível, usando dados locais:", error?.message)
+
         // Fallback: usar dados locais se o endpoint não estiver disponível
         // Em produção, o backend deve implementar este endpoint
         onComplete(selectedAreas)

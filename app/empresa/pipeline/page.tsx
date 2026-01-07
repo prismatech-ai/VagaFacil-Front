@@ -55,12 +55,12 @@ export default function PipelinePage() {
   const carregarPipeline = async () => {
     try {
       setIsLoading(true)
-      console.log("📋 Carregando pipeline de candidatos...")
+
       const response = await api.get<any>("/api/v1/pipeline/meus-candidatos")
-      console.log("✅ Pipeline carregado:", response)
+
       setPipeline(response?.pipeline || [])
     } catch (err: any) {
-      console.error("Erro ao carregar pipeline:", err)
+
       toast({
         title: "❌ Erro",
         description: "Erro ao carregar pipeline de candidatos",
@@ -84,8 +84,7 @@ export default function PipelinePage() {
     setIsProcessing(`${selectedCandidate.candidate_id}-entrevista`)
     try {
       const isoDate = new Date(dataEntrevista).toISOString()
-      console.log("📅 Agendando entrevista para:", selectedCandidate.candidato.nome)
-      
+
       await api.post(
         `/api/v1/pipeline/candidato/${selectedCandidate.candidate_id}/agendar-entrevista?job_id=${selectedCandidate.job_id}&data_entrevista=${encodeURIComponent(isoDate)}`,
         {}
@@ -101,7 +100,7 @@ export default function PipelinePage() {
       setDataEntrevista("")
       carregarPipeline()
     } catch (err: any) {
-      console.error("Erro ao agendar entrevista:", err)
+
       toast({
         title: "❌ Erro",
         description: err.message || "Erro ao agendar entrevista",
@@ -115,8 +114,7 @@ export default function PipelinePage() {
   const marcarContratacao = async (candidate_id: number, job_id: number, contratado: boolean) => {
     setIsProcessing(`${candidate_id}-resultado`)
     try {
-      console.log(`${contratado ? "✅" : "❌"} Marcando resultado para candidato:`, candidate_id)
-      
+
       await api.post(
         `/api/v1/pipeline/candidato/${candidate_id}/marcar-resultado?job_id=${job_id}&foi_contratado=${contratado}`,
         {}
@@ -130,7 +128,7 @@ export default function PipelinePage() {
       
       carregarPipeline()
     } catch (err: any) {
-      console.error("Erro ao marcar resultado:", err)
+
       toast({
         title: "❌ Erro",
         description: err.message || "Erro ao marcar resultado",

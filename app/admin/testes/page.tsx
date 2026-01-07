@@ -47,14 +47,12 @@ export default function AdminTestesPage() {
       setLoading(true)
       
       if (typeof window === 'undefined') {
-        console.warn('localStorage não disponível no servidor')
         return
       }
       
       const token = localStorage.getItem('token')
       
       if (!token) {
-        console.warn('Token não encontrado no localStorage')
         toast.error('Token não encontrado', {
           description: 'Faça login novamente.',
           duration: 4000,
@@ -70,7 +68,6 @@ export default function AdminTestesPage() {
           'Authorization': `Bearer ${token}`
         },
       })
-      console.log('GET /api/v1/admin/testes', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
 
       if (response.status === 401) {
         toast.error('Sessão expirada', {
@@ -88,8 +85,7 @@ export default function AdminTestesPage() {
       }
 
       const data = await response.json()
-      console.log('Testes recebidos:', data)
-      
+
       // Mapear os dados da API para o formato esperado
       const testesData = Array.isArray(data) ? data : (data.testes || data.data || [])
       
@@ -121,13 +117,7 @@ export default function AdminTestesPage() {
             const respostaCorretaIdx = alternativasAPI.findIndex((a: any) => 
               typeof a === 'object' ? a.is_correct === true : false
             )
-            
-            console.log(`Questão "${q.texto_questao || q.pergunta}":`, {
-              alternativasAPI,
-              alternativasTexto,
-              respostaCorretaIdx
-            })
-            
+
             return {
               id: q.id?.toString() || `${Date.now()}-${Math.random()}`,
               pergunta: q.texto_questao || q.pergunta || '',
@@ -144,7 +134,6 @@ export default function AdminTestesPage() {
       setTestes(testesMapeados)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar testes'
-      console.error('Erro ao carregar testes:', errorMessage)
       toast.error('Erro ao carregar testes', {
         description: errorMessage,
         duration: 4000,
@@ -390,9 +379,7 @@ export default function AdminTestesPage() {
                 is_correct: altIdx === q.respostaCorreta,
                 ordem: altIdx
               }))
-            
-            console.log(`Questão ${idx + 1}: ${alternatives.length} alternativas`, alternatives)
-            
+
             return {
               texto_questao: q.pergunta,
               ordem: idx + 1,
@@ -400,8 +387,6 @@ export default function AdminTestesPage() {
             }
           })
         }
-
-        console.log('POST /api/v1/admin/testes - Payload completo:', JSON.stringify(payload, null, 2))
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/testes`, {
           method: 'POST',
@@ -425,8 +410,6 @@ export default function AdminTestesPage() {
 
         if (!response.ok) {
           const responseText = await response.text()
-          console.error('Erro ao criar teste - Status:', response.status, response.statusText)
-          console.error('Erro ao criar teste - Response:', responseText)
           
           let errorMessage = `Erro ${response.status}: ${response.statusText}`
           try {
@@ -449,8 +432,7 @@ export default function AdminTestesPage() {
         }
 
         const novoTeste = await response.json()
-        console.log('Teste criado com sucesso:', novoTeste)
-
+      
         // Mostrar toast de sucesso ANTES de fechar
         toast.success('Teste criado com sucesso!', {
           description: `O teste "${novoTeste.nome}" foi criado e está disponível para uso.`,
@@ -477,12 +459,6 @@ export default function AdminTestesPage() {
         
         return
       } catch (error) {
-        console.error('Erro ao criar teste:', error)
-        toast.error('Erro ao criar teste', {
-          description: 'Não foi possível criar o teste. Tente novamente.',
-          duration: 4000,
-        })
-        return
       }
     } else if (testeSelecionado) {
       try {
@@ -510,9 +486,7 @@ export default function AdminTestesPage() {
                 is_correct: altIdx === q.respostaCorreta,
                 ordem: altIdx
               }))
-            
-            console.log(`Questão ${idx + 1}: ${alternatives.length} alternativas`, alternatives)
-            
+
             return {
               texto_questao: q.pergunta,
               ordem: idx + 1,
@@ -520,8 +494,6 @@ export default function AdminTestesPage() {
             }
           })
         }
-
-        console.log(`PUT /api/v1/admin/testes/${testeSelecionado.id} - Payload completo:`, JSON.stringify(payload, null, 2))
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/testes/${testeSelecionado.id}`, {
           method: 'PUT',
@@ -545,8 +517,6 @@ export default function AdminTestesPage() {
 
         if (!response.ok) {
           const responseText = await response.text()
-          console.error('Erro ao atualizar teste - Status:', response.status, response.statusText)
-          console.error('Erro ao atualizar teste - Response:', responseText)
           
           let errorMessage = `Erro ${response.status}: ${response.statusText}`
           let isConstraintError = false
@@ -588,8 +558,7 @@ export default function AdminTestesPage() {
         }
 
         const testeAtualizado = await response.json()
-        console.log('Teste atualizado com sucesso:', testeAtualizado)
-
+      
         // Mostrar toast de sucesso ANTES de fechar
         toast.success('Teste atualizado com sucesso!', {
           description: `O teste "${form.nome}" foi atualizado.`,
@@ -614,7 +583,6 @@ export default function AdminTestesPage() {
           })
         }, 500)
       } catch (error) {
-        console.error('Erro ao atualizar teste:', error)
         toast.error('Erro ao atualizar teste', {
           description: 'Não foi possível atualizar o teste. Tente novamente.',
           duration: 4000,
@@ -642,8 +610,6 @@ export default function AdminTestesPage() {
         return
       }
 
-      console.log(`DELETE /api/v1/admin/testes/${id}`)
-
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/testes/${id}`, {
         method: 'DELETE',
         headers: {
@@ -665,15 +631,12 @@ export default function AdminTestesPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('Erro ao excluir teste:', errorData)
         toast.error('Erro ao excluir teste', {
           description: errorData.detail || 'Não foi possível excluir o teste.',
           duration: 4000,
         })
         return
       }
-
-      console.log('Teste excluído com sucesso')
 
       // Recarregar lista de testes
       await fetchTestes()
@@ -684,7 +647,7 @@ export default function AdminTestesPage() {
         duration: 4000,
       })
     } catch (error) {
-      console.error('Erro ao excluir teste:', error)
+
       toast.error('Erro ao excluir teste', {
         description: 'Não foi possível excluir o teste. Tente novamente.',
         duration: 4000,
@@ -1036,7 +999,53 @@ export default function AdminTestesPage() {
 
             <TabsContent value="importacao" className="space-y-4">
               <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-4 border-b">
+                {/* Modelo de Arquivo */}
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Formato Esperado
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-blue-700">
+                      Seu arquivo CSV/XLSX deve conter as seguintes colunas:
+                    </p>
+                    <div className="bg-white rounded border border-blue-200 p-3 overflow-x-auto">
+                      <table className="text-xs w-full">
+                        <thead>
+                          <tr className="border-b border-blue-200">
+                            <th className="text-left p-2 font-semibold text-blue-900">habilidade</th>
+                            <th className="text-left p-2 font-semibold text-blue-900">nivel</th>
+                            <th className="text-left p-2 font-semibold text-blue-900">pergunta</th>
+                            <th className="text-left p-2 font-semibold text-blue-900">opcao_a</th>
+                            <th className="text-left p-2 font-semibold text-blue-900">opcao_b</th>
+                            <th className="text-left p-2 font-semibold text-blue-900">opcao_c</th>
+                            <th className="text-left p-2 font-semibold text-blue-900">opcao_d</th>
+                            <th className="text-left p-2 font-semibold text-blue-900">resposta_correta</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-blue-100">
+                            <td className="p-2 text-blue-700">JavaScript</td>
+                            <td className="p-2 text-blue-700">Básico</td>
+                            <td className="p-2 text-blue-700">O que é uma variável?</td>
+                            <td className="p-2 text-blue-700">Um local para armazenar dados</td>
+                            <td className="p-2 text-blue-700">Uma função</td>
+                            <td className="p-2 text-blue-700">Um objeto especial</td>
+                            <td className="p-2 text-blue-700">Uma biblioteca</td>
+                            <td className="p-2 text-blue-700">A</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      <strong>Dicas:</strong> Use "Básico", "Intermediário", "Avançado" para o nível. Use A, B, C ou D para a resposta correta.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <div className="flex items-center gap-2 pb-4 border-b flex-wrap">
                   <Button 
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -1044,6 +1053,22 @@ export default function AdminTestesPage() {
                   >
                     <Upload className="h-4 w-4" />
                     Selecionar Arquivo CSV/XLSX
+                  </Button>
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const link = document.createElement('a')
+                      link.href = '/exemplo_questoes_template.csv'
+                      link.download = 'exemplo_questoes_template.csv'
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
+                    }}
+                    className="gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Baixar Modelo
                   </Button>
                   <input
                     ref={fileInputRef}

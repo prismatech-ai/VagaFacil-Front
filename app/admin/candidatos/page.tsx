@@ -1,7 +1,8 @@
 // Copied from old candidatos page
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,18 +13,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Eye, Pencil, Search, Trash2, MapPin, LinkIcon, Mail, Filter, Award } from "lucide-react"
 import type { Candidato } from "@/lib/types"
-import { Slider } from "@/components/ui/slider"
+import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AdminCandidatosPage() {
+  const router = useRouter()
+  const { toast } = useToast()
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [currentPageCandidatos, setCurrentPageCandidatos] = useState(1)
   const [filtros, setFiltros] = useState({
     busca: "",
     localizacao: "",
     habilidade: "",
-    anosExperienciaMin: 0,
-    anosExperienciaMax: 20,
   })
 
   const [dialogVerOpen, setDialogVerOpen] = useState(false)
@@ -39,12 +42,21 @@ export default function AdminCandidatosPage() {
     localizacao: "",
     linkedin: "",
     habilidades: "",
-    anosExperiencia: 0,
+    areaAtuacao: "",
   })
 
   useEffect(() => {
     fetchCandidatos()
   }, [])
+
+  // Recarregar candidatos quando filtros mudam
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCandidatos()
+    }, 500) // Debounce de 500ms para não fazer muitas requisições
+
+    return () => clearTimeout(timer)
+  }, [filtros])
 
   const fetchCandidatos = async () => {
     try {
@@ -52,27 +64,33 @@ export default function AdminCandidatosPage() {
       setError('')
       
       if (typeof window === 'undefined') {
-        console.warn('localStorage não disponível no servidor')
         return
       }
       
       const token = localStorage.getItem('token')
       
       if (!token) {
-        console.warn('Token não encontrado no localStorage')
         setError('Token não encontrado. Faça login novamente.')
         setLoading(false)
         return
       }
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidatos`, {
+      // Construir query string com filtros
+      const params = new URLSearchParams()
+      if (filtros.busca) params.append('busca', filtros.busca)
+      if (filtros.localizacao) params.append('localizacao', filtros.localizacao)
+      if (filtros.habilidade) params.append('habilidade', filtros.habilidade)
+      
+      const queryString = params.toString()
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidatos${queryString ? '?' + queryString : ''}`
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
       })
-      console.log('GET /api/v1/admin/candidatos', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
 
       if (!response.ok) {
         throw new Error(`Erro ${response.status}: Falha ao carregar candidatos`)
@@ -84,10 +102,11 @@ export default function AdminCandidatosPage() {
       }
 
       const data = await response.json()
-      console.log('Dados recebidos:', data)
+     
       const candidatosArray = Array.isArray(data) ? data : (data.candidatos || data.usuarios || data.data || [])
-      console.log('Candidatos processados:', candidatosArray)
+      
       setCandidatos(candidatosArray)
+      setCurrentPageCandidatos(1)
       setLoading(false)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar candidatos'
@@ -108,40 +127,135 @@ export default function AdminCandidatosPage() {
       .slice(0, 2)
   }
 
-  const candidatosFiltrados = useMemo(() => {
-    const busca = filtros.busca.trim().toLowerCase()
-    const local = filtros.localizacao.trim().toLowerCase()
-    const hab = filtros.habilidade.trim().toLowerCase()
-    return candidatos.filter((c) => {
-      const matchBusca =
-        !busca ||
-        c.nome.toLowerCase().includes(busca) ||
-        c.email.toLowerCase().includes(busca) ||
-        (c.curriculo?.toLowerCase().includes(busca) ?? false)
-      const matchLocal = !local || (c.localizacao?.toLowerCase().includes(local) ?? false)
-      const matchHab = !hab || (c.habilidades?.some((h) => h.toLowerCase().includes(hab)) ?? false)
-      const matchAnosExp =
-        (c.anosExperiencia ?? 0) >= filtros.anosExperienciaMin && (c.anosExperiencia ?? 0) <= filtros.anosExperienciaMax
-      return matchBusca && matchLocal && matchHab && matchAnosExp
-    })
-  }, [candidatos, filtros])
+  const abrirVer = async (cand: Candidato) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setCandidatoSelecionado(cand)
+        setDialogVerOpen(true)
+        return
+      }
 
-  const abrirVer = (cand: Candidato) => {
-    setCandidatoSelecionado(cand)
+      // Buscar detalhes completos do candidato
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidatos/${cand.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+        }
+      )
+
+      if (response.ok) {
+        const candidatoCompleto = await response.json()
+        
+        // Mapear detalhes completos para o objeto Candidato
+        const candidatoComDados: Candidato = {
+          ...cand,
+          nome: candidatoCompleto.full_name || candidatoCompleto.nome || cand.nome,
+          email: candidatoCompleto.email || cand.email,
+          telefone: candidatoCompleto.phone || candidatoCompleto.telefone || cand.telefone,
+          localizacao: candidatoCompleto.location || candidatoCompleto.localizacao || cand.localizacao,
+          linkedin_url: candidatoCompleto.linkedin_url || cand.linkedin_url,
+          habilidades: candidatoCompleto.habilidades || cand.habilidades,
+          nivelDesejado: candidatoCompleto.area_atuacao || candidatoCompleto.areaAtuacao || cand.nivelDesejado,
+          anosExperiencia: candidatoCompleto.anos_experiencia || cand.anosExperiencia,
+          curriculo: candidatoCompleto.resume_url || cand.curriculo,
+          bio: candidatoCompleto.bio || cand.bio,
+          portfolio_url: candidatoCompleto.portfolio_url || cand.portfolio_url,
+          cpf: candidatoCompleto.cpf,
+          birth_date: candidatoCompleto.birth_date,
+          genero: candidatoCompleto.genero,
+          estado_civil: candidatoCompleto.estado_civil,
+          is_pcd: candidatoCompleto.is_pcd,
+          tipo_pcd: candidatoCompleto.tipo_pcd,
+          onboarding_completo: candidatoCompleto.onboarding_completo,
+        }
+        
+        setCandidatoSelecionado(candidatoComDados)
+      } else {
+        // Fallback para dados já carregados
+        setCandidatoSelecionado(cand)
+      }
+    } catch (err) {
+      console.error('Erro ao buscar detalhes do candidato:', err)
+      // Fallback para dados já carregados
+      setCandidatoSelecionado(cand)
+    }
+    
     setDialogVerOpen(true)
   }
 
-  const abrirEditar = (cand: Candidato) => {
+  const abrirEditar = async (cand: Candidato) => {
     setCandidatoSelecionado(cand)
-    setFormEdicao({
-      nome: cand.nome ?? "",
-      email: cand.email ?? "",
-      telefone: cand.telefone ?? "",
-      localizacao: cand.localizacao ?? "",
-      linkedin: cand.linkedin ?? "",
-      habilidades: Array.isArray(cand.habilidades) ? cand.habilidades.join(", ") : (typeof cand.habilidades === 'string' ? cand.habilidades : ""),
-      anosExperiencia: cand.anosExperiencia ?? 0,
-    })
+    
+    // Tentar buscar dados completos do candidato
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setFormEdicao({
+          nome: cand.nome ?? "",
+          email: cand.email ?? "",
+          telefone: cand.telefone ?? "",
+          localizacao: cand.localizacao ?? "",
+          linkedin: cand.linkedin ?? cand.linkedin_url ?? "",
+          habilidades: Array.isArray(cand.habilidades) ? cand.habilidades.join(", ") : (typeof cand.habilidades === 'string' ? cand.habilidades : ""),
+          areaAtuacao: cand.nivelDesejado ?? "",
+        })
+        setDialogEditarOpen(true)
+        return
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidatos/${cand.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+        }
+      )
+
+      if (response.ok) {
+        const candidatoCompleto = await response.json()
+        setFormEdicao({
+          nome: candidatoCompleto.nome ?? cand.nome ?? "",
+          email: candidatoCompleto.email ?? cand.email ?? "",
+          telefone: candidatoCompleto.telefone ?? candidatoCompleto.phone ?? cand.telefone ?? "",
+          localizacao: candidatoCompleto.localizacao ?? candidatoCompleto.location ?? cand.localizacao ?? "",
+          linkedin: candidatoCompleto.linkedin ?? candidatoCompleto.linkedin_url ?? cand.linkedin ?? "",
+          habilidades: Array.isArray(candidatoCompleto.habilidades) ? candidatoCompleto.habilidades.map((h: any) => typeof h === 'string' ? h : h.name || h.titulo).join(", ") : (typeof candidatoCompleto.habilidades === 'string' ? candidatoCompleto.habilidades : ""),
+          areaAtuacao: candidatoCompleto.areaAtuacao ?? candidatoCompleto.area_atuacao ?? cand.nivelDesejado ?? "",
+        })
+      } else {
+        // Fallback para dados do candidato da lista
+        setFormEdicao({
+          nome: cand.nome ?? "",
+          email: cand.email ?? "",
+          telefone: cand.telefone ?? "",
+          localizacao: cand.localizacao ?? "",
+          linkedin: cand.linkedin ?? cand.linkedin_url ?? "",
+          habilidades: Array.isArray(cand.habilidades) ? cand.habilidades.join(", ") : (typeof cand.habilidades === 'string' ? cand.habilidades : ""),
+          areaAtuacao: cand.nivelDesejado ?? "",
+        })
+      }
+    } catch (err) {
+      console.error('Erro ao buscar dados completos do candidato:', err)
+      // Fallback para dados do candidato da lista
+      setFormEdicao({
+        nome: cand.nome ?? "",
+        email: cand.email ?? "",
+        telefone: cand.telefone ?? "",
+        localizacao: cand.localizacao ?? "",
+        linkedin: cand.linkedin ?? cand.linkedin_url ?? "",
+        habilidades: Array.isArray(cand.habilidades) ? cand.habilidades.join(", ") : (typeof cand.habilidades === 'string' ? cand.habilidades : ""),
+        areaAtuacao: cand.nivelDesejado ?? "",
+      })
+    }
+    
     setDialogEditarOpen(true)
   }
 
@@ -162,10 +276,10 @@ export default function AdminCandidatosPage() {
               localizacao: formEdicao.localizacao || undefined,
               linkedin: formEdicao.linkedin || undefined,
               habilidades,
-              anosExperiencia: formEdicao.anosExperiencia,
+              nivelDesejado: formEdicao.areaAtuacao,
             }
           : c,
-      ),
+      ) as Candidato[]
     )
     setDialogEditarOpen(false)
   }
@@ -174,16 +288,34 @@ export default function AdminCandidatosPage() {
     setCandidatos((prev) => prev.filter((c) => c.id !== id))
   }
 
-  const enviarConvite = () => {
+  const enviarConvite = async () => {
     if (!emailConvite.trim()) return
-    // Mock: Send invitation email with onboarding link
-    console.log(`[v0] Convite enviado para ${emailConvite} (Nome: ${nomeConvite || "Não informado"})`)
-    console.log(`[v0] Email incluirá link para cadastro básico, experiência, currículo, autoavaliação e testes`)
+    
+    try {
+      
+      const response = await api.post('/api/v1/admin/candidatos/convidar', {
+        email: emailConvite.trim(),
+        nome: nomeConvite.trim() || undefined
+      })
 
-    // Reset form
-    setEmailConvite("")
-    setNomeConvite("")
-    setConviteDialogOpen(false)
+      toast({
+        title: 'Sucesso',
+        description: `Convite enviado para ${emailConvite}`,
+      })
+      
+      // Reset form
+      setEmailConvite("")
+      setNomeConvite("")
+      setConviteDialogOpen(false)
+    } catch (err: any) {
+      const errorMsg = err instanceof Error ? err.message : 'Erro ao enviar convite'
+
+      toast({
+        title: 'Erro',
+        description: errorMsg,
+        variant: 'destructive',
+      })
+    }
   }
 
   const limparFiltros = () => {
@@ -191,8 +323,6 @@ export default function AdminCandidatosPage() {
       busca: "",
       localizacao: "",
       habilidade: "",
-      anosExperienciaMin: 0,
-      anosExperienciaMax: 20,
     })
   }
 
@@ -258,26 +388,6 @@ export default function AdminCandidatosPage() {
               />
             </div>
           </div>
-
-          <div className="space-y-2">
-            <Label>
-              Anos de Experiência: {filtros.anosExperienciaMin} - {filtros.anosExperienciaMax} anos
-            </Label>
-            <div className="flex gap-4 items-center">
-              <span className="text-sm text-muted-foreground w-8">0</span>
-              <Slider
-                min={0}
-                max={20}
-                step={1}
-                value={[filtros.anosExperienciaMin, filtros.anosExperienciaMax]}
-                onValueChange={(values) =>
-                  setFiltros({ ...filtros, anosExperienciaMin: values[0], anosExperienciaMax: values[1] })
-                }
-                className="flex-1"
-              />
-              <span className="text-sm text-muted-foreground w-8">20+</span>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
@@ -338,7 +448,7 @@ export default function AdminCandidatosPage() {
       <Card>
         <CardHeader>
           <CardTitle>Candidatos</CardTitle>
-          <CardDescription>{candidatosFiltrados.length} resultados encontrados</CardDescription>
+          <CardDescription>{candidatos.length} resultados encontrados</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -353,7 +463,7 @@ export default function AdminCandidatosPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Localização</TableHead>
-                  <TableHead>Experiência</TableHead>
+                  <TableHead>Área de Atuação</TableHead>
                   <TableHead>Habilidades</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -365,15 +475,21 @@ export default function AdminCandidatosPage() {
                       Carregando candidatos...
                     </TableCell>
                   </TableRow>
-                ) : candidatosFiltrados.length === 0 ? (
+                ) : candidatos.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground">
                       Nenhum candidato encontrado com os filtros aplicados
                     </TableCell>
                   </TableRow>
                 ) : (
-                  candidatosFiltrados.map((c) => (
-                    <TableRow key={c.id}>
+                  (() => {
+                    const itemsPerPage = 10
+                    const startIndex = (currentPageCandidatos - 1) * itemsPerPage
+                    const endIndex = startIndex + itemsPerPage
+                    const candidatosPaginados = candidatos.slice(startIndex, endIndex)
+                    
+                    return candidatosPaginados.map((c) => (
+                      <TableRow key={c.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
@@ -396,10 +512,10 @@ export default function AdminCandidatosPage() {
                       </TableCell>
                       <TableCell className="align-top">
                         <div className="flex items-center gap-2 text-sm">
-                          {c.anosExperiencia ? (
+                          {c.nivelDesejado ? (
                             <>
                               <Award className="h-4 w-4 text-muted-foreground" />
-                              {c.anosExperiencia} anos
+                              {c.nivelDesejado}
                             </>
                           ) : (
                             "-"
@@ -408,16 +524,38 @@ export default function AdminCandidatosPage() {
                       </TableCell>
                       <TableCell className="align-top">
                         <div className="flex flex-wrap gap-1 max-w-[360px]">
-                          {(c.habilidades ?? []).slice(0, 3).map((h) => (
-                            <Badge key={h} variant="outline" className="text-xs">
-                              {h}
-                            </Badge>
-                          ))}
-                          {(c.habilidades?.length ?? 0) > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{(c.habilidades?.length ?? 0) - 3}
-                            </Badge>
-                          )}
+                          {(() => {
+                            // Converter string de habilidades para array
+                            let habilidadesArray: string[] = []
+                            if (typeof c.habilidades === 'string' && c.habilidades && (c.habilidades as string).trim()) {
+                              habilidadesArray = (c.habilidades as string).split(',').map((h: string) => h.trim()).filter(Boolean)
+                            } else if (Array.isArray(c.habilidades)) {
+                              habilidadesArray = (c.habilidades as any[]).map((h: any) => 
+                                typeof h === 'string' ? h : (typeof h === 'object' && h ? ((h as any).name || (h as any).titulo || String(h)) : '')
+                              ).filter(Boolean)
+                            }
+                            
+                            return (
+                              <>
+                                {habilidadesArray.slice(0, 3).map((h, idx) => {
+                                  const habilidadeStr = typeof h === 'string' ? h : (typeof h === 'object' && h ? ((h as any).name || (h as any).titulo || String(h)) : '')
+                                  return (
+                                    <Badge key={`${idx}-${habilidadeStr}`} variant="outline" className="text-xs">
+                                      {habilidadeStr}
+                                    </Badge>
+                                  )
+                                })}
+                                {habilidadesArray.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{habilidadesArray.length - 3}
+                                  </Badge>
+                                )}
+                                {habilidadesArray.length === 0 && (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </>
+                            )
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="align-top text-right">
@@ -434,11 +572,52 @@ export default function AdminCandidatosPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                    ))
+                    })()
                 )}
               </TableBody>
             </Table>
           </div>
+          
+          {/* Paginação */}
+          {candidatos.length > 10 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {((currentPageCandidatos - 1) * 10) + 1} a {Math.min(currentPageCandidatos * 10, candidatos.length)} de {candidatos.length} candidatos
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={currentPageCandidatos === 1}
+                  onClick={() => setCurrentPageCandidatos(prev => Math.max(1, prev - 1))}
+                >
+                  Anterior
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.ceil(candidatos.length / 10) }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPageCandidatos === page ? "default" : "outline"}
+                      size="sm"
+                      className="w-9 h-9 p-0"
+                      onClick={() => setCurrentPageCandidatos(page)}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={currentPageCandidatos * 10 >= candidatos.length}
+                  onClick={() => setCurrentPageCandidatos(prev => prev + 1)}
+                >
+                  Próximo
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -468,9 +647,9 @@ export default function AdminCandidatosPage() {
                         <span className="font-medium">Localização:</span> {candidatoSelecionado.localizacao}
                       </p>
                     )}
-                    {candidatoSelecionado.anosExperiencia !== undefined && (
+                    {candidatoSelecionado.nivelDesejado && (
                       <p>
-                        <span className="font-medium">Experiência:</span> {candidatoSelecionado.anosExperiencia} anos
+                        <span className="font-medium">Área de Atuação:</span> {candidatoSelecionado.nivelDesejado}
                       </p>
                     )}
                     {candidatoSelecionado.linkedin && (
@@ -528,11 +707,23 @@ export default function AdminCandidatosPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {candidatoSelecionado.habilidades.map((habilidade) => (
-                        <Badge key={habilidade} variant="secondary">
-                          {habilidade}
-                        </Badge>
-                      ))}
+                      {(() => {
+                        // Converter string de habilidades para array
+                        let habilidadesArray: string[] = []
+                        if (typeof candidatoSelecionado.habilidades === 'string' && candidatoSelecionado.habilidades && (candidatoSelecionado.habilidades as string).trim()) {
+                          habilidadesArray = (candidatoSelecionado.habilidades as string).split(',').map((h: string) => h.trim()).filter(Boolean)
+                        } else if (Array.isArray(candidatoSelecionado.habilidades)) {
+                          habilidadesArray = (candidatoSelecionado.habilidades as any[]).map((h: any) => 
+                            typeof h === 'string' ? h : (typeof h === 'object' && h ? ((h as any).name || (h as any).titulo || String(h)) : '')
+                          ).filter(Boolean)
+                        }
+                        
+                        return habilidadesArray.map((habilidade, idx) => (
+                          <Badge key={`skill-${idx}-${habilidade}`} variant="secondary">
+                            {habilidade}
+                          </Badge>
+                        ))
+                      })()}
                     </div>
                   </CardContent>
                 </Card>
@@ -571,17 +762,25 @@ export default function AdminCandidatosPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {candidatoSelecionado.experiencias.map((exp) => (
-                        <div key={exp.id} className="p-3 border rounded-lg">
-                          <p className="font-medium">{exp.cargo}</p>
-                          <p className="text-sm text-muted-foreground">{exp.empresa}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {exp.dataInicio.toLocaleDateString("pt-BR")} -{" "}
-                            {exp.atual ? "Atual" : exp.dataFim?.toLocaleDateString("pt-BR")}
-                          </p>
-                          {exp.descricao && <p className="text-sm mt-2">{exp.descricao}</p>}
-                        </div>
-                      ))}
+                      {candidatoSelecionado.experiencias.map((exp) => {
+                        const formatData = (data: string | Date | null | undefined) => {
+                          if (!data) return "Data não informada"
+                          const dataObj = typeof data === 'string' ? new Date(data) : data
+                          if (isNaN(dataObj.getTime())) return "Data inválida"
+                          return dataObj.toLocaleDateString("pt-BR")
+                        }
+                        return (
+                          <div key={exp.id} className="p-3 border rounded-lg">
+                            <p className="font-medium">{exp.cargo}</p>
+                            <p className="text-sm text-muted-foreground">{exp.empresa}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatData(exp.dataInicio)} -{" "}
+                              {exp.atual ? "Atual" : formatData(exp.dataFim)}
+                            </p>
+                            {exp.descricao && <p className="text-sm mt-2">{exp.descricao}</p>}
+                          </div>
+                        )
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -593,7 +792,7 @@ export default function AdminCandidatosPage() {
 
       {/* Dialog: Editar Candidato */}
       <Dialog open={dialogEditarOpen} onOpenChange={setDialogEditarOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar Candidato</DialogTitle>
             <DialogDescription>Atualize informações básicas do candidato</DialogDescription>
@@ -642,14 +841,13 @@ export default function AdminCandidatosPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="anosExperiencia">Anos de Experiência</Label>
+                <Label htmlFor="areaAtuacao">Área de Atuação</Label>
                 <Input
-                  id="anosExperiencia"
-                  type="number"
-                  min="0"
-                  value={formEdicao.anosExperiencia}
+                  id="areaAtuacao"
+                  placeholder="Ex: Desenvolvimento, Design, etc"
+                  value={formEdicao.areaAtuacao}
                   onChange={(e) =>
-                    setFormEdicao((f) => ({ ...f, anosExperiencia: Number.parseInt(e.target.value) || 0 }))
+                    setFormEdicao((f) => ({ ...f, areaAtuacao: e.target.value }))
                   }
                 />
               </div>

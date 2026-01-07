@@ -14,9 +14,7 @@ export function useTokenExpiredListener() {
     const handleTokenExpired = (event: Event) => {
       const customEvent = event as CustomEvent
       const message = customEvent.detail?.message || "Sua sessão expirou. Por favor, faça login novamente."
-      
-      console.log("🔴 Token expirou - mostrando toast ao usuário")
-      
+
       toast({
         title: "Sessão Expirada",
         description: message,
@@ -26,7 +24,7 @@ export function useTokenExpiredListener() {
 
       // Redirecionar para login após 2 segundos
       setTimeout(() => {
-        console.log("🔄 Redirecionando para login...")
+
         router.push("/login")
       }, 2000)
     }

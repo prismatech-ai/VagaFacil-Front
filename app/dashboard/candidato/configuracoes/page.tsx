@@ -71,8 +71,7 @@ export default function ConfiguracoesCandidatoPage() {
         
         // Usar a API client que automaticamente adiciona user_id
         const data: CandidatoData = await api.get("/api/v1/candidates/me")
-        console.log("📋 Dados do candidato carregados:", data)
-
+      
         setFormData({
           nome: data.full_name || "",
           email: data.email || "",
@@ -89,7 +88,7 @@ export default function ConfiguracoesCandidatoPage() {
           estado: data.estado || "",
         })
       } catch (err: any) {
-        console.error("Erro ao carregar dados:", err)
+
         setError(err.message)
       } finally {
         setIsLoading(false)
@@ -140,7 +139,7 @@ export default function ConfiguracoesCandidatoPage() {
       setIsSaved(true)
       setTimeout(() => setIsSaved(false), 3000)
     } catch (err: any) {
-      console.error("Erro ao salvar configurações:", err)
+
       setError(err.message || "Erro ao salvar. Tente novamente.")
     } finally {
       setIsLoading(false)

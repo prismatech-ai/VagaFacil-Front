@@ -39,14 +39,12 @@ export default function AdminEmpresasPage() {
       setError('')
 
       if (typeof window === 'undefined') {
-        console.warn('localStorage não disponível no servidor')
         return
       }
 
       const token = localStorage.getItem('token')
 
       if (!token) {
-        console.warn('Token não encontrado no localStorage')
         setError('Token não encontrado. Faça login novamente.')
         setLoading(false)
         return
@@ -59,7 +57,7 @@ export default function AdminEmpresasPage() {
           'Authorization': `Bearer ${token}` || ''
         }
       })
-      console.log('GET /api/v1/admin/empresas', { Authorization: `Bearer ${token?.slice(0, 20)}...` })
+
 
       if (!response.ok) {
         throw new Error(`Erro ${response.status}: Falha ao carregar empresas`)
@@ -71,7 +69,7 @@ export default function AdminEmpresasPage() {
       }
 
       const data = await response.json()
-      console.log('Empresas recebidas da API:', data)
+  
 
       const empresasData = Array.isArray(data) ? data : (data.empresas || data.data || [])
 
@@ -234,9 +232,7 @@ export default function AdminEmpresasPage() {
       }
     })
     // Mock: Send invitation email
-    console.log(
-      `[v0] Convite enviado para ${novoAcesso.email} para completar cadastro da empresa ${empresaSelecionada.nomeEmpresa}`,
-    )
+   
     // Update status to show invitation was sent
     setTimeout(() => {
       setAcessosPorEmpresa((prev) => {

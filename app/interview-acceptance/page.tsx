@@ -3,69 +3,102 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import { AceiteEntrevista } from "@/components/aceite-entrevista"
 import { useEffect, useState, Suspense } from "react"
+import { api } from "@/lib/api"
 
 function InterviewAcceptanceContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
+  const [vagaData, setVagaData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Params da URL para dados da entrevista
+  // Params da URL
   const vagaId = searchParams.get("vaga_id") || "1"
-  const conviteId = searchParams.get("id") || "conv-001"
-  const empresaNome = searchParams.get("empresa") || "TechCorp"
-  const vagaTitulo = searchParams.get("vaga") || "Desenvolvedor React Sênior"
-  const dataConvite = searchParams.get("data") || "2024-01-20"
-  const competenciasStr = searchParams.get("competencias") || "React,TypeScript,Node.js"
-  const competenciasRequeridas = competenciasStr.split(",").map((c) => c.trim())
 
+  // Carregar dados da vaga
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    const carregarVaga = async () => {
+      try {
+        setIsLoading(true)
+
+        // Busca todas as vagas e filtra pela vaga_id
+        const response = await api.get<any>("/api/v1/candidato/vagas-sugeridas")
+
+        if (response?.vagas_sugeridas && Array.isArray(response.vagas_sugeridas)) {
+          const vaga = response.vagas_sugeridas.find((v: any) => v.vaga_id === parseInt(vagaId))
+          if (vaga) {
+
+            setVagaData(vaga)
+          } else {
+
+          }
+        }
+      } catch (err: any) {
+
+      } finally {
+        setIsLoading(false)
+        setMounted(true)
+      }
+    }
+
+    carregarVaga()
+  }, [vagaId])
+
+  // Fallback para dados padrão se não conseguir carregar
+  const nomeEmpresa = vagaData?.empresa?.nome || "Uma Empresa"
+  const vagaTitulo = vagaData?.titulo_vaga || "Desenvolvedor"
+  const dataConvite = vagaData?.interesse?.data_interesse || new Date().toISOString()
+  const requisitos = vagaData?.requisitos || []
+  const competenciasRequeridas = Array.isArray(requisitos) 
+    ? requisitos.slice(0, 3).map((r: any) => typeof r === 'string' ? r : r.nome || r.titulo || r.skill)
+    : []
 
   const handleAccept = async (id: string) => {
     try {
-      // POST /candidato/aceitar-entrevista/{vaga_id}
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/candidato/aceitar-entrevista/${vagaId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
-          },
-          body: JSON.stringify({
-            consentimento: true
-          })
-        }
+      // POST /api/v1/candidato/aceitar-entrevista/{vaga_id} - novo endpoint com email via Resend
+      const response = await api.post(
+        `/api/v1/candidato/aceitar-entrevista/${vagaId}`,
+        {}
       )
       
-      if (response.ok) {
-        console.log("Entrevista aceita:", id)
+      // Mostrar sucesso
+      alert("✅ Entrevista aceita com sucesso! Email de confirmação foi enviado para você e para a empresa.")
+      
+      // Redirecionar após 2 segundos
+      setTimeout(() => {
         router.push("/dashboard/candidato")
-      } else {
-        console.error("Erro ao aceitar entrevista:", response.status)
-      }
-    } catch (error) {
-      console.error("Erro ao aceitar entrevista:", error)
+      }, 2000)
+    } catch (error: any) {
+      const errorMsg = error instanceof Error ? error.message : "Erro ao aceitar entrevista"
+      alert(`❌ ${errorMsg}`)
     }
   }
 
   const handleReject = async (id: string) => {
     try {
-      console.log("Entrevista rejeitada:", id)
+
       // Redirect sem enviar (consentimento = false implícito)
       router.push("/dashboard/candidato")
     } catch (error) {
-      console.error("Erro ao rejeitar entrevista:", error)
+
     }
   }
 
-  if (!mounted) return null
+  if (!mounted || isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#03565C]"></div>
+          <p className="mt-4 text-gray-600">Carregando informações da vaga...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AceiteEntrevista
-      conviteId={conviteId}
-      empresaNome={empresaNome}
+      conviteId={`vaga-${vagaId}`}
+      empresaNome={nomeEmpresa}
       vagaTitulo={vagaTitulo}
       dataConvite={dataConvite}
       competenciasRequeridas={competenciasRequeridas}

@@ -40,6 +40,9 @@ interface CandidatoDetalhe {
   area_atuacao?: string
   experiencia_profissional?: string
   formacao_escolaridade?: string
+  consentimento?: boolean
+  dados_pessoais_liberados?: boolean
+  data_consentimento?: string
   formacoes_academicas?: Array<{
     instituicao: string
     curso: string
@@ -93,7 +96,7 @@ export default function CandidatoDetalhePage() {
     
     // Verifica se usuário está autenticado
     if (!user) {
-      console.log("⚠️ Usuário não autenticado, redirecionando para login")
+    
       toast({
         title: 'Acesso Negado',
         description: 'Você precisa estar autenticado para acessar essa página.',
@@ -108,72 +111,29 @@ export default function CandidatoDetalhePage() {
         setIsLoading(true)
         setError(null)
 
-        console.log(`📍 Carregando detalhes do candidato: ${id}`)
-        console.log(`🔑 Token disponível: ${!!localStorage.getItem('token')}`)
-        
         const response = await api.get(`/api/v1/companies/candidatos-anonimos/detalhes/${id}`)
-        
-        console.log("✅ Resposta da API recebida:", response)
-        console.log("  Tipo:", typeof response)
-        console.log("  É array?", Array.isArray(response))
-        if (response && typeof response === 'object') {
-          console.log("  Chaves:", Object.keys(response))
-        }
-        
+
         let data = response
         
         // Tenta extrair dados de diferentes estruturas
-        if (response && typeof response === 'object') {
-          if ((response as any).data) {
-            console.log("✓ Dados encontrados em .data")
-            data = (response as any).data
-          } else if ((response as any).candidato) {
-            console.log("✓ Dados encontrados em .candidato")
-            data = (response as any).candidato
-          }
-        }
-        
-        console.log("📦 Dados processados:", data)
-        console.log("  ID anônimo:", (data as any).id_anonimo)
-        console.log("  Data nascimento:", (data as any).birth_date)
-        console.log("  Gênero:", (data as any).genero)
-        console.log("  Endereço:", (data as any).logradouro)
-        console.log("  Área atuação:", (data as any).area_atuacao)
-        console.log("  Habilidades:", (data as any).habilidades)
-        console.log("  Testes:", (data as any).testes)
-        console.log("  Autoavaliação:", (data as any).autoavaliacao)
-        console.log("  🔍 Procurando ID numérico...")
-        console.log("     id:", (data as any).id)
-        console.log("     candidate_id:", (data as any).candidate_id)
-        console.log("     candidato_id:", (data as any).candidato_id)
-        console.log("     user_id:", (data as any).user_id)
-        console.log("     userId:", (data as any).userId)
-        console.log("     Todos os campos com 'id':", Object.keys(data as any).filter(k => k.toLowerCase().includes('id')))
-        
+       
         // Logged full object to inspect all fields
-        console.log("🔍 INSPECIONANDO TODOS OS CAMPOS:")
         for (const [key, value] of Object.entries(data as any)) {
           const valueType = typeof value
           const isNumeric = typeof value === 'number'
-          console.log(`   ${key}: ${valueType}${isNumeric ? ' ✓ NUMÉRICO' : ''}`, value)
         }
 
         if (data && typeof data === 'object' && Object.keys(data).length > 0) {
           setCandidato(data as CandidatoDetalhe)
-          console.log("✅ Candidato carregado com sucesso!")
         } else {
-          console.log("⚠️ Dados vazios recebidos")
           setError('Candidato não encontrado')
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar detalhes do candidato'
-        
-        console.error("❌ Erro ao carregar:", errorMessage)
-        console.error("   Tipo de erro:", error instanceof Error ? error.constructor.name : typeof error)
-        
+
         // Trata erro 401 - sessão expirada ou credenciais inválidas
         if (errorMessage.includes('401') || errorMessage.includes('Não autenticado')) {
-          console.log("🔄 Detectado erro 401 - Limpando tokens e redirecionando...")
+      
           localStorage.removeItem('token')
           localStorage.removeItem('refresh_token')
           localStorage.removeItem('user')
@@ -197,7 +157,7 @@ export default function CandidatoDetalhePage() {
           description: errorMessage,
           variant: 'destructive',
         })
-        console.error('Erro ao carregar detalhes do candidato:', error)
+
       } finally {
         setIsLoading(false)
       }
@@ -209,51 +169,36 @@ export default function CandidatoDetalhePage() {
   // Carrega vagas abertas quando o dialog abre
   const carregarVagas = async () => {
     try {
-      console.log('📋 Carregando vagas abertas...')
-      console.log(`🔑 Token disponível: ${!!localStorage.getItem('token')}`)
-      
+
       const response = await api.get('/api/v1/jobs')
-      console.log('✅ Resposta de vagas recebida:', response)
-      console.log('   Tipo:', typeof response)
-      console.log('   É array?', Array.isArray(response))
-      if (response && typeof response === 'object') {
-        console.log('   Chaves:', Object.keys(response))
-      }
-      
+
       let vagasList = []
       
       // Tenta extrair array de diferentes estruturas
       if (Array.isArray(response)) {
-        console.log('✓ Resposta é array direto')
         vagasList = response
       } else if ((response as any).data && Array.isArray((response as any).data)) {
-        console.log('✓ Array em .data')
+     
         vagasList = (response as any).data
       } else if ((response as any).vagas && Array.isArray((response as any).vagas)) {
-        console.log('✓ Array em .vagas')
+     
         vagasList = (response as any).vagas
       } else if ((response as any).jobs && Array.isArray((response as any).jobs)) {
-        console.log('✓ Array em .jobs')
+   
         vagasList = (response as any).jobs
       } else {
         // Tenta extrair primeiro array encontrado
         const values = Object.values(response as any)
         const firstArray = values.find(v => Array.isArray(v))
         if (firstArray) {
-          console.log('✓ Array extraído do primeiro valor')
           vagasList = firstArray as any[]
         }
       }
-      
-      console.log(`📊 Total de vagas encontradas: ${vagasList.length}`)
-      
+
       // Log detalhado e mapeamento de cada vaga
       const vagasMapeadas = vagasList.map((v: any) => {
         const titulo = v.title || v.titulo || v.name || v.position || v.job_title || 'Vaga sem título'
-        console.log(`   [${v.id}] Vaga completa:`, v)
-        console.log(`       Campos disponíveis:`, Object.keys(v))
-        console.log(`       ID: ${v.id}, Título: ${titulo}, Status: ${v.status}`)
-        
+
         return {
           ...v,
           titulo: titulo
@@ -265,29 +210,22 @@ export default function CandidatoDetalhePage() {
         const statusLower = String(v.status).toLowerCase()
         return statusLower === 'aberta' || statusLower === 'open' || statusLower === 'ativa'
       })
-      
-      console.log(`✅ ${vagasAbertas.length} vagas abertas após filtro`)
-      console.log(`   Setando estado com ${vagasAbertas.length > 0 ? vagasAbertas.length : vagasMapeadas.length} vagas`)
-      
+
       // Se não encontrou vagas abertas, mostra todas (para debug)
       if (vagasAbertas.length === 0 && vagasMapeadas.length > 0) {
-        console.warn('⚠️ Nenhuma vaga com status "aberta" encontrada. Mostrando todas...')
-        console.log('   Vagas para setar:', vagasMapeadas)
+     
         setVagas(vagasMapeadas)
       } else {
-        console.log('   Vagas para setar:', vagasAbertas)
         setVagas(vagasAbertas)
       }
       
       if (vagasList.length === 0) {
-        console.warn('⚠️ Nenhuma vaga encontrada na API')
         toast({
           title: 'Aviso',
           description: 'Nenhuma vaga encontrada',
           variant: 'default',
         })
       } else if (vagasAbertas.length === 0) {
-        console.warn('⚠️ Nenhuma vaga aberta encontrada')
         toast({
           title: 'Aviso',
           description: `${vagasList.length} vaga(s) encontrada(s), mas nenhuma com status "aberta"`,
@@ -296,12 +234,9 @@ export default function CandidatoDetalhePage() {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro ao carregar vagas'
-      console.error('❌ Erro ao carregar vagas:', error)
-      console.error('   Mensagem:', errorMsg)
-      
+
       // Trata erro 401 ao carregar vagas
       if (errorMsg.includes('401') || errorMsg.includes('Não autenticado')) {
-        console.log("🔄 Erro 401 ao carregar vagas - Limpando tokens...")
         localStorage.removeItem('token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('user')
@@ -338,66 +273,32 @@ export default function CandidatoDetalhePage() {
     try {
       setIsConvidando(true)
       
-      let candidatoId: any = candidato?.id
+      // Usar id_anonimo diretamente - não precisa mais buscar ID numérico
+      const idAnonimo = candidato?.id_anonimo
       
-      // Se não encontrou ID no candidato carregado, tenta buscar da lista
-      if (!candidatoId && candidato?.id_anonimo) {
-        console.log(`⚠️ ID numérico não encontrado em candidato.id, buscando na lista...`)
-        try {
-          const listResponse = await api.get(`/api/v1/companies/candidatos-anonimos?skip=0&limit=100`)
-          let candidatosList = []
-          
-          if (listResponse && typeof listResponse === 'object') {
-            if (Array.isArray(listResponse)) {
-              candidatosList = listResponse
-            } else if ((listResponse as any).candidatos && Array.isArray((listResponse as any).candidatos)) {
-              candidatosList = (listResponse as any).candidatos
-            }
-          }
-          
-          const encontrado = candidatosList.find((c: any) => c.id_anonimo === candidato.id_anonimo)
-          if (encontrado?.id) {
-            candidatoId = encontrado.id
-            console.log(`✅ ID encontrado na lista: ${candidatoId}`)
-          }
-        } catch (listError) {
-          console.error("❌ Erro ao buscar lista de candidatos:", listError)
-        }
-      }
-      
-      if (!candidatoId) {
-        console.error('❌ ID do candidato não encontrado em nenhuma fonte')
-        console.log('  Candidato:', candidato)
-        console.log('  candidato.id:', (candidato as any)?.id)
-        console.log('  candidato.candidate_id:', (candidato as any)?.candidate_id)
-        console.log('  candidato.candidato_id:', (candidato as any)?.candidato_id)
-        
+      if (!idAnonimo) {
         toast({
           title: 'Erro',
-          description: 'ID do candidato não encontrado em nenhuma fonte',
+          description: 'ID do candidato não encontrado',
           variant: 'destructive',
         })
         return
       }
-      
-      console.log(`📬 Convidando candidato ${candidatoId} (${id}) para ${vagasSelecionadas.size} vaga(s)...`)
-      console.log(`🔑 Token disponível: ${!!localStorage.getItem('token')}`)
-      
-      // Faz requisição para cada vaga selecionada
+
+      // Faz requisição para cada vaga selecionada com novo endpoint que envia email
       const promises = Array.from(vagasSelecionadas).map(jobId => {
-        console.log(`  → Enviando convite para vaga ${jobId}...`)
+        // Usar novo endpoint que envia email via Resend
         return api.post(
-          `/api/v1/pipeline/candidato/${candidatoId}/indicar-interesse?job_id=${jobId}`,
+          `/api/v1/empresa/vagas/${jobId}/candidatos/${idAnonimo}/interesse`,
           {}
         )
       })
 
       await Promise.all(promises)
       
-      console.log('✅ Candidato convidado com sucesso!')
       toast({
-        title: 'Sucesso',
-        description: `Candidato convidado para ${vagasSelecionadas.size} vaga(s)`,
+        title: '✅ Sucesso',
+        description: `Candidato convidado para ${vagasSelecionadas.size} vaga(s)! Email(s) enviado(s) com sucesso.`,
       })
       
       setDialogOpen(false)
@@ -405,14 +306,9 @@ export default function CandidatoDetalhePage() {
       setVagas([])
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error) || 'Erro ao convidar candidato'
-      console.error('❌ Erro ao convidar candidato:', error)
-      console.error('   Tipo do erro:', typeof error)
-      console.error('   Stack:', error instanceof Error ? error.stack : 'N/A')
-      console.error('   Mensagem:', errorMsg)
-      
+
       // Trata erro 401 ao convidar
       if (errorMsg.includes('401') || errorMsg.includes('Não autenticado')) {
-        console.log("🔄 Erro 401 ao convidar - Limpando tokens...")
         localStorage.removeItem('token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('user')
@@ -428,7 +324,7 @@ export default function CandidatoDetalhePage() {
       }
       
       toast({
-        title: 'Erro',
+        title: '❌ Erro',
         description: errorMsg,
         variant: 'destructive',
       })
@@ -549,7 +445,7 @@ export default function CandidatoDetalhePage() {
         </div>
       )
     } catch (error) {
-      console.error('Erro ao renderizar experiência profissional:', error)
+
       return (
         <p className="text-base text-gray-900 mt-2 whitespace-pre-wrap">{experienciaStr}</p>
       )
@@ -727,50 +623,62 @@ export default function CandidatoDetalhePage() {
                 <CardTitle className="text-lg">Endereço</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-4">
-                  {candidato.logradouro && (
-                    <div className="col-span-2">
-                      <p className="text-sm text-gray-500">Rua</p>
-                      <p className="text-base font-semibold text-gray-900">{candidato.logradouro}</p>
-                    </div>
-                  )}
-                  {candidato.numero && (
-                    <div>
-                      <p className="text-sm text-gray-500">Número</p>
-                      <p className="text-base font-semibold text-gray-900">{candidato.numero}</p>
-                    </div>
-                  )}
-                  {candidato.complemento && (
-                    <div>
-                      <p className="text-sm text-gray-500">Complemento</p>
-                      <p className="text-base font-semibold text-gray-900">{candidato.complemento}</p>
-                    </div>
-                  )}
-                  {candidato.bairro && (
-                    <div>
-                      <p className="text-sm text-gray-500">Bairro</p>
-                      <p className="text-base font-semibold text-gray-900">{candidato.bairro}</p>
-                    </div>
-                  )}
-                  {candidato.cep && (
-                    <div>
-                      <p className="text-sm text-gray-500">CEP</p>
-                      <p className="text-base font-semibold text-gray-900">{candidato.cep}</p>
-                    </div>
-                  )}
-                  {candidato.cidade && (
-                    <div>
-                      <p className="text-sm text-gray-500">Cidade</p>
-                      <p className="text-base font-semibold text-gray-900">{candidato.cidade}</p>
-                    </div>
-                  )}
-                  {candidato.estado && (
-                    <div>
-                      <p className="text-sm text-gray-500">Estado</p>
-                      <p className="text-base font-semibold text-gray-900">{candidato.estado}</p>
-                    </div>
-                  )}
-                </div>
+                {!candidato.dados_pessoais_liberados && !candidato.consentimento ? (
+                  <Alert className="border-amber-200 bg-amber-50">
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800">
+                      <strong>Endereço Oculto:</strong> O endereço completo do candidato só será visível após ele aceitar a entrevista.
+                      {candidato.cidade && candidato.estado && (
+                        <p className="mt-2">📍 <strong>Localização:</strong> {candidato.cidade}, {candidato.estado}</p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {candidato.logradouro && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-500">Rua</p>
+                        <p className="text-base font-semibold text-gray-900">{candidato.logradouro}</p>
+                      </div>
+                    )}
+                    {candidato.numero && (
+                      <div>
+                        <p className="text-sm text-gray-500">Número</p>
+                        <p className="text-base font-semibold text-gray-900">{candidato.numero}</p>
+                      </div>
+                    )}
+                    {candidato.complemento && (
+                      <div>
+                        <p className="text-sm text-gray-500">Complemento</p>
+                        <p className="text-base font-semibold text-gray-900">{candidato.complemento}</p>
+                      </div>
+                    )}
+                    {candidato.bairro && (
+                      <div>
+                        <p className="text-sm text-gray-500">Bairro</p>
+                        <p className="text-base font-semibold text-gray-900">{candidato.bairro}</p>
+                      </div>
+                    )}
+                    {candidato.cep && (
+                      <div>
+                        <p className="text-sm text-gray-500">CEP</p>
+                        <p className="text-base font-semibold text-gray-900">{candidato.cep}</p>
+                      </div>
+                    )}
+                    {candidato.cidade && (
+                      <div>
+                        <p className="text-sm text-gray-500">Cidade</p>
+                        <p className="text-base font-semibold text-gray-900">{candidato.cidade}</p>
+                      </div>
+                    )}
+                    {candidato.estado && (
+                      <div>
+                        <p className="text-sm text-gray-500">Estado</p>
+                        <p className="text-base font-semibold text-gray-900">{candidato.estado}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

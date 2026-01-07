@@ -58,7 +58,7 @@ export default function MeuPerfilEmpresaPage() {
         setLogoUrl(data.logo_url)
       }
     } catch (error) {
-      console.error("Erro ao carregar dados:", error)
+
       // Dados padrão para desenvolvimento
       setEmpresaData({
         razaoSocial: "Empresa Exemplo LTDA",
@@ -101,7 +101,7 @@ export default function MeuPerfilEmpresaPage() {
       setSuccessMessage("Informações atualizadas com sucesso!")
       setTimeout(() => setSuccessMessage(""), 3000)
     } catch (error) {
-      console.error("Erro ao salvar:", error)
+
       alert("Erro ao salvar as alterações")
     } finally {
       setIsSaving(false)
@@ -124,13 +124,13 @@ export default function MeuPerfilEmpresaPage() {
       setSuccessMessage("Logo atualizada com sucesso!")
       setTimeout(() => setSuccessMessage(""), 3000)
     } catch (error) {
-      console.error("Erro ao salvar URL da logo:", error)
+
       alert("Erro ao salvar a logo. Tente novamente.")
     }
   }
 
   const handleLogoError = (error: Error) => {
-    console.error("Erro no upload da logo:", error)
+
     alert(`Erro: ${error.message}`)
   }
 

@@ -109,8 +109,7 @@ export default function CadastroEmpresaPage() {
         foneempresa: "",
       };
 
-      console.log("ENVIADO PARA BACKEND (EMPRESA):", companyData);
-
+    
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`,
         {
@@ -124,7 +123,6 @@ export default function CadastroEmpresaPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("Erro da API:", response.status, errorData);
         
         // Extrair mensagem detalhada do erro
         let errorMessage = `Erro ${response.status} ao registrar empresa`;
@@ -149,7 +147,6 @@ export default function CadastroEmpresaPage() {
 
       router.push("/login");
     } catch (err: any) {
-      console.error("Erro no cadastro:", err);
       setError(err?.message || "Erro ao criar conta. Tente novamente.");
     } finally {
       setIsLoading(false);

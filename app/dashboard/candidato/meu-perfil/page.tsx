@@ -219,7 +219,6 @@ export default function MeuPerfilPage() {
 
   useEffect(() => {
     if (!isAuthLoading && !user) {
-      console.warn("[MeuPerfil] Usuário não autenticado, redirecionando para login")
       router.push("/login")
     }
   }, [user, isAuthLoading, router])
@@ -228,7 +227,7 @@ export default function MeuPerfilPage() {
     try {
       setIsLoadingCandidato(true)
       const response = await api.get<CandidatoData>("/api/v1/candidates/me")
-      console.log("RESPOSTA COMPLETA DA API:", response)
+    
       setCandidatoData(response)
       
       if (response.id) {
@@ -280,22 +279,20 @@ export default function MeuPerfilPage() {
       }
       
       // Carregar formações acadêmicas
-      console.log("response.formacoes_academicas (raw):", response.formacoes_academicas)
+    
       if (response.formacoes_academicas) {
         try {
           const formacoes = typeof response.formacoes_academicas === 'string' ? 
             JSON.parse(response.formacoes_academicas) : 
             response.formacoes_academicas
-          console.log("Formações após parse:", formacoes)
-          console.log("É array?", Array.isArray(formacoes))
+         
           setFormacoesAcademicas(Array.isArray(formacoes) ? formacoes : [])
-          console.log("setFormacoesAcademicas chamado com:", Array.isArray(formacoes) ? formacoes : [])
+      
         } catch (e) {
-          console.error("Erro ao fazer parse de formações:", e)
           setFormacoesAcademicas([])
         }
       } else {
-        console.log("Nenhuma formação encontrada")
+       
         setFormacoesAcademicas([])
       }
       
@@ -322,7 +319,6 @@ export default function MeuPerfilPage() {
         experiencia_temp: response.trabalho_temporario?.experiencia_temp || ""
       }))
     } catch (error) {
-      console.error("Erro ao buscar dados do candidato:", error)
     } finally {
       setIsLoadingCandidato(false)
     }
@@ -369,9 +365,7 @@ export default function MeuPerfilPage() {
         ...(formDataDadosProfissionais.estado_civil && { estado_civil: formDataDadosProfissionais.estado_civil })
       }
       
-      console.log("[handleSaveDadosProfissionais] Enviando para PUT /api/v1/candidates/me:")
-      console.log(JSON.stringify(payload, null, 2))
-      
+    
       await api.put("/api/v1/candidates/me", payload)
       setCandidatoData(prev => prev ? { ...prev, ...payload } : null)
       
@@ -383,12 +377,6 @@ export default function MeuPerfilPage() {
         variant: "default"
       })
     } catch (error) {
-      console.error("Erro ao salvar dados pessoais:", error)
-      toast({
-        title: "❌ Erro",
-        description: "Erro ao salvar as alterações. Tente novamente.",
-        variant: "destructive"
-      })
     } finally {
       setIsSavingDadosProfissionais(false)
     }
@@ -406,20 +394,17 @@ export default function MeuPerfilPage() {
           ...formDataDadosProfissionais,
           resume_url: url,
         }
-        console.log("[handleResumeSuccess] Enviando para PUT /api/v1/candidates/me:")
-        console.log(JSON.stringify(resumePayload, null, 2))
+     
         await api.put("/api/v1/candidates/me", resumePayload)
         setCandidatoData(prev => prev ? { ...prev, resume_url: url } : null)
         setFormDataDadosProfissionais(prev => ({ ...prev, resume_url: url }))
       }
     } catch (error) {
-      console.error("Erro ao salvar URL do currículo:", error)
       alert("Erro ao salvar o currículo. Tente novamente.")
     }
   }
 
   const handleResumeError = (error: Error) => {
-    console.error("Erro no upload do currículo:", error)
     alert(`Erro: ${error.message}`)
   }
 
@@ -429,11 +414,9 @@ export default function MeuPerfilPage() {
       
       // ✅ Através do proxy (sem CORS)
       const proxyUrl = `/api/v1/uploads/download?file_url=${encodeURIComponent(resumeUrl)}`
-      console.log("[handleDownloadResume] Abrindo URL de download:")
-      console.log(proxyUrl)
+  
       window.open(proxyUrl, '_blank')
     } catch (error) {
-      console.error("Erro ao fazer download do currículo:", error)
       toast({
         title: "❌ Erro",
         description: "Erro ao baixar o currículo. Tente novamente.",
@@ -457,7 +440,6 @@ export default function MeuPerfilPage() {
       setAreaAtuacao(data)
       setFormAreaAtuacao(data)
     } catch (error) {
-      console.error("Erro ao carregar Área de Atuação:", error)
     } finally {
       setIsLoadingArea(false)
     }
@@ -473,8 +455,7 @@ export default function MeuPerfilPage() {
         area_atuacao: formAreaAtuacao.area_atuacao
       }
       
-      console.log("[handleSaveAreaAtuacao] Enviando para PUT /api/v1/candidates/me:")
-      console.log(JSON.stringify(payload, null, 2))
+    
       
       await api.put("/api/v1/candidates/me", payload)
       setCandidatoData(prev => prev ? { ...prev, ...payload } : null)
@@ -487,7 +468,6 @@ export default function MeuPerfilPage() {
         variant: "default"
       })
     } catch (error) {
-      console.error("Erro ao salvar Área de Atuação:", error)
       toast({
         title: "❌ Erro",
         description: "Erro ao salvar. Tente novamente.",
@@ -503,7 +483,6 @@ export default function MeuPerfilPage() {
       setIsSavingProfile(true)
       
       if (!userId) {
-        console.error("User ID não disponível para salvar trabalho temporário")
         toast({
           title: "❌ Erro",
           description: "User ID não encontrado. Tente recarregar a página.",
@@ -527,17 +506,13 @@ export default function MeuPerfilPage() {
         experiencia_anterior: trabalhoTemporario.experiencia_temp
       }
       
-      console.log("[handleSaveTrabalhoTemporario] Enviando para POST /api/v1/candidates/onboarding/trabalho-temporario:")
-      console.log(JSON.stringify(payload, null, 2))
-      console.log("User ID:", userId)
-      
+   
       const response = await api.post(
         "/api/v1/candidates/onboarding/trabalho-temporario",
         payload
       )
       
-      console.log("[handleSaveTrabalhoTemporario] Resposta do servidor:")
-      console.log(JSON.stringify(response, null, 2))
+    
       
       setIsEditingTrabalhoTemp(false)
       
@@ -547,7 +522,6 @@ export default function MeuPerfilPage() {
         variant: "default"
       })
     } catch (error) {
-      console.error("Erro ao salvar Trabalho Temporário:", error)
       toast({
         title: "❌ Erro",
         description: "Erro ao salvar trabalho temporário. Tente novamente.",
@@ -573,18 +547,13 @@ export default function MeuPerfilPage() {
             ano_conclusao: f.ano_conclusao ? parseInt(String(f.ano_conclusao)) : 0
           }))
         }
-        
-        console.log("[handleSaveFormacoes] Enviando para POST /api/v1/candidates/onboarding/formacoes-academicas:")
-        console.log("User ID:", userId)
-        console.log(JSON.stringify(formacoesPayload, null, 2))
+     
         
         const response = await api.post(
           `/api/v1/candidates/onboarding/formacoes-academicas?user_id=${userId}`,
           formacoesPayload
         )
-        console.log("[handleSaveFormacoes] Resposta do servidor:")
-        console.log(JSON.stringify(response, null, 2))
-        
+     
         setIsAddingFormacao(false)
         
         toast({
@@ -593,7 +562,7 @@ export default function MeuPerfilPage() {
           variant: "default"
         })
       } else {
-        console.log("Skipping formações: length=", formacoesAcademicas.length, "userId=", userId)
+   
         toast({
           title: "⚠️ Atenção",
           description: "Adicione pelo menos uma formação para salvar.",
@@ -601,7 +570,6 @@ export default function MeuPerfilPage() {
         })
       }
     } catch (error) {
-      console.error("Erro ao salvar formações:", error)
       toast({
         title: "❌ Erro",
         description: "Erro ao salvar formações. Tente novamente.",
@@ -642,14 +610,12 @@ export default function MeuPerfilPage() {
         ...candidatoData,
         experiencia_profissional: JSON.stringify(novasExperiencias)
       }
-      console.log("[handleAddExperiencia] Enviando para PUT /api/v1/candidates/me:")
-      console.log(JSON.stringify(payload, null, 2))
+     
       await api.put("/api/v1/candidates/me", payload)
       setExperienciasAPI(novasExperiencias)
       setCandidatoData(payload as any)
       alert("Experiência adicionada com sucesso!")
     } catch (error) {
-      console.error("Erro ao adicionar Experiência:", error)
       alert("Erro ao adicionar. Tente novamente.")
     } finally {
       setIsSavingExperiencias(false)
@@ -669,7 +635,6 @@ export default function MeuPerfilPage() {
       setCandidatoData(payload as any)
       alert("Experiência removida com sucesso!")
     } catch (error) {
-      console.error("Erro ao deletar Experiência:", error)
       alert("Erro ao remover. Tente novamente.")
     } finally {
       setIsSavingExperiencias(false)
@@ -713,11 +678,6 @@ export default function MeuPerfilPage() {
   const handleSaveProfile = async () => {
     try {
       setIsSavingProfile(true)
-      
-      console.log("handleSaveProfile iniciado")
-      console.log("userId:", userId)
-      console.log("experienciasAPI:", experienciasAPI)
-      console.log("formacoesAcademicas:", formacoesAcademicas)
       
       // 1. Salvar Dados Pessoais via PUT /api/v1/candidates/me
       const candidatoPayload = {
@@ -773,17 +733,14 @@ export default function MeuPerfilPage() {
           }))
         }
         
-        console.log("Salvando formações com payload:", JSON.stringify(formacoesPayload, null, 2))
-        console.log("User ID:", userId)
-        console.log("URL: /api/v1/candidates/onboarding/formacoes-academicas (user_id será adicionado automaticamente)")
+  
         
         const response = await api.post(
           "/api/v1/candidates/onboarding/formacoes-academicas",
           formacoesPayload
         )
-        console.log("Resposta do servidor:", response)
       } else {
-        console.log("Skipping formações: length=", formacoesAcademicas.length, "userId=", userId)
+       
       }
       
       // Desativar modo edição global
@@ -798,7 +755,6 @@ export default function MeuPerfilPage() {
         variant: "default"
       })
     } catch (error) {
-      console.error("Erro ao salvar perfil:", error)
       toast({
         title: "❌ Erro",
         description: "Erro ao salvar perfil. Tente novamente.",

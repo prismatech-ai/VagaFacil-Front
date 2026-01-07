@@ -97,7 +97,7 @@ export default function KanbanVagaPage() {
         description: errorMsg,
         variant: "destructive",
       })
-      console.error("Erro ao carregar dados:", error)
+
     } finally {
       setIsLoading(false)
     }
@@ -155,7 +155,7 @@ export default function KanbanVagaPage() {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Erro ao processar candidatos"
-      console.error("Erro:", errorMsg)
+
     }
   }
 
@@ -262,7 +262,7 @@ export default function KanbanVagaPage() {
               >
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <h1 className="text-4xl font-bold text-gray-900">Kanban de Vagas</h1>
+              <h1 className="text-4xl font-bold text-gray-900">Status do Pipeline</h1>
             </div>
             <p className="text-gray-600 ml-10">Visualize e gerencie suas vagas e candidatos</p>
           </div>
@@ -560,9 +560,6 @@ export default function KanbanVagaPage() {
                             <h4 className="font-semibold text-gray-900 text-sm mb-2">
                               {candidato.id_anonimo}
                             </h4>
-                            {candidato.email && (
-                              <p className="text-xs text-gray-600 mb-1">📧 {candidato.email}</p>
-                            )}
                             {candidato.area_atuacao && (
                               <p className="text-xs text-gray-600 mb-1">🎯 {candidato.area_atuacao}</p>
                             )}

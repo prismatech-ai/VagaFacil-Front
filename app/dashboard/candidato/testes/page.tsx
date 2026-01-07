@@ -57,7 +57,7 @@ export default function TestesPage() {
       const response = await api.get<TestesResponse>("/api/v1/candidates/testes/habilidades-disponiveis")
       setData(response)
     } catch (err: any) {
-      console.error("Erro ao carregar testes:", err)
+
       setError(err.message || "Não foi possível carregar os testes disponíveis. Tente novamente.")
     } finally {
       setIsLoading(false)

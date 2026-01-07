@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,7 +17,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { CheckCircle2, Clock, AlertCircle, Sparkles, HeartHandshake } from "lucide-react"
+import { CheckCircle2, Clock, AlertCircle, Sparkles, HeartHandshake, Calendar, Zap } from "lucide-react"
+import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { StatusPerfilCandidato } from "@/components/status-perfil-candidato"
 
 interface Interesse {
   id: string
@@ -32,6 +35,15 @@ interface TesteTecnico {
   data: string
   status: "concluido" | "pendente" | "expirado"
   duracao?: string
+}
+
+interface EntrevistaAgendada {
+  id: string
+  vagaId: string
+  titulo: string
+  empresa: string
+  data: string
+  hora?: string
 }
 
 interface CandidatoDashboardProps {
@@ -76,7 +88,155 @@ export function CandidatoDashboard({
   candidatoData,
 }: CandidatoDashboardProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [interesses, setInteresses] = useState<Interesse[]>(interessesInit)
+  const [isLoadingInteresses, setIsLoadingInteresses] = useState(true)
+  const [entrevistasAgendadas, setEntrevistasAgendadas] = useState<EntrevistaAgendada[]>([])
+  const [testeWarningShown, setTesteWarningShown] = useState(false)
+
+  // Mostrar aviso se candidato não fez teste técnico
+  useEffect(() => {
+    if (!testeWarningShown && testesInit.length === 0) {
+      toast({
+        title: "📝 Aumente suas chances!",
+        description: "Realize seu teste técnico e tenha mais chance de receber convites das empresas.",
+        variant: "default",
+        duration: 5000,
+      })
+      setTesteWarningShown(true)
+    }
+  }, [testesInit, testeWarningShown, toast])
+
+  // Carregar interesses da API
+  useEffect(() => {
+    const carregarInteresses = async () => {
+      try {
+        setIsLoadingInteresses(true)
+
+        // Tentar buscar vagas sugeridas primeiro
+        try {
+          const response = await api.get<any>("/api/v1/candidato/vagas-sugeridas")
+
+          if (response?.vagas_sugeridas && Array.isArray(response.vagas_sugeridas)) {
+            // Converter a resposta da API para o formato esperado pelo componente
+            const interessesFormatados: Interesse[] = response.vagas_sugeridas.map(
+              (vaga: any) => {
+
+                const nomeEmpresa = vaga.empresa_nome || 
+                                     vaga.company_name || 
+                                     vaga.empresa?.nome ||
+                                     vaga.empresa?.name ||
+                                     vaga.company?.nome ||
+                                     vaga.company?.name ||
+                                     "Uma empresa"
+                
+                // Determina o status baseado nos dados da vaga
+                let status: "novo" | "aceito" | "rejeitado" = "novo"
+                if (vaga.entrevista?.agendada || vaga.resultado_final) {
+                  status = "aceito"
+                }
+                
+                return {
+                  id: `vaga-${vaga.vaga_id}`,
+                  dataInteresse: vaga.data_interesse || new Date().toISOString(),
+                  status,
+                  descricao: `${nomeEmpresa} demonstrou interesse em você para a vaga de ${vaga.titulo_vaga}`,
+                }
+              }
+            )
+            setInteresses(interessesFormatados)
+
+            // Extrair entrevistas agendadas
+            const entrevistasAgendadasData: EntrevistaAgendada[] = response.vagas_sugeridas
+              .filter((vaga: any) => vaga.entrevista?.agendada)
+              .map((vaga: any) => {
+                // Extrair hora da data completa no formato ISO
+                let hora: string | undefined = undefined
+                
+                if (vaga.entrevista?.data) {
+                  try {
+                    // Parse da data ISO (ex: "2026-01-15T14:30:00+00:00")
+                    const dataObj = new Date(vaga.entrevista.data)
+                    if (!isNaN(dataObj.getTime())) {
+                      // Extrai horas e minutos
+                      const horas = String(dataObj.getUTCHours()).padStart(2, "0")
+                      const minutos = String(dataObj.getUTCMinutes()).padStart(2, "0")
+                      hora = `${horas}:${minutos}`
+                    }
+                  } catch (e) {
+                    // Se não conseguir extrair, deixa em branco
+                  }
+                }
+                
+                return {
+                  id: `entrevista-${vaga.vaga_id}`,
+                  vagaId: vaga.vaga_id,
+                  titulo: vaga.titulo_vaga || "Vaga sem título",
+                  empresa: vaga.empresa_nome || 
+                           vaga.company_name || 
+                           vaga.empresa?.nome ||
+                           vaga.empresa?.name ||
+                           vaga.company?.nome ||
+                           vaga.company?.name ||
+                           "Empresa desconhecida",
+                  data: vaga.entrevista?.data || new Date().toISOString(),
+                  hora,
+                }
+              })
+            setEntrevistasAgendadas(entrevistasAgendadasData)
+            return
+          }
+        } catch (err) {
+          // Se falhar, tenta buscar convites
+        }
+
+        // Se não encontrou vagas sugeridas, tenta buscar convites diretos
+        try {
+          const convitesResponse = await api.get<any>("/api/v1/candidato/convites")
+          
+          if (convitesResponse && Array.isArray(convitesResponse)) {
+            const interessesFormatados: Interesse[] = convitesResponse.map(
+              (convite: any) => {
+                const nomeEmpresa = convite.empresa_nome || 
+                                     convite.company_name || 
+                                     convite.empresa?.nome ||
+                                     convite.company?.name ||
+                                     "Uma empresa"
+                
+                // Determina o status baseado nos dados do convite
+                let status: "novo" | "aceito" | "rejeitado" = "novo"
+                if (convite.aceito || convite.status === "aceito" || convite.data_aceitacao) {
+                  status = "aceito"
+                }
+                if (convite.rejeitado || convite.status === "rejeitado") {
+                  status = "rejeitado"
+                }
+                
+                return {
+                  id: `convite-${convite.id}`,
+                  dataInteresse: convite.data_criacao || new Date().toISOString(),
+                  status,
+                  descricao: `${nomeEmpresa} demonstrou interesse em você`,
+                }
+              }
+            )
+            setInteresses(interessesFormatados)
+          }
+        } catch (err) {
+          // Mantém estado vazio se ambos falharem
+        }
+      } finally {
+        setIsLoadingInteresses(false)
+      }
+    }
+
+    carregarInteresses()
+    
+    // Recarrega os interesses a cada 30 segundos para atualizar status
+    const interval = setInterval(carregarInteresses, 30000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   // Função para calcular o percentual de completude
   const calcularCompletudePercentual = (): number => {
@@ -110,22 +270,22 @@ export function CandidatoDashboard({
 
   const completudePerfil = calcularCompletudePercentual()
 
-  const handleAceitarEntrevista = (interesseId: string) => {
-    setInteresses(
-      interesses.map((i) =>
-        i.id === interesseId ? { ...i, status: "aceito" as const } : i
-      )
-    )
-    // Navega para a tela de aceite de entrevista com parâmetros
-    const params = new URLSearchParams({
-      id: interesseId,
-      empresa: "TechCorp",
-      vaga: "Desenvolvedor React Sênior",
-      data: new Date().toISOString().split("T")[0],
-      competencias: "React,TypeScript,Node.js",
-    })
-    router.push(`/interview-acceptance?${params.toString()}`)
-    onAceitarEntrevista?.(interesseId)
+  const handleAceitarEntrevista = async (interesseId: string) => {
+    // Extrai o ID da vaga do interesseId (formato: "vaga-10")
+    const vagaId = interesseId.replace("vaga-", "")
+    
+    try {
+
+      // Redireciona para o modal de aceite de entrevista
+      router.push(`/interview-acceptance?vaga_id=${vagaId}`)
+    } catch (err: any) {
+
+      toast({
+        title: "❌ Erro",
+        description: "Erro ao abrir o formulário de aceitação",
+        variant: "destructive",
+      })
+    }
   }
 
   const interessesNovos = interesses.filter((i) => i.status === "novo").length
@@ -143,6 +303,9 @@ export function CandidatoDashboard({
             Acompanhe o progresso do seu processo de candidatura
           </p>
         </div>
+
+        {/* Status do Perfil */}
+        <StatusPerfilCandidato />
 
         {/* Alerta de Perfil Incompleto */}
         {completudePerfil < 100 && (
@@ -212,24 +375,26 @@ export function CandidatoDashboard({
             </CardContent>
           </Card>
 
-          {/* Card: Testes Realizados */}
+          {/* Card: Convites Aceitos */}
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2 text-gray-700">
-                <Clock className="h-5 w-5 text-[#24BFB0]" />
-                Testes Realizados
+                <CheckCircle2 className="h-5 w-5 text-[#24BFB0]" />
+                Convites Aceitos
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="text-3xl font-bold text-[#03565C]">
-                {testesInit.filter((t) => t.status === "concluido").length}
+                {interessesAceitos}
               </div>
               <p className="text-sm text-gray-600">
-                de {testesInit.length} teste{testesInit.length > 1 ? "s" : ""}
+                {interessesAceitos === 1
+                  ? "convite aceito"
+                  : "convites aceitos"}
               </p>
-              {testesInit.some((t) => t.status === "pendente") && (
-                <Badge variant="outline" className="w-fit bg-yellow-50 text-yellow-800 border-yellow-200">
-                  {testesInit.filter((t) => t.status === "pendente").length} pendente
+              {interessesNovos > 0 && (
+                <Badge variant="outline" className="w-fit bg-blue-50 text-blue-800 border-blue-200">
+                  {interessesNovos} novo
                 </Badge>
               )}
             </CardContent>
@@ -245,6 +410,46 @@ export function CandidatoDashboard({
           </AlertDescription>
         </Alert>
 
+        {/* Atalhos Rápidos */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Card: Meu Perfil */}
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push("/dashboard/candidato/meu-perfil")}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-gray-700">
+                👤 Meu Perfil
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-gray-600">
+              Atualize suas informações e complete seu perfil
+            </CardContent>
+          </Card>
+
+          {/* Card: Vagas Sugeridas */}
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push("/dashboard/candidato/vagas-sugeridas")}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-gray-700">
+                💼 Vagas Sugeridas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-gray-600">
+              Explore vagas recomendadas para seu perfil
+            </CardContent>
+          </Card>
+
+          {/* Card: Testes Adaptativos */}
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 border-[#03565C] bg-[#03565C]/5" onClick={() => router.push("/dashboard/candidato/testes-adaptativos")}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-[#03565C]">
+                <Zap className="h-4 w-4" />
+                Testes Adaptativos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-gray-600">
+              Avalie suas habilidades com testes inteligentes
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Tabs Section */}
         <Tabs defaultValue="interesses" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -253,8 +458,8 @@ export function CandidatoDashboard({
               Interesse das Empresas
             </TabsTrigger>
             <TabsTrigger value="testes" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Histórico de Testes
+              <Calendar className="h-4 w-4" />
+              Entrevistas Agendadas
             </TabsTrigger>
           </TabsList>
 
@@ -283,58 +488,72 @@ export function CandidatoDashboard({
                     }`}
                   >
                     <CardContent className="pt-6 pb-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-gray-900">
-                              {interesse.descricao}
+                      <div className="space-y-4">
+                        {/* Cabeçalho com descrição e status */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-gray-900">
+                                {interesse.descricao}
+                              </p>
+                              {interesse.status === "novo" && (
+                                <Badge className="bg-blue-600 text-white text-xs">
+                                  Novo
+                                </Badge>
+                              )}
+                              {interesse.status === "aceito" && (
+                                <Badge className="bg-emerald-600 text-white text-xs">
+                                  Aceito
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              {(() => {
+                                try {
+                                  // Tenta diferentes formatos de data
+                                  const dateStr = interesse.dataInteresse
+                                  if (!dateStr) return "Data indisponível"
+                                  
+                                  const data = new Date(dateStr)
+                                  if (isNaN(data.getTime())) {
+                                    // Se não conseguir parsear, tenta mostrar como está
+                                    return dateStr
+                                  }
+                                  return data.toLocaleDateString("pt-BR")
+                                } catch {
+                                  return "Data indisponível"
+                                }
+                              })()}
                             </p>
-                            {interesse.status === "novo" && (
-                              <Badge className="bg-blue-600 text-white text-xs">
-                                Novo
-                              </Badge>
-                            )}
-                            {interesse.status === "aceito" && (
-                              <Badge className="bg-emerald-600 text-white text-xs">
-                                Aceito
-                              </Badge>
-                            )}
                           </div>
-                          <p className="text-xs text-gray-500">
-                            {new Date(interesse.dataInteresse).toLocaleDateString("pt-BR")}
-                          </p>
                         </div>
 
-                        {interesse.status === "novo" && (
-                          <div className="flex gap-2 flex-shrink-0">
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  className="bg-[#03565C] hover:bg-[#024147] text-white"
-                                >
-                                  Aceitar
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Prosseguir para Aceite da Entrevista?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Você será levado para confirmar a aceitação da entrevista e
-                                    autorizar o compartilhamento de seus dados com a empresa.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <div className="flex gap-2">
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleAceitarEntrevista(interesse.id)}
-                                    className="bg-[#03565C] hover:bg-[#024147]"
-                                  >
-                                    Prosseguir
-                                  </AlertDialogAction>
-                                </div>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                        {/* Botões de ação */}
+                        {interesse.status === "aceito" ? (
+                          <div className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg text-sm font-semibold w-fit">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Vaga Aceita ✓
+                          </div>
+                        ) : (
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-[#03565C] text-[#03565C] hover:bg-[#03565C]/10"
+                              onClick={() => router.push(`/dashboard/candidato/vagas-sugeridas`)}
+                            >
+                              Ver Detalhes da Vaga
+                            </Button>
+                            
+                            {interesse.status === "novo" && (
+                              <Button
+                                size="sm"
+                                className="bg-[#03565C] hover:bg-[#024147] text-white"
+                                onClick={() => handleAceitarEntrevista(interesse.id)}
+                              >
+                                Aceitar Interesse
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -345,64 +564,47 @@ export function CandidatoDashboard({
             )}
           </TabsContent>
 
-          {/* Tab: Testes */}
+          {/* Tab: Entrevistas */}
           <TabsContent value="testes">
-            {testesInit.length === 0 ? (
+            {entrevistasAgendadas.length === 0 ? (
               <Card className="border-0 shadow-sm">
                 <CardContent className="pt-8 pb-8 text-center">
-                  <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-600">
-                    Você ainda não realizou nenhum teste técnico.
+                    Você ainda não tem entrevistas agendadas.
                   </p>
                 </CardContent>
               </Card>
             ) : (
-              <Card className="border-0 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-gray-200">
-                        <TableHead>Teste</TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Duração</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {testesInit.map((teste) => (
-                        <TableRow key={teste.id} className="border-gray-200">
-                          <TableCell className="font-medium text-gray-900">
-                            {teste.nome}
-                          </TableCell>
-                          <TableCell className="text-gray-600">
-                            {new Date(teste.data).toLocaleDateString("pt-BR")}
-                          </TableCell>
-                          <TableCell className="text-gray-600">
-                            {teste.duracao || "-"}
-                          </TableCell>
-                          <TableCell>
-                            {teste.status === "concluido" && (
-                              <Badge className="bg-emerald-100 text-emerald-800">
-                                Concluído
-                              </Badge>
+              <div className="space-y-4">
+                {entrevistasAgendadas.map((entrevista) => (
+                  <Card key={entrevista.id} className="border-0 shadow-sm border-l-4 border-[#24BFB0]">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 text-lg">{entrevista.titulo}</h3>
+                          <p className="text-sm text-gray-600 mt-1">{entrevista.empresa}</p>
+                          <div className="flex items-center gap-4 mt-3">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-[#03565C]" />
+                              <span className="text-sm text-gray-600">
+                                {new Date(entrevista.data).toLocaleDateString("pt-BR")}
+                              </span>
+                            </div>
+                            {entrevista.hora && (
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-[#03565C]" />
+                                <span className="text-sm text-gray-600">{entrevista.hora}</span>
+                              </div>
                             )}
-                            {teste.status === "pendente" && (
-                              <Badge className="bg-yellow-100 text-yellow-800">
-                                Pendente
-                              </Badge>
-                            )}
-                            {teste.status === "expirado" && (
-                              <Badge className="bg-red-100 text-red-800">
-                                Expirado
-                              </Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </Card>
+                          </div>
+                        </div>
+                        <Badge className="bg-[#24BFB0] text-white">Agendada</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
           </TabsContent>
         </Tabs>

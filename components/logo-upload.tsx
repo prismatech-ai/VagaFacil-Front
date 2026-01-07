@@ -126,6 +126,7 @@ export function LogoUpload({
                   alt="Preview da logo"
                   fill
                   className="object-contain"
+                  style={{ width: "auto", height: "auto" }}
                   priority
                 />
               </div>

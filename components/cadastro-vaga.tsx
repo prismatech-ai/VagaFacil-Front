@@ -159,17 +159,26 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
 
     setLoading(true)
     try {
-      // Construir requisitos como string
+      // Construir requisitos como string (para o campo requirements legado)
       const requisitos = [
         experienciaMinima && `${experienciaMinima} anos de experiência`,
         escolaridadeMinima && `Escolaridade: ${escolaridadeMinima}`,
         competencias.length > 0 && `Competências: ${competencias.map(c => `${c.nome} (Nível ${c.nivelMinimo})`).join(", ")}`
       ].filter(Boolean).join("\n")
 
+      // Mapear competências para o formato esperado pela API
+      // Será necessário buscar os IDs das competências do backend
+      const requisitosArray = competencias.map((comp) => ({
+        competencia_id: comp.id, // Será o nome da competência por enquanto
+        nivel_minimo: String(comp.nivelMinimo),
+        teste_obrigatorio: 0
+      }))
+
       // POST /api/v1/jobs/
       const payload = {
         title: titulo,
         description: descricao,
+        area_atuacao: area,
         requirements: requisitos || descricao,
         benefits: "A definir",
         location: `${cidade}, ${estado}`,
@@ -178,17 +187,18 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
         salary_min: salarioMin ? parseInt(salarioMin) : 0,
         salary_max: salarioMax ? parseInt(salarioMax) : 0,
         salary_currency: "BRL",
-        screening_questions: []
+        screening_questions: [],
+        requisitos: requisitosArray // Novo campo com os requisitos estruturados
       }
 
       const response = await api.post("/api/v1/jobs/", payload)
       
       if (response && typeof response === "object" && "id" in response) {
-        console.log("Vaga criada com ID:", (response as any).id)
+
         router.push("/empresa/jobs/list")
       }
     } catch (error) {
-      console.error("Erro ao criar vaga:", error)
+
       setErrors({ ...errors, submit: "Erro ao criar vaga. Tente novamente." })
     } finally {
       setLoading(false)
@@ -558,7 +568,7 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                 <AlertDescription className="text-[#03565C] text-sm">
                   <strong>Como funciona:</strong> Essa vaga será visível apenas para candidatos que
                   declarem as competências especificadas no nível mínimo (ou superior). Candidatos
-                  permanecerão anônimos até que você demonstre interesse.
+                  permanecerão anônimos até que você demonstre interesse. Os requisitos serão enviados estruturados para o backend.
                 </AlertDescription>
               </Alert>
 

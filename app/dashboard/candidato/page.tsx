@@ -38,7 +38,7 @@ export default function CandidatoDashboardPage() {
         const response = await api.get<CandidatoData>("/api/v1/candidates/me")
         setCandidatoData(response)
       } catch (error) {
-        console.error("Erro ao buscar dados do candidato:", error)
+
       } finally {
         setIsLoading(false)
       }

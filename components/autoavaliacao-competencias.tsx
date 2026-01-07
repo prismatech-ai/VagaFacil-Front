@@ -126,13 +126,13 @@ export function AutoavaliacaoCompetencias({
         // Endpoint da API corrigido - user_id será adicionado automaticamente pela função api
         await api.post("/api/v1/candidates/onboarding/dados-profissionais", payload)
       } catch (error: any) {
-        console.warn("Erro ao enviar autoavaliação:", error?.message)
+
         // Fallback: continuar com dados locais se o endpoint não estiver disponível
       }
       
       onComplete(competenciasDeclaradas)
     } catch (error) {
-      console.error("Erro ao salvar autoavaliação:", error)
+
     } finally {
       setSubmitting(false)
     }

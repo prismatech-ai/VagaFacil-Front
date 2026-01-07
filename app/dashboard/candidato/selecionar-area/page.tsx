@@ -123,8 +123,7 @@ export default function SelecionarAreaPage() {
         const token = localStorage.getItem("token")
         
         // Aqui você salvaria a área selecionada e as competências
-        console.log("📋 Área selecionada:", selectedArea)
-        console.log("📋 Competências selecionadas:", selectedCompetencias)
+    
 
         toast({
           title: "Sucesso",

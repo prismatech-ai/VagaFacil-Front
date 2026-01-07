@@ -117,12 +117,9 @@ export default function QuickRegisterPage() {
           estado: data.estado || "",
         },
       }
-      console.log('📋 [Registro] Payload enviado:', registerPayload)
-      console.log('🔍 [Registro] Dados brutos recebidos:', data)
-
+    
       const registerUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`
-      console.log('🚀 [Registro] URL:', registerUrl)
-      
+     
       const registerResponse = await fetch(registerUrl, {
         method: "POST",
         headers: {
@@ -131,21 +128,17 @@ export default function QuickRegisterPage() {
         body: JSON.stringify(registerPayload),
       })
       
-      console.log('📡 [Registro] Status response:', registerResponse.status)
-
+     
       if (!registerResponse.ok) {
         let errorData: any = {}
         try {
           errorData = await registerResponse.json()
         } catch (e) {
           const text = await registerResponse.text()
-          console.error('❌ [Registro] Resposta em texto:', text)
           errorData = { text }
         }
         
-        console.error('❌ [Registro] Erro detalhado completo:', JSON.stringify(errorData, null, 2))
-        console.log('📋 [Registro] Payload enviado foi:', registerPayload)
-        
+       
         let errorMessage = `Erro ${registerResponse.status} ao registrar`
         if (errorData.detail) {
           if (typeof errorData.detail === "string") {
@@ -165,11 +158,10 @@ export default function QuickRegisterPage() {
       }
 
       const registerData = await registerResponse.json()
-      console.log('✅ [Registro] Resposta completa:', registerData)
-      
+    
       const newUserId = registerData.id || registerData.user_id
       
-      console.log('✅ [Registro] User ID obtido:', newUserId)
+     
       setUserId(newUserId)
 
       // Armazenar dados pessoais no estado
@@ -214,12 +206,12 @@ export default function QuickRegisterPage() {
 
   const handleCompetenciasComplete = (competencias: any[]) => {
     setCompetenciasAvaliadas(competencias)
-    // Redirect ao dashboard após avaliar competências
+    // Redirect ao login após cadastro completo
     toast({
       title: "Cadastro concluído!",
-      description: "Seu perfil foi atualizado com sucesso.",
+      description: "Faça login para acessar sua conta.",
     })
-    router.push("/dashboard/candidato")
+    router.push("/login")
   }
 
   // Calcular progresso
