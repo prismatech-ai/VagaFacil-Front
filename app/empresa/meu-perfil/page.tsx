@@ -134,6 +134,95 @@ export default function MeuPerfilEmpresaPage() {
     alert(`Erro: ${error.message}`)
   }
 
+  const handleDownloadLogo = async (url: string) => {
+    try {
+      // Extrair KEY do S3 da URL completa
+      // De: https://vagafacil-bucket.s3.us-east-2.amazonaws.com/uploads/logos/...
+      // Para: uploads/logos/...
+      const urlObj = new URL(url)
+      const key = urlObj.pathname.substring(1) // Remove a barra inicial
+      
+      console.log('📥 Baixando logo:')
+      console.log('URL original:', url)
+      console.log('Key extraída:', key)
+      
+      // Fazer requisição ao backend
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const downloadUrl = `${apiUrl}/api/v1/uploads/download?key=${encodeURIComponent(key)}`
+      
+      console.log('URL de download (backend):', downloadUrl)
+      
+      // Fazer requisição ao backend
+      const token = localStorage.getItem('token')
+      const response = await fetch(downloadUrl, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+
+      if (!response.ok) {
+        try {
+          const error = await response.json()
+          throw new Error(error.detail || 'Erro ao baixar logo')
+        } catch {
+          throw new Error('Erro ao baixar logo')
+        }
+      }
+
+      // Verificar Content-Type para saber se é JSON ou arquivo direto
+      const contentType = response.headers.get('content-type')
+      
+      if (contentType?.includes('application/json')) {
+        // Backend retornou JSON com URL assinada
+        const data = await response.json()
+        const signedUrl = data.url || data.signed_url
+        if (signedUrl) {
+          // Abrir em nova aba para download
+          window.open(signedUrl, '_blank')
+        } else {
+          throw new Error('URL assinada não encontrada')
+        }
+      } else {
+        // Backend retornou o arquivo direto
+        const blob = await response.blob()
+        
+        // Extrair nome do arquivo do header Content-Disposition ou usar padrão
+        const contentDisposition = response.headers.get('content-disposition')
+        let fileName = 'logo.png'
+        
+        if (contentDisposition) {
+          const fileNameMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/)
+          if (fileNameMatch) {
+            fileName = decodeURIComponent(fileNameMatch[1])
+          } else {
+            const simpleMatch = contentDisposition.match(/filename=([^;]+)/)
+            if (simpleMatch) {
+              fileName = simpleMatch[1].replace(/"/g, '')
+            }
+          }
+        } else {
+          // Se não houver Content-Disposition, extrair extensão da URL
+          const fileExtension = key.substring(key.lastIndexOf('.'))
+          fileName = `logo${fileExtension}`
+        }
+        
+        // Criar link de download e simular clique
+        const blobUrl = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(blobUrl)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao baixar logo'
+      console.error('❌ Erro:', message)
+      alert(message)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -196,6 +285,7 @@ export default function MeuPerfilEmpresaPage() {
               onSuccess={handleLogoSuccess}
               onError={handleLogoError}
               currentLogoUrl={logoUrl || undefined}
+              onDownload={handleDownloadLogo}
             />
           </div>
         </CardContent>

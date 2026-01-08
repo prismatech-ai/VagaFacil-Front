@@ -22,7 +22,7 @@ interface ContratacaoData {
 
 interface StatusPerfil {
   is_active: boolean
-  contratado: boolean
+  foi_contratado: boolean
   data_contratacao?: string
   empresa_nome?: string
   vaga_titulo?: string
@@ -52,7 +52,7 @@ export function StatusPerfilCandidato() {
         setContratacao(contratacaoData)
         setStatus({
           is_active: false,
-          contratado: true,
+          foi_contratado: contratacaoData.foi_contratado,
           data_contratacao: contratacaoData.data_contratacao,
           empresa_nome: contratacaoData.empresa_nome,
           vaga_titulo: contratacaoData.vaga_titulo
@@ -145,13 +145,13 @@ export function StatusPerfilCandidato() {
     return null
   }
 
-  // Se perfil está ativo e não foi contratado, não mostra nada
-  if (status.is_active && !status.contratado) {
+  // Se não foi contratado, não mostra nada
+  if (!status.foi_contratado) {
     return null
   }
 
-  // Se foi contratado ou perfil está inativo - mostra modal bloqueante
-  if (!status.is_active || status.contratado) {
+  // Se foi contratado - mostra modal bloqueante
+  if (status.foi_contratado) {
     return (
       <>
         {/* Overlay escuro de fundo */}

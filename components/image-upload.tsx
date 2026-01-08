@@ -131,7 +131,6 @@ export function ImageUpload({
                   alt="Preview da imagem"
                   fill
                   className="object-cover rounded"
-                  style={{ width: "auto", height: "auto" }}
                   priority
                 />
               </div>

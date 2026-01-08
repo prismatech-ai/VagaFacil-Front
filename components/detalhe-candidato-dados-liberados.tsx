@@ -1,11 +1,12 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Unlock, Mail, Phone, FileText, Briefcase, ChevronLeft } from "lucide-react"
+import { AlertCircle, Unlock, Mail, Phone, FileText, Briefcase, ChevronLeft, Download } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
 
 interface Competencia {
   nome: string
@@ -60,6 +61,58 @@ export function DetalhesCandidatoDadosLiberados({
   onBack,
   isLoading = false,
 }: DetalhesCandidatoDadosLiberadosProps) {
+  const { toast } = useToast()
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownloadCurriculo = async () => {
+    setIsDownloading(true)
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+
+      // Solicita URL assinada do backend
+      const response = await fetch(
+        `${apiUrl}/api/v1/companies/candidato/${candidatoId}/curriculo-download`,
+        {
+          method: "GET",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      )
+
+      if (!response.ok) {
+        let errorText = "Erro desconhecido"
+        try {
+          const errorData = await response.json()
+          errorText = errorData.detail || JSON.stringify(errorData)
+        } catch (e) {
+          errorText = `HTTP ${response.status}`
+        }
+        throw new Error(`Falha ao obter URL de download: ${errorText}`)
+      }
+
+      const { download_url } = await response.json()
+      
+      // Abre em novo abá
+      window.open(download_url, "_blank")
+      
+      toast({
+        title: "Sucesso",
+        description: "Iniciando download do currículo...",
+      })
+    } catch (error) {
+      console.error("Erro ao baixar currículo:", error)
+      const errorMsg = error instanceof Error ? error.message : "Erro ao baixar currículo"
+      toast({
+        title: "Erro",
+        description: errorMsg,
+        variant: "destructive",
+      })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 px-4 py-8">
       <div className="max-w-3xl mx-auto">
@@ -154,16 +207,17 @@ export function DetalhesCandidatoDadosLiberados({
                     <CardContent className="pt-4">
                       <div className="flex items-start gap-2">
                         <FileText className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs text-gray-600 mb-1">Currículo</p>
-                          <a
-                            href={dadosPessoais.curriculo}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-bold text-[#03565C] hover:underline"
+                        <div className="flex-1">
+                          <p className="text-xs text-gray-600 mb-2">Currículo</p>
+                          <Button
+                            onClick={handleDownloadCurriculo}
+                            disabled={isDownloading}
+                            className="gap-2 bg-[#03565C] hover:bg-[#024147]"
+                            size="sm"
                           >
-                            Abrir Currículo
-                          </a>
+                            <Download className="h-4 w-4" />
+                            {isDownloading ? "Baixando..." : "Baixar Currículo"}
+                          </Button>
                         </div>
                       </div>
                     </CardContent>

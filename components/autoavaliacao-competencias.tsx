@@ -176,20 +176,18 @@ export function AutoavaliacaoCompetencias({
                 {/* Grid de Competências */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {categoria.competencias.map((competencia) => (
-                    <button
+                    <div
                       key={competencia.id}
-                      type="button"
                       onClick={() =>
                         setExpandedCompetencia(
                           expandedCompetencia === competencia.id ? null : competencia.id
                         )
                       }
-                      disabled={isLoading}
-                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      className={`p-4 rounded-lg border-2 transition-all text-left cursor-pointer ${
                         expandedCompetencia === competencia.id
                           ? "border-[#24BFB0] bg-[#25D9B8]/10"
                           : "border-gray-200 hover:border-gray-300 bg-white"
-                      } ${isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <h4 className={`font-semibold text-sm transition-colors ${
@@ -247,7 +245,7 @@ export function AutoavaliacaoCompetencias({
                       {expandedCompetencia !== competencia.id && competencia.nivel === null && (
                         <p className="text-xs text-gray-500 italic">Clique para avaliar</p>
                       )}
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
