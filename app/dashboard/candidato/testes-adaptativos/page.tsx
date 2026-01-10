@@ -59,21 +59,43 @@ export default function TestesAdaptativosPage() {
       setCandidato(data)
 
       if (data.area_atuacao) {
-        let area = getAreaById(data.area_atuacao)
+        try {
+          // Chamar a rota que retorna competências filtradas pela área do candidato
+          const competenciasResponse = await api.get<any>("/api/v1/candidato/competencias")
+          
+          // A resposta pode ser um array direto ou um objeto com propriedade competencias
+          const competencias = Array.isArray(competenciasResponse) 
+            ? competenciasResponse 
+            : (competenciasResponse.competencias || [])
+          
+          // Transformar a resposta da API para o formato esperado
+          const competenciasFormatadas = competencias.map((comp: any) => ({
+            id: comp.id,
+            nome: comp.nome,
+            descricao: comp.descricao || "",
+            categoria: comp.categoria || "tecnica",
+          }))
+          
+          setCompetenciasDisponiveis(competenciasFormatadas)
+        } catch (apiErr: any) {
+          // Se a API falhar, tentar com dados estáticos como fallback
+          console.warn("Erro ao carregar competências da API, usando dados estáticos:", apiErr)
+          let area = getAreaById(data.area_atuacao)
 
-        if (!area) {
-          const areaNormalizada = normalizarString(data.area_atuacao)
-          area = TODAS_AREAS.find(a => 
-            normalizarString(a.nome) === areaNormalizada || 
-            normalizarString(a.id) === areaNormalizada
-          )
-        }
+          if (!area) {
+            const areaNormalizada = normalizarString(data.area_atuacao)
+            area = TODAS_AREAS.find(a => 
+              normalizarString(a.nome) === areaNormalizada || 
+              normalizarString(a.id) === areaNormalizada
+            )
+          }
 
-        if (area) {
-          const competencias = area.categorias.flatMap(cat => cat.competencias)
-          setCompetenciasDisponiveis(competencias)
-        } else {
-          setError("Área de atuação não encontrada no sistema")
+          if (area) {
+            const competencias = area.categorias.flatMap(cat => cat.competencias)
+            setCompetenciasDisponiveis(competencias)
+          } else {
+            setError("Área de atuação não encontrada no sistema")
+          }
         }
       } else {
         setError("Área de atuação não definida. Complete seu perfil primeiro.")

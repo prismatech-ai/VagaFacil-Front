@@ -17,6 +17,7 @@ import { ResumeUpload } from "@/components/resume-upload"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
+import { TODAS_AREAS, getAreaById } from "@/lib/areas-competencias"
 import { AlertCircle, Mail, Phone, MapPin, User } from "lucide-react"
 
 interface CandidatoData {
@@ -935,18 +936,35 @@ export default function MeuPerfilPage() {
                   {/* Área de Atuação */}
                   <div className="space-y-2">
                     <Label>Área de Atuação</Label>
-                    <Input
-                      placeholder="Ex: Desenvolvimento Backend"
-                      value={formAreaAtuacao.area_atuacao}
-                      disabled={!isEditingArea}
-                      onChange={(e) =>
-                        setFormAreaAtuacao({
-                          ...formAreaAtuacao,
-                          area_atuacao: e.target.value,
-                        })
-                      }
-                      className={!isEditingArea ? "bg-gray-50" : ""}
-                    />
+                    {isEditingArea ? (
+                      <Select
+                        value={formAreaAtuacao.area_atuacao}
+                        onValueChange={(value) =>
+                          setFormAreaAtuacao({
+                            ...formAreaAtuacao,
+                            area_atuacao: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma área" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TODAS_AREAS.map((area) => (
+                            <SelectItem key={area.id} value={area.id}>
+                              {area.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        placeholder="Ex: Desenvolvimento Backend"
+                        value={getAreaById(formAreaAtuacao.area_atuacao)?.nome || formAreaAtuacao.area_atuacao}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                    )}
                   </div>
 
                   {/* Bio */}

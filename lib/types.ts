@@ -92,7 +92,7 @@ export type Educacao = {
 
 export type Habilidade = {
   habilidade: string
-  nivel: 1 | 2 | 3 | 4 | 5
+  nivel: 1 | 2 | 3 | 4
   anos_experiencia?: number
 }
 
@@ -145,10 +145,12 @@ export type Candidatura = {
 
 export type Teste = {
   id: string
-  nome: string
+  nome?: string
   descricao: string
-  nivel: 1 | 2 | 3 | 4 | 5
-  habilidade: string
+  nivel: 1 | 2 | 3 | 4
+  habilidade?: string
+  area_atuacao?: string
+  competencia?: string
   questoes: Questao[]
   createdAt: Date
   createdBy: string
@@ -159,7 +161,7 @@ export type Questao = {
   pergunta: string
   alternativas: string[]
   respostaCorreta: number
-  nivel: 1 | 2 | 3 | 4 | 5
+  nivel: 1 | 2 | 3 | 4
   nivelDificuldade?: "facil" | "medio" | "dificil" | "muito-dificil" | "expert"
   habilidade?: string
 }

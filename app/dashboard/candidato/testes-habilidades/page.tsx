@@ -43,6 +43,8 @@ export default function TestesHabilidadesPage() {
   const [autoavaliacaoAnterior, setAutoavaliacaoAnterior] = useState<any>(null)
   const [testeEmAndamento, setTesteEmAndamento] = useState<{ habilidade: string; questoes: any[] } | null>(null)
   const [isLoadingQuestoes, setIsLoadingQuestoes] = useState<string | null>(null)
+  const [respostasSelected, setRespostasSelected] = useState<Map<number, number>>(new Map())
+  const [testesConcluidos, setTestesConcluidos] = useState<Map<string, number>>(new Map()) // Armazena habilidade -> nível
 
   useEffect(() => {
     // Only load data when auth is ready and user is logged in
@@ -69,30 +71,53 @@ export default function TestesHabilidadesPage() {
      
         setCandidato(data)
         
-        // Buscar competências relacionadas à area_atuacao do candidato
+        // Buscar competências da API (relacionadas à area_atuacao do candidato)
         if (data.area_atuacao) {
-        
-          // Tentar primeiro como ID, depois como nome (com normalização)
-          let area = getAreaById(data.area_atuacao)
-          
-          if (!area) {
-          
-            const areaNormalizada = normalizarString(data.area_atuacao)
-          
+          try {
+            // Chamar a rota que retorna competências filtradas pela área do candidato
+            const competenciasResponse = await api.get<any>("/api/v1/candidato/competencias")
             
-            area = TODAS_AREAS.find(a => 
-              normalizarString(a.nome) === areaNormalizada || 
-              normalizarString(a.id) === areaNormalizada
-            )
+            console.log("Competências Response:", competenciasResponse)
+            
+            // A resposta pode ser um array direto ou um objeto com propriedade competencias
+            const competencias = Array.isArray(competenciasResponse) 
+              ? competenciasResponse 
+              : (competenciasResponse.competencias || competenciasResponse.data || [])
+            
+            console.log("Competências Formatadas:", competencias)
+            
+            // Transformar a resposta da API para o formato esperado
+            const competenciasFormatadas = competencias.map((comp: any) => ({
+              id: comp.id,
+              nome: comp.nome,
+              descricao: comp.descricao || "",
+              categoria: comp.categoria || "tecnica",
+            }))
+            
+            console.log("Competências a serem exibidas:", competenciasFormatadas)
+            setCompetenciasDisponiveis(competenciasFormatadas)
+            
+          } catch (apiErr: any) {
+            // Se a API falhar, tentar com dados estáticos como fallback
+            console.warn("Erro ao carregar competências da API, usando dados estáticos:", apiErr)
+            let area = getAreaById(data.area_atuacao)
+            
+            if (!area) {
+              const areaNormalizada = normalizarString(data.area_atuacao)
+              area = TODAS_AREAS.find(a => 
+                normalizarString(a.nome) === areaNormalizada || 
+                normalizarString(a.id) === areaNormalizada
+              )
+            }
+            
+            if (area) {
+              const competencias = area.categorias.flatMap(cat => cat.competencias)
+              console.log("Competências estáticas carregadas:", competencias)
+              setCompetenciasDisponiveis(competencias)
+            } else {
+              console.error("Área não encontrada:", data.area_atuacao)
+            }
           }
-          
-        
-          
-          if (area) {
-            // Flatten competências de todas as categorias
-            const competencias = area.categorias.flatMap(cat => cat.competencias)
-           
-            setCompetenciasDisponiveis(competencias)
             
             // Carregar autoavaliação anterior se existir
             try {
@@ -118,10 +143,6 @@ export default function TestesHabilidadesPage() {
               
               // Isto é esperado na primeira vez - não é erro
             }
-          } else {
-           
-            setError("Área de atuação não encontrada no sistema")
-          }
         } else {
           setError("Área de atuação não definida. Complete seu perfil primeiro.")
         }
@@ -145,7 +166,7 @@ export default function TestesHabilidadesPage() {
     } else {
       novasCompetencias.set(nome, {
         habilidade: nome,
-        nivel: 3, // Nível padrão: Intermediário
+        nivel: 2, // Nível padrão: Intermediário
         descricao: ""
       })
     }
@@ -249,6 +270,86 @@ export default function TestesHabilidadesPage() {
       })
     } finally {
       setIsLoadingQuestoes(null)
+    }
+  }
+
+  const submeterRespostas = async () => {
+    if (!testeEmAndamento) return
+    
+    try {
+      // Validar se respondeu todas as questões
+      if (respostasSelected.size !== testeEmAndamento.questoes.length) {
+        toast({
+          title: "⚠️ Atenção",
+          description: `Você precisa responder todas as ${testeEmAndamento.questoes.length} questões`,
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Calcular acertos
+      let acertos = 0
+      const respostas = testeEmAndamento.questoes.map((questao: any, idx: number) => {
+        const alternativaIdx = respostasSelected.get(questao.id || idx)
+        
+        // Log de debug
+        console.log(`Questão ${idx + 1} (ID: ${questao.id}):`, {
+          alternativaSelecionada: alternativaIdx,
+          respostaCorreta: questao.respostaCorreta,
+          alternativas: questao.alternativas?.map((a: any, i: number) => `${i}: ${a.texto}`)
+        })
+
+        // Comparar se a alternativa selecionada está correta
+        if (alternativaIdx !== undefined) {
+          // Verificar se o índice da alternativa selecionada é igual ao índice da resposta correta
+          if (alternativaIdx === questao.respostaCorreta) {
+            acertos++
+            console.log(`✅ Questão ${idx + 1} - CORRETA`)
+          } else {
+            console.log(`❌ Questão ${idx + 1} - INCORRETA`)
+          }
+        }
+        
+        return {
+          questao_id: questao?.id,
+          alternativa_selecionada: alternativaIdx
+        }
+      })
+
+      // Calcular percentual de acertos
+      const percentualAcertos = Math.round((acertos / testeEmAndamento.questoes.length) * 100)
+      
+      // Log no console
+      console.log(`🎯 Teste de ${testeEmAndamento.habilidade} - Acertos: ${acertos}/${testeEmAndamento.questoes.length} (${percentualAcertos}%)`)
+      
+      // Determinar nível baseado no percentual
+      let nivelAchievd = 1 // Iniciante por padrão
+      if (percentualAcertos >= 80) {
+        nivelAchievd = 3 // Avançado
+      } else if (percentualAcertos >= 60) {
+        nivelAchievd = 2 // Intermediário
+      }
+
+      // Registrar o nível alcançado
+      const novosTestes = new Map(testesConcluidos)
+      novosTestes.set(testeEmAndamento.habilidade, nivelAchievd)
+      setTestesConcluidos(novosTestes)
+
+      toast({
+        title: "✅ Teste Submetido",
+        description: `Você acertou ${acertos}/${testeEmAndamento.questoes.length} questões (${percentualAcertos}%) - Nível ${nivelAchievd === 3 ? "Avançado" : nivelAchievd === 2 ? "Intermediário" : "Iniciante"}`,
+        variant: "default"
+      })
+      
+      // Limpar o teste em andamento
+      setTesteEmAndamento(null)
+      setRespostasSelected(new Map())
+    } catch (err: any) {
+      toast({
+        title: "❌ Erro",
+        description: err.message || "Erro ao submeter respostas",
+        variant: "destructive",
+      })
     }
   }
 
@@ -373,11 +474,11 @@ export default function TestesHabilidadesPage() {
                           <div className="flex justify-between items-center mb-3">
                             <Label className="text-xs font-medium">Nível</Label>
                             <span className="text-xs font-semibold text-[#03565C]">
-                              {["", "Iniciante", "Básico", "Intermediário", "Avançado", "Expert"][nivel]}
+                              {["", "Iniciante", "Intermediário", "Avançado", "Expert"][nivel]}
                             </span>
                           </div>
                           <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((n) => (
+                            {[1, 2, 3].map((n) => (
                               <button
                                 key={n}
                                 onClick={(e) => {
@@ -476,22 +577,36 @@ export default function TestesHabilidadesPage() {
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-2">
-            {Array.from(competenciasEscolhidas.keys()).map((comp) => (
-              <div key={comp} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded border border-gray-200">
-                <div className="flex items-center gap-2 flex-1">
-                  <CheckCircle2 className="h-4 w-4 text-[#03565C] flex-shrink-0" />
-                  <span className="text-sm font-medium text-gray-900">{comp}</span>
+            {Array.from(competenciasEscolhidas.keys()).map((comp) => {
+              const nivelAlcancado = testesConcluidos.get(comp)
+              const nivelLabel = nivelAlcancado === 3 ? "Avançado" : nivelAlcancado === 2 ? "Intermediário" : nivelAlcancado === 1 ? "Iniciante" : null
+              
+              return (
+                <div key={comp} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded border border-gray-200">
+                  <div className="flex items-center gap-2 flex-1">
+                    <CheckCircle2 className="h-4 w-4 text-[#03565C] flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-900">{comp}</span>
+                  </div>
+                  <Button 
+                    onClick={() => buscarQuestoes(comp)}
+                    disabled={isLoadingQuestoes === comp}
+                    size="sm"
+                    className={`flex-shrink-0 ${
+                      nivelAlcancado
+                        ? "bg-green-500 hover:bg-green-600 text-white"
+                        : "bg-[#24BFB0] hover:bg-[#1a9d8b] text-gray-900"
+                    }`}
+                  >
+                    {isLoadingQuestoes === comp 
+                      ? "Carregando..." 
+                      : nivelAlcancado 
+                        ? `✅ Nível ${nivelLabel}`
+                        : "🎯 Fazer Teste"
+                    }
+                  </Button>
                 </div>
-                <Button 
-                  onClick={() => buscarQuestoes(comp)}
-                  disabled={isLoadingQuestoes === comp}
-                  size="sm"
-                  className="bg-[#24BFB0] hover:bg-[#1a9d8b] text-gray-900 flex-shrink-0"
-                >
-                  {isLoadingQuestoes === comp ? "Carregando..." : "🎯 Fazer Teste"}
-                </Button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </CardContent>
       </Card>
@@ -500,7 +615,7 @@ export default function TestesHabilidadesPage() {
         <Alert className="border-blue-200 bg-blue-50">
           <AlertCircle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
-            Clique em "🎯 Fazer Teste" em uma competência para começar o teste técnico. Você receberá 15 questões (5 de cada nível: Básico, Intermediário e Avançado).
+            Clique em "🎯 Fazer Teste" em uma competência para começar o teste técnico. A quantidade de questões varia de acordo com o teste selecionado.
           </AlertDescription>
         </Alert>
       )}
@@ -515,28 +630,29 @@ export default function TestesHabilidadesPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {testeEmAndamento.questoes.slice(0, 3).map((questao, idx) => (
+              {testeEmAndamento.questoes.map((questao, idx) => (
                 <div key={questao.id || idx} className="p-4 bg-white rounded border border-green-200">
-                  <p className="font-semibold text-gray-900 mb-2">{idx + 1}. {questao.texto_questao || questao.pergunta}</p>
-                  <div className="text-xs text-gray-600 mb-3">
-                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded">Nível: {questao.nivel}</span>
-                  </div>
+                  <p className="font-semibold text-gray-900 mb-4">{idx + 1}. {questao.texto_questao || questao.pergunta}</p>
                   {questao.alternativas && questao.alternativas.length > 0 && (
                     <div className="space-y-2">
-                      {questao.alternativas.map((alt: any) => (
-                        <button key={alt.id} className="w-full text-left p-2 bg-gray-50 hover:bg-gray-100 rounded border border-gray-200 text-sm">
-                          ○ {alt.texto}
+                      {questao.alternativas.map((alt: any, altIdx: number) => (
+                        <button 
+                          key={alt.id} 
+                          onClick={() => setRespostasSelected(new Map(respostasSelected).set(questao.id || idx, altIdx))}
+                          className={`w-full text-left p-3 rounded border transition-all ${
+                            respostasSelected.get(questao.id || idx) === altIdx
+                              ? "bg-[#03565C] text-white border-[#03565C]"
+                              : "bg-gray-50 hover:bg-gray-100 border-gray-200"
+                          } text-sm`}
+                        >
+                          <span className="mr-3">{respostasSelected.get(questao.id || idx) === altIdx ? "●" : "○"}</span>
+                          {alt.texto}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
               ))}
-              {testeEmAndamento.questoes.length > 3 && (
-                <p className="text-center text-gray-600 text-sm">
-                  + {testeEmAndamento.questoes.length - 3} questões
-                </p>
-              )}
             </div>
             <div className="flex gap-3 mt-6">
               <Button 
@@ -547,13 +663,7 @@ export default function TestesHabilidadesPage() {
               </Button>
               <Button 
                 className="bg-[#03565C] hover:bg-[#024147]"
-                onClick={() => {
-                  toast({
-                    title: "ℹ️ Em Desenvolvimento",
-                    description: "A funcionalidade completa de testes será implementada em breve",
-                    variant: "default"
-                  })
-                }}
+                onClick={submeterRespostas}
               >
                 Continuar Teste
               </Button>

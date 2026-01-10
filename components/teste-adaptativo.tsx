@@ -117,7 +117,7 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
 
       toast({
         title: "✅ Teste Iniciado",
-        description: `Nível: ${response.nivel_atual}. Você terá 5 questões.`,
+        description: `Nível: ${response.nivel_atual}. A quantidade de questões varia de acordo com o teste.`,
         variant: "default"
       })
     } catch (err: any) {
@@ -253,7 +253,7 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
             <Alert className="border-blue-200 bg-blue-50 mt-6">
               <AlertCircle className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
-                Você responderá <strong>5 questões</strong> do nível selecionado. Baseado no seu desempenho, o teste pode evoluir para níveis superiores ou regressar para níveis inferiores.
+                O teste começará com questões do nível selecionado. Baseado no seu desempenho, o teste pode evoluir para níveis superiores ou regressar para níveis inferiores.
               </AlertDescription>
             </Alert>
 

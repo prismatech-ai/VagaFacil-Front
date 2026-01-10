@@ -20,6 +20,8 @@ import { useEffect, useRef } from "react"
 import Papa from "papaparse"
 import * as XLSX from "xlsx"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TODAS_AREAS, getAreaById } from "@/lib/areas-competencias"
+import { AdminCompetenciasModal } from "@/components/admin-competencias-modal"
 
 export default function AdminTestesPage() {
   const [testes, setTestes] = useState<Teste[]>([])
@@ -30,6 +32,8 @@ export default function AdminTestesPage() {
 
   const [dialogCriarEditarOpen, setDialogCriarEditarOpen] = useState(false)
   const [dialogVerOpen, setDialogVerOpen] = useState(false)
+  const [dialogNovaCompetenciaOpen, setDialogNovaCompetenciaOpen] = useState(false)
+  const [dialogGerenciarCompetenciasOpen, setDialogGerenciarCompetenciasOpen] = useState(false)
   const [modoEdicao, setModoEdicao] = useState<"create" | "edit">("create")
   const [testeSelecionado, setTesteSelecionado] = useState<Teste | null>(null)
 
@@ -37,6 +41,16 @@ export default function AdminTestesPage() {
   const [questoesImportadas, setQuestoesImportadas] = useState<Questao[]>([])
   const [erroImportacao, setErroImportacao] = useState("")
   const [abaPrincipal, setAbaPrincipal] = useState<"manual" | "importacao">("manual")
+
+  const [novaCompetencia, setNovaCompetencia] = useState({
+    area_atuacao: "",
+    competencia: "",
+    descricao: "",
+  })
+  const [criacaoCarregando, setCriacaoCarregando] = useState(false)
+  const [competenciasCarregando, setCompetenciasCarregando] = useState(false)
+  const [competenciasPorArea, setCompetenciasPorArea] = useState<Record<string, Array<{id: string; nome: string}>>>({})
+
 
   useEffect(() => {
     fetchTestes()
@@ -103,7 +117,7 @@ export default function AdminTestesPage() {
           id: t.id.toString(),
           nome: t.nome || '',
           descricao: t.descricao || '',
-          nivel: nivelNum as 1 | 2 | 3 | 4 | 5,
+          nivel: nivelNum as 1 | 2 | 3,
           habilidade: t.habilidade || '',
           questoes: (t.questions || t.questoes || []).map((q: any) => {
             // Mapear alternativas da API (podem vir como 'alternatives' ou 'alternativas')
@@ -123,7 +137,7 @@ export default function AdminTestesPage() {
               pergunta: q.texto_questao || q.pergunta || '',
               alternativas: alternativasTexto,
               respostaCorreta: respostaCorretaIdx >= 0 ? respostaCorretaIdx : 0,
-              nivel: nivelNum as 1 | 2 | 3 | 4 | 5,
+              nivel: nivelNum as 1 | 2 | 3 | 4,
             }
           }),
           createdAt: t.created_at ? new Date(t.created_at) : new Date(),
@@ -144,9 +158,9 @@ export default function AdminTestesPage() {
     }
   }
 
-  const converterNivel = (nivel: string): 1 | 2 | 3 | 4 | 5 => {
+  const converterNivel = (nivel: string): 1 | 2 | 3 => {
     const n = nivel.toLowerCase()
-    if (n.includes("bás") || n.includes("bas")) return 1
+    if (n.includes("bás") || n.includes("bas") || n.includes("iniciante")) return 1
     if (n.includes("inter")) return 2
     return 3
   }
@@ -174,27 +188,45 @@ export default function AdminTestesPage() {
     const erros: string[] = []
 
     rows.forEach((r, i) => {
-      if (!r.habilidade || !r.pergunta) {
+      // Normalizar chaves do objeto para lowercase (remover espaços e acentos)
+      const rowNormalizado: any = {}
+      Object.keys(r).forEach(key => {
+        const keyNormal = key.toLowerCase().trim()
+        rowNormalizado[keyNormal] = r[key]
+      })
+
+      const habilidade = rowNormalizado.habilidade || rowNormalizado.competencia || ""
+      const pergunta = rowNormalizado.pergunta || rowNormalizado.questao || ""
+
+      if (!habilidade || !pergunta) {
         erros.push(`Linha ${i + 2}: habilidade/pergunta ausente`)
         return
       }
 
-      const opcoes = [r.opcao_a, r.opcao_b, r.opcao_c, r.opcao_d].filter(Boolean)
+      const opcoes = [
+        rowNormalizado.opcao_a || rowNormalizado.optiona,
+        rowNormalizado.opcao_b || rowNormalizado.optionb,
+        rowNormalizado.opcao_c || rowNormalizado.optionc,
+        rowNormalizado.opcao_d || rowNormalizado.optiond
+      ].filter(Boolean)
+      
       if (opcoes.length < 2) {
         erros.push(`Linha ${i + 2}: mínimo 2 opções`)
         return
       }
 
-      const nivelNum = converterNivel(r.nivel ?? "")
+      const nivel = rowNormalizado.nivel || rowNormalizado.level || "Iniciante"
+      const nivelNum = converterNivel(nivel)
+      const resposta = rowNormalizado.resposta_correta || rowNormalizado.respostacorreta || rowNormalizado.correct_answer || "A"
 
       questoes.push({
         id: `import-${Date.now()}-${i}`,
-        pergunta: r.pergunta,
+        pergunta: pergunta,
         alternativas: opcoes,
-        respostaCorreta: respostaParaIndice(r.resposta_correta ?? "A"),
+        respostaCorreta: respostaParaIndice(resposta),
         nivelDificuldade: nivelNum === 1 ? "facil" : nivelNum === 2 ? "medio" : "dificil",
         nivel: nivelNum,
-        habilidade: r.habilidade,
+        habilidade: habilidade,
       } as Questao)
     })
 
@@ -203,21 +235,26 @@ export default function AdminTestesPage() {
       return
     }
 
+    if (questoes.length === 0) {
+      setErroImportacao("Nenhuma questão válida foi encontrada no arquivo")
+      return
+    }
+
     setQuestoesImportadas(questoes)
     toast.success(`${questoes.length} questões importadas com sucesso!`)
   }
 
   const [form, setForm] = useState({
-    nome: "",
+    area_atuacao: "",
+    competencia: "",
     descricao: "",
-    habilidade: "",
-    nivel: 1 as 1 | 2 | 3 | 4 | 5,
+    nivel: 1 as 1 | 2 | 3,
     questoes: [] as {
       id: string
       pergunta: string
       alternativas: string[]
       respostaCorreta: number
-      nivel: 1 | 2 | 3 | 4 | 5
+      nivel: 1 | 2 | 3
     }[],
   })
 
@@ -234,7 +271,7 @@ export default function AdminTestesPage() {
     return testes.filter((t) => {
       const matchBusca =
         !search ||
-        t.nome.toLowerCase().includes(search) ||
+        (t.nome?.toLowerCase().includes(search) ?? false) ||
         (t.descricao?.toLowerCase().includes(search) ?? false) ||
         (t.habilidade?.toLowerCase().includes(search) ?? false)
       const matchNivel = !nivelFiltro || t.nivel === Number.parseInt(nivelFiltro)
@@ -247,29 +284,35 @@ export default function AdminTestesPage() {
     setModoEdicao("create")
     setTesteSelecionado(null)
     setForm({
-      nome: "",
+      area_atuacao: "",
+      competencia: "",
       descricao: "",
-      habilidade: "",
       nivel: 1,
       questoes: [],
     })
     setDialogCriarEditarOpen(true)
   }
 
+  const normalizarNivel = (nivel: any): 1 | 2 | 3 => {
+    if (nivel === 4) return 3 // Converter 4 para 3 (backward compatibility)
+    return (nivel as 1 | 2 | 3) || 2
+  }
+
   const abrirEditar = (t: Teste) => {
     setModoEdicao("edit")
     setTesteSelecionado(t)
+    const nivelNormalizado = normalizarNivel(t.nivel)
     setForm({
-      nome: t.nome,
+      area_atuacao: t.area_atuacao || "",
+      competencia: t.competencia || "",
       descricao: t.descricao || "",
-      habilidade: t.habilidade || "",
-      nivel: t.nivel,
+      nivel: nivelNormalizado,
       questoes: t.questoes.map((q) => ({
         id: q.id,
         pergunta: q.pergunta,
         alternativas: q.alternativas,
         respostaCorreta: q.respostaCorreta,
-        nivel: q.nivel,
+        nivel: normalizarNivel(q.nivel),
       })),
     })
     setDialogCriarEditarOpen(true)
@@ -321,11 +364,132 @@ export default function AdminTestesPage() {
     }))
   }
 
+  const carregarCompetenciasPorArea = async (areaId: string) => {
+    if (!areaId) return
+    
+    // Se já foi carregada, usa do cache
+    if (competenciasPorArea[areaId]) {
+      return
+    }
+
+    try {
+      setCompetenciasCarregando(true)
+      const token = localStorage.getItem("token")
+
+      if (!token) {
+        return
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/competencias-por-area/${areaId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        const competencias = Array.isArray(data) ? data : data.competencias || []
+        
+        setCompetenciasPorArea((prev) => ({
+          ...prev,
+          [areaId]: competencias.map((c: any) => ({
+            id: c.id,
+            nome: c.nome,
+          })),
+        }))
+      }
+    } catch (error) {
+      console.error("Erro ao carregar competências:", error)
+    } finally {
+      setCompetenciasCarregando(false)
+    }
+  }
+
+  const criarNovaCompetencia = async () => {
+    if (!novaCompetencia.area_atuacao || !novaCompetencia.competencia) {
+      toast.error('Preenchimento incompleto', {
+        description: 'Preencha a área e o nome da competência.',
+        duration: 4000,
+      })
+      return
+    }
+
+    try {
+      setCriacaoCarregando(true)
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        toast.error('Token não encontrado. Faça login novamente.')
+        return
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/competencias`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nome: novaCompetencia.competencia,
+          area: novaCompetencia.area_atuacao,
+          descricao: novaCompetencia.descricao || ""
+        })
+      })
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada', {
+          description: 'Sua sessão expirou. Por favor, faça login novamente.',
+          duration: 5000,
+        })
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao criar competência')
+      }
+
+      toast.success('Competência criada com sucesso!', {
+        duration: 3000,
+      })
+
+      // Limpar cache para recarregar competências da área
+      if (novaCompetencia.area_atuacao) {
+        setCompetenciasPorArea((prev) => {
+          const newState = { ...prev }
+          delete newState[novaCompetencia.area_atuacao]
+          return newState
+        })
+      }
+
+      setNovaCompetencia({
+        area_atuacao: "",
+        competencia: "",
+        descricao: "",
+      })
+      setDialogNovaCompetenciaOpen(false)
+      // Force reload das áreas (vai pegar os dados atualizados)
+      fetchTestes()
+    } catch (error) {
+      toast.error('Erro ao criar competência', {
+        description: error instanceof Error ? error.message : 'Ocorreu um erro desconhecido.',
+        duration: 5000,
+      })
+    } finally {
+      setCriacaoCarregando(false)
+    }
+  }
+
   const salvar = async () => {
     // Validar dados básicos
-    if (!form.nome || !form.habilidade) {
+    if (!form.area_atuacao || !form.competencia) {
       toast.error('Preenchimento incompleto', {
-        description: 'Preencha nome e habilidade do teste.',
+        description: 'Selecione a área e a competência do teste.',
         duration: 4000,
       })
       return
@@ -367,9 +531,9 @@ export default function AdminTestesPage() {
 
         // Formatar dados para a API
         const payload = {
-          nome: form.nome,
-          habilidade: form.habilidade,
-          nivel: `Nível ${form.nivel} - ${getNivelLabel(form.nivel)}`,
+          area: form.area_atuacao,
+          competencia_id: form.competencia,
+          nivel: form.nivel,
           descricao: form.descricao || "",
           questions: questoesValidas.map((q, idx) => {
             const alternatives = q.alternativas
@@ -435,7 +599,7 @@ export default function AdminTestesPage() {
       
         // Mostrar toast de sucesso ANTES de fechar
         toast.success('Teste criado com sucesso!', {
-          description: `O teste "${novoTeste.nome}" foi criado e está disponível para uso.`,
+          description: `O teste foi criado e está disponível para uso.`,
           duration: 3000,
         })
         
@@ -449,9 +613,9 @@ export default function AdminTestesPage() {
           setErroImportacao("")
           setAbaPrincipal("manual")
           setForm({
-            nome: "",
+            area_atuacao: "",
+            competencia: "",
             descricao: "",
-            habilidade: "",
             nivel: 1,
             questoes: [],
           })
@@ -474,9 +638,9 @@ export default function AdminTestesPage() {
 
         // Formatar dados para a API
         const payload = {
-          nome: form.nome,
-          habilidade: form.habilidade,
-          nivel: `Nível ${form.nivel} - ${getNivelLabel(form.nivel)}`,
+          area: form.area_atuacao,
+          competencia_id: form.competencia,
+          nivel: form.nivel,
           descricao: form.descricao || "",
           questions: questoesValidas.map((q, idx) => {
             const alternatives = q.alternativas
@@ -561,7 +725,7 @@ export default function AdminTestesPage() {
       
         // Mostrar toast de sucesso ANTES de fechar
         toast.success('Teste atualizado com sucesso!', {
-          description: `O teste "${form.nome}" foi atualizado.`,
+          description: `O teste foi atualizado.`,
           duration: 3000,
         })
         
@@ -575,9 +739,9 @@ export default function AdminTestesPage() {
           setErroImportacao("")
           setAbaPrincipal("manual")
           setForm({
-            nome: "",
+            area_atuacao: "",
+            competencia: "",
             descricao: "",
-            habilidade: "",
             nivel: 1,
             questoes: [],
           })
@@ -658,10 +822,8 @@ export default function AdminTestesPage() {
   const getNivelLabel = (nivel: number) => {
     const labels: Record<number, string> = {
       1: "Iniciante",
-      2: "Básico",
-      3: "Intermediário",
-      4: "Avançado",
-      5: "Expert",
+      2: "Intermediário",
+      3: "Avançado",
     }
     return labels[nivel] || `Nível ${nivel}`
   }
@@ -669,10 +831,8 @@ export default function AdminTestesPage() {
   const getNivelColor = (nivel: number) => {
     const colors: Record<number, string> = {
       1: "bg-gray-100 text-gray-700",
-      2: "bg-blue-100 text-blue-700",
-      3: "bg-yellow-100 text-yellow-700",
-      4: "bg-orange-100 text-orange-700",
-      5: "bg-red-100 text-red-700",
+      2: "bg-yellow-100 text-yellow-700",
+      3: "bg-orange-100 text-orange-700",
     }
     return colors[nivel] || "bg-gray-100 text-gray-700"
   }
@@ -687,6 +847,12 @@ export default function AdminTestesPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
+          <Button 
+            variant="outline"
+            onClick={() => setDialogGerenciarCompetenciasOpen(true)}
+          >
+            Gerenciar Competências
+          </Button>
           <Button onClick={() => {
             setModoEdicao("create")
             setTesteSelecionado(null)
@@ -746,10 +912,8 @@ export default function AdminTestesPage() {
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="1">Nível 1 - Iniciante</SelectItem>
-                  <SelectItem value="2">Nível 2 - Básico</SelectItem>
-                  <SelectItem value="3">Nível 3 - Intermediário</SelectItem>
-                  <SelectItem value="4">Nível 4 - Avançado</SelectItem>
-                  <SelectItem value="5">Nível 5 - Expert</SelectItem>
+                  <SelectItem value="2">Nível 2 - Intermediário</SelectItem>
+                  <SelectItem value="3">Nível 3 - Avançado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -846,42 +1010,80 @@ export default function AdminTestesPage() {
 
             <TabsContent value="manual" className="space-y-6">
               {/* Basic Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nome">Nome do Teste</Label>
-                  <Input
-                    id="nome"
-                    value={form.nome}
-                    onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
-                    placeholder="Ex: React Avançado"
-                  />
+                  <Label htmlFor="area-form">Área de Atuação</Label>
+                  <Select
+                    value={form.area_atuacao}
+                    onValueChange={(value) => {
+                      setForm((f) => ({ ...f, area_atuacao: value, competencia: "" }))
+                      carregarCompetenciasPorArea(value)
+                    }}
+                  >
+                    <SelectTrigger id="area-form">
+                      <SelectValue placeholder="Selecione uma área" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TODAS_AREAS.map((area) => (
+                        <SelectItem key={area.id} value={area.id}>
+                          {area.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="habilidade-form">Habilidade</Label>
-                  <Input
-                    id="habilidade-form"
-                    value={form.habilidade}
-                    onChange={(e) => setForm((f) => ({ ...f, habilidade: e.target.value }))}
-                    placeholder="Ex: React, Python, JavaScript"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="competencia-form">Competência</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDialogNovaCompetenciaOpen(true)}
+                      className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                    >
+                      + Nova
+                    </Button>
+                  </div>
+                  <Select
+                    value={form.competencia}
+                    onValueChange={(value) => setForm((f) => ({ ...f, competencia: value }))}
+                    disabled={!form.area_atuacao || competenciasCarregando}
+                  >
+                    <SelectTrigger id="competencia-form">
+                      <SelectValue placeholder={form.area_atuacao ? (competenciasCarregando ? "Carregando..." : "Selecione uma competência") : "Selecione uma área primeiro"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {form.area_atuacao && (competenciasPorArea[form.area_atuacao] || []).map((comp) => (
+                        <SelectItem key={comp.id} value={comp.id}>
+                          {comp.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="nivel-form">Nível</Label>
-                  <Select
-                    value={form.nivel.toString()}
-                    onValueChange={(v) => setForm((f) => ({ ...f, nivel: Number.parseInt(v) as any }))}
-                  >
-                    <SelectTrigger id="nivel-form">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Nível 1 - Iniciante</SelectItem>
-                      <SelectItem value="2">Nível 2 - Básico</SelectItem>
-                      <SelectItem value="3">Nível 3 - Intermediário</SelectItem>
-                      <SelectItem value="4">Nível 4 - Avançado</SelectItem>
-                      <SelectItem value="5">Nível 5 - Expert</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {abaPrincipal === "importacao" && questoesImportadas.length > 0 ? (
+                    <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600 text-sm">
+                      {form.nivel ? `Nível ${form.nivel} - ${getNivelLabel(form.nivel)}` : "Será definido pelas questões importadas"}
+                    </div>
+                  ) : (
+                    <Select
+                      value={form.nivel.toString()}
+                      onValueChange={(v) => setForm((f) => ({ ...f, nivel: Number.parseInt(v) as any }))}
+                    >
+                      <SelectTrigger id="nivel-form">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Nível 1 - Iniciante</SelectItem>
+                        <SelectItem value="2">Nível 2 - Intermediário</SelectItem>
+                        <SelectItem value="3">Nível 3 - Avançado</SelectItem>
+                        <SelectItem value="4">Nível 4 - Expert</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="descricao">Descrição</Label>
@@ -973,10 +1175,8 @@ export default function AdminTestesPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="1">Nível 1 - Iniciante</SelectItem>
-                              <SelectItem value="2">Nível 2 - Básico</SelectItem>
-                              <SelectItem value="3">Nível 3 - Intermediário</SelectItem>
-                              <SelectItem value="4">Nível 4 - Avançado</SelectItem>
-                              <SelectItem value="5">Nível 5 - Expert</SelectItem>
+                              <SelectItem value="2">Nível 2 - Intermediário</SelectItem>
+                              <SelectItem value="3">Nível 3 - Avançado</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -991,7 +1191,7 @@ export default function AdminTestesPage() {
               <Button variant="outline" type="button" onClick={() => setDialogCriarEditarOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="button" onClick={salvar} disabled={!form.nome || !form.habilidade || form.questoes.length === 0}>
+              <Button type="button" onClick={salvar} disabled={!form.area_atuacao || !form.competencia || form.questoes.length === 0}>
                 {modoEdicao === "create" ? "Criar Teste" : "Salvar Alterações"}
               </Button>
             </div>
@@ -1040,7 +1240,7 @@ export default function AdminTestesPage() {
                       </table>
                     </div>
                     <p className="text-xs text-blue-600 mt-2">
-                      <strong>Dicas:</strong> Use "Básico", "Intermediário", "Avançado" para o nível. Use A, B, C ou D para a resposta correta.
+                      <strong>Dicas:</strong> Use "Iniciante", "Intermediário", "Avançado" ou "Expert" para o nível. Use A, B, C ou D para a resposta correta.
                     </p>
                   </CardContent>
                 </Card>
@@ -1094,24 +1294,57 @@ export default function AdminTestesPage() {
                   </Alert>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nome-import">Nome do Teste</Label>
-                    <Input
-                      id="nome-import"
-                      value={form.nome}
-                      onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
-                      placeholder="Ex: React Avançado"
-                    />
+                    <Label htmlFor="area-import">Área de Atuação</Label>
+                    <Select
+                      value={form.area_atuacao}
+                      onValueChange={(value) => {
+                        setForm((f) => ({ ...f, area_atuacao: value, competencia: "" }))
+                        carregarCompetenciasPorArea(value)
+                      }}
+                    >
+                      <SelectTrigger id="area-import">
+                        <SelectValue placeholder="Selecione uma área" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TODAS_AREAS.map((area) => (
+                          <SelectItem key={area.id} value={area.id}>
+                            {area.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="habilidade-import">Habilidade</Label>
-                    <Input
-                      id="habilidade-import"
-                      value={form.habilidade}
-                      onChange={(e) => setForm((f) => ({ ...f, habilidade: e.target.value }))}
-                      placeholder="Ex: React, Python, JavaScript"
-                    />
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="competencia-import">Competência</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDialogNovaCompetenciaOpen(true)}
+                        className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                      >
+                        + Nova
+                      </Button>
+                    </div>
+                    <Select
+                      value={form.competencia}
+                      onValueChange={(value) => setForm((f) => ({ ...f, competencia: value }))}
+                      disabled={!form.area_atuacao || competenciasCarregando}
+                    >
+                      <SelectTrigger id="competencia-import">
+                        <SelectValue placeholder={form.area_atuacao ? (competenciasCarregando ? "Carregando..." : "Selecione uma competência") : "Selecione uma área primeiro"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {form.area_atuacao && (competenciasPorArea[form.area_atuacao] || []).map((comp) => (
+                          <SelectItem key={comp.id} value={comp.id}>
+                            {comp.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="nivel-import">Nível</Label>
@@ -1124,10 +1357,8 @@ export default function AdminTestesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">Nível 1 - Iniciante</SelectItem>
-                        <SelectItem value="2">Nível 2 - Básico</SelectItem>
-                        <SelectItem value="3">Nível 3 - Intermediário</SelectItem>
-                        <SelectItem value="4">Nível 4 - Avançado</SelectItem>
-                        <SelectItem value="5">Nível 5 - Expert</SelectItem>
+                        <SelectItem value="2">Nível 2 - Intermediário</SelectItem>
+                        <SelectItem value="3">Nível 3 - Avançado</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1180,13 +1411,13 @@ export default function AdminTestesPage() {
                         pergunta: q.pergunta,
                         alternativas: q.alternativas,
                         respostaCorreta: q.respostaCorreta,
-                        nivel: q.nivel,
+                        nivel: normalizarNivel(q.nivel),
                       })),
                     }))
                     toast.success('Questões importadas adicionadas ao teste')
                     salvar()
                   }}
-                  disabled={!form.nome || !form.habilidade || questoesImportadas.length === 0}
+                  disabled={!form.area_atuacao || !form.competencia || questoesImportadas.length === 0}
                 >
                   {modoEdicao === "create" ? "Criar Teste com Importados" : "Salvar Alterações"}
                 </Button>
@@ -1283,6 +1514,78 @@ export default function AdminTestesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Nova Competência */}
+      <Dialog open={dialogNovaCompetenciaOpen} onOpenChange={setDialogNovaCompetenciaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Competência</DialogTitle>
+            <DialogDescription>
+              Crie uma nova competência para usar nos testes
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nova-area">Área de Atuação</Label>
+              <Select
+                value={novaCompetencia.area_atuacao}
+                onValueChange={(value) => setNovaCompetencia({ ...novaCompetencia, area_atuacao: value })}
+              >
+                <SelectTrigger id="nova-area">
+                  <SelectValue placeholder="Selecione uma área" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TODAS_AREAS.map((area) => (
+                    <SelectItem key={area.id} value={area.id}>
+                      {area.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nova-competencia-nome">Nome da Competência</Label>
+              <Input
+                id="nova-competencia-nome"
+                value={novaCompetencia.competencia}
+                onChange={(e) => setNovaCompetencia({ ...novaCompetencia, competencia: e.target.value })}
+                placeholder="Ex: Controladores Lógicos Programáveis"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nova-competencia-descricao">Descrição (Opcional)</Label>
+              <Textarea
+                id="nova-competencia-descricao"
+                value={novaCompetencia.descricao}
+                onChange={(e) => setNovaCompetencia({ ...novaCompetencia, descricao: e.target.value })}
+                placeholder="Descreva a competência..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setDialogNovaCompetenciaOpen(false)}
+              disabled={criacaoCarregando}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={criarNovaCompetencia}
+              disabled={criacaoCarregando || !novaCompetencia.area_atuacao || !novaCompetencia.competencia}
+            >
+              {criacaoCarregando ? "Criando..." : "Criar Competência"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Gerenciar Competências */}
+      <AdminCompetenciasModal 
+        open={dialogGerenciarCompetenciasOpen}
+        onOpenChange={setDialogGerenciarCompetenciasOpen}
+      />
     </>
   )
 }
