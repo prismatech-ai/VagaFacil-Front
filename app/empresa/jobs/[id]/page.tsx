@@ -56,7 +56,6 @@ export default function VagaDetailsPage() {
 
   useEffect(() => {
     if (vagaId) {
-      console.log("Iniciando carregamento da vaga:", vagaId)
       fetchVagaDetails()
       // Comentado: Carregamento de candidatos inicialmente desabilitado para evitar bloqueios
       // fetchCandidatos()
@@ -74,40 +73,31 @@ export default function VagaDetailsPage() {
   const fetchVagaDetails = async () => {
     setIsLoading(true)
     try {
-      console.log("Fetching vaga details for ID:", vagaId)
       
       // Tenta ambos os endpoints para compatibilidade
       let response
       try {
-        console.log("Tentando /api/v1/jobs/" + vagaId)
         response = await api.get(`/api/v1/jobs/${vagaId}`)
       } catch (err1: any) {
-        console.warn("Erro no endpoint /api/v1/jobs:", err1.message)
         try {
-          console.log("Tentando /api/v1/empresa/vagas/" + vagaId)
           response = await api.get(`/api/v1/empresa/vagas/${vagaId}`)
         } catch (err2: any) {
-          console.error("Erro em ambos endpoints:", err1.message, err2.message)
           throw new Error("Não foi possível carregar a vaga")
         }
       }
       
-      console.log("Vaga details response:", response)
       const jobData = (response as any).data || response
       setVaga(jobData)
     } catch (error: any) {
-      console.error("Erro ao carregar vaga:", error)
       const errorMsg = error instanceof Error ? error.message : "Erro ao carregar detalhes da vaga"
       
       // Se for erro 401, redirecionar para login
       if (errorMsg.includes("401") || errorMsg.includes("Não autenticado")) {
-        console.log("Erro 401 - redirecionando para login")
         router.push("/login")
         return
       }
       
       // Não exibe toast para evitar bloquear a UI
-      console.error("Erro ao carregar vaga detalhes:", errorMsg)
       // Define um objeto vaga vazio para permitir exibição de erro
       setVaga({})
     } finally {

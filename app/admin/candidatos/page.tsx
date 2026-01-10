@@ -180,7 +180,6 @@ export default function AdminCandidatosPage() {
         setCandidatoSelecionado(cand)
       }
     } catch (err) {
-      console.error('Erro ao buscar detalhes do candidato:', err)
       // Fallback para dados já carregados
       setCandidatoSelecionado(cand)
     }
@@ -243,7 +242,6 @@ export default function AdminCandidatosPage() {
         })
       }
     } catch (err) {
-      console.error('Erro ao buscar dados completos do candidato:', err)
       // Fallback para dados do candidato da lista
       setFormEdicao({
         nome: cand.nome ?? "",
@@ -288,12 +286,6 @@ export default function AdminCandidatosPage() {
         area_atuacao: formEdicao.areaAtuacao || null,
       }
 
-      console.log('📤 Enviando dados do candidato:')
-      console.log('Candidato ID:', candidatoSelecionado.id)
-      console.log('formEdicao.areaAtuacao:', formEdicao.areaAtuacao)
-      console.log('area_atuacao no payload:', payload.area_atuacao)
-      console.log('Payload completo:', payload)
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidatos/${candidatoSelecionado.id}`,
         {
@@ -305,10 +297,6 @@ export default function AdminCandidatosPage() {
           body: JSON.stringify(payload)
         }
       )
-
-      console.log('✅ Response status:', response.status)
-      const responseData = await response.json()
-      console.log('✅ Response data:', responseData)
 
       if (!response.ok) {
         throw new Error(`Erro ${response.status}: Falha ao atualizar candidato`)
@@ -340,7 +328,6 @@ export default function AdminCandidatosPage() {
       setDialogEditarOpen(false)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar candidato'
-      console.error('❌ Erro ao salvar:', errorMessage)
       toast({
         title: 'Erro',
         description: errorMessage,

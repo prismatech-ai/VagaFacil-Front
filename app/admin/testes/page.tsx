@@ -404,7 +404,6 @@ export default function AdminTestesPage() {
         }))
       }
     } catch (error) {
-      console.error("Erro ao carregar competências:", error)
     } finally {
       setCompetenciasCarregando(false)
     }

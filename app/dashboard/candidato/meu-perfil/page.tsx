@@ -419,15 +419,9 @@ export default function MeuPerfilPage() {
       const urlObj = new URL(resumeUrl)
       const key = urlObj.pathname.substring(1) // Remove a barra inicial
       
-      console.log('📥 Baixando currículo:')
-      console.log('URL original:', resumeUrl)
-      console.log('Key extraída:', key)
-      
       // ✅ Fazer requisição ao BACKEND, não ao frontend
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const downloadUrl = `${apiUrl}/api/v1/uploads/download?key=${encodeURIComponent(key)}`
-      
-      console.log('URL de download (backend):', downloadUrl)
       
       // ✅ Fazer requisição ao backend e depois abrir em nova aba
       const token = localStorage.getItem('token')
@@ -486,7 +480,6 @@ export default function MeuPerfilPage() {
         window.URL.revokeObjectURL(blobUrl)
       }
     } catch (error) {
-      console.error('Erro ao baixar currículo:', error)
       toast({
         title: "❌ Erro",
         description: error instanceof Error ? error.message : "Erro ao baixar o currículo. Tente novamente.",

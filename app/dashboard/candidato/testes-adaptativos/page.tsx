@@ -79,7 +79,6 @@ export default function TestesAdaptativosPage() {
           setCompetenciasDisponiveis(competenciasFormatadas)
         } catch (apiErr: any) {
           // Se a API falhar, tentar com dados estáticos como fallback
-          console.warn("Erro ao carregar competências da API, usando dados estáticos:", apiErr)
           let area = getAreaById(data.area_atuacao)
 
           if (!area) {

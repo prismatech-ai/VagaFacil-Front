@@ -123,7 +123,6 @@ export function LogoUpload({
         document.body.removeChild(link)
       }
     } catch (err) {
-      console.error('Erro ao baixar logo:', err)
       const error = err instanceof Error ? err : new Error('Erro ao baixar logo')
       onError?.(error)
     } finally {

@@ -264,7 +264,6 @@ export default function AdminVagasPage() {
         [vagaId]: candidaturasMapeadas
       }))
     } catch (err) {
-      console.error('Erro ao carregar candidaturas:', err)
     } finally {
       setLoadingCandidaturas(false)
     }
@@ -338,7 +337,6 @@ export default function AdminVagasPage() {
         setVagaSelecionada(vaga)
       }
     } catch (err) {
-      console.error('Erro ao buscar detalhes da vaga:', err)
       // Fallback para dados já carregados
       setVagaSelecionada(vaga)
     }

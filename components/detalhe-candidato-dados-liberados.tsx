@@ -102,7 +102,6 @@ export function DetalhesCandidatoDadosLiberados({
         description: "Iniciando download do currículo...",
       })
     } catch (error) {
-      console.error("Erro ao baixar currículo:", error)
       const errorMsg = error instanceof Error ? error.message : "Erro ao baixar currículo"
       toast({
         title: "Erro",

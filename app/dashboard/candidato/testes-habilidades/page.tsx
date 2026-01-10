@@ -292,8 +292,6 @@ export default function TestesHabilidadesPage() {
       if (!response) {
         throw new Error("Resposta vazia da API")
       }
-
-      console.log("Resposta completa da API /iniciar:", response)
       
       // Extrair dados com fallback para diferentes nomes
       const sessionId = response.session_id || response.sessionId
@@ -305,7 +303,6 @@ export default function TestesHabilidadesPage() {
       let questao = response.questao || response.question
       
       if (!questao) {
-        console.error("Questão não encontrada. Response completa:", response)
         throw new Error("Questão não retornada pela API. Tente novamente.")
       }
 
@@ -316,12 +313,8 @@ export default function TestesHabilidadesPage() {
       
       // Validar que temos alternativas
       if (!questao.alternativas || questao.alternativas.length === 0) {
-        console.error("Nenhuma alternativa encontrada:", questao)
         throw new Error("Questão sem alternativas. Tente novamente.")
       }
-      
-      console.log("Questão processada:", questao)
-      console.log("Alternativas count:", questao.alternativas.length)
       
       // Usar setTimeout para garantir que o estado seja atualizado antes de renderizar
       await new Promise(resolve => setTimeout(resolve, 0))
@@ -341,7 +334,6 @@ export default function TestesHabilidadesPage() {
         variant: "default"
       })
     } catch (err: any) {
-      console.error("Erro ao buscar questões:", err)
       toast({
         title: "❌ Erro",
         description: err.message || "Erro ao carregar questões",
@@ -395,25 +387,16 @@ export default function TestesHabilidadesPage() {
         throw new Error("Alternativa selecionada não encontrada")
       }
 
-      console.log("Questão ID:", questaoAtual.id)
-      console.log("Alternativa selecionada (índice):", alternativaIdx)
-      console.log("Alternativa selecionada (objeto):", alternativaSelecionada)
-      console.log("Alternativa ID:", alternativaSelecionada.id)
-
       // Enviar resposta - enviar o ID da alternativa selecionada
       const payload = {
         question_id: questaoAtual.id,
         alternative_id: alternativaSelecionada.id
       }
 
-      console.log("Payload enviado:", payload)
-
       const response = await api.post<any>(
         `/api/v1/candidates/testes/adaptativo/sessao/${testeEmAndamento.sessionId}/responder`,
         payload
       )
-
-      console.log("Resposta do servidor:", response)
 
       // Limpar seleção anterior
       setRespostasSelected(new Map())
@@ -434,8 +417,6 @@ export default function TestesHabilidadesPage() {
           const resultadoResponse = await api.get<any>(
             `/api/v1/candidates/testes/adaptativo/sessao/${testeEmAndamento.sessionId}/resultado`
           )
-
-          console.log("Resultado detalhado do teste:", resultadoResponse)
 
           let nivelNumerico = 1
           
@@ -477,7 +458,6 @@ export default function TestesHabilidadesPage() {
             variant: "default"
           })
         } catch (resultadoErr) {
-          console.error("Erro ao buscar resultado detalhado:", resultadoErr)
           // Se falhar, usar fallback com o nível do estado
           let nivelNumerico = 1
           if (testeEmAndamento.nivelAtual) {
@@ -522,7 +502,6 @@ export default function TestesHabilidadesPage() {
         throw new Error("Nenhuma questão encontrada e teste não está completo")
       }
     } catch (err: any) {
-      console.error("Erro ao submeter resposta:", err)
       toast({
         title: "❌ Erro",
         description: err.message || "Erro ao submeter resposta",

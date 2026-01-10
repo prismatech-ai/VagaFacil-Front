@@ -142,15 +142,9 @@ export default function MeuPerfilEmpresaPage() {
       const urlObj = new URL(url)
       const key = urlObj.pathname.substring(1) // Remove a barra inicial
       
-      console.log('📥 Baixando logo:')
-      console.log('URL original:', url)
-      console.log('Key extraída:', key)
-      
       // Fazer requisição ao backend
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const downloadUrl = `${apiUrl}/api/v1/uploads/download?key=${encodeURIComponent(key)}`
-      
-      console.log('URL de download (backend):', downloadUrl)
       
       // Fazer requisição ao backend
       const token = localStorage.getItem('token')
@@ -218,7 +212,6 @@ export default function MeuPerfilEmpresaPage() {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao baixar logo'
-      console.error('❌ Erro:', message)
       alert(message)
     }
   }
