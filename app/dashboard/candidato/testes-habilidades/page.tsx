@@ -26,6 +26,49 @@ interface CompetenciaComNivel {
   descricao?: string
 }
 
+interface Alternativa {
+  id?: number | string
+  texto?: string
+  text?: string
+  descricao?: string
+  description?: string
+}
+
+interface Questao {
+  id?: number | string
+  texto_questao?: string
+  pergunta?: string
+  question?: string
+  alternativas?: Alternativa[]
+  alternatives?: Alternativa[]
+  opcoes?: Alternativa[]
+  options?: Alternativa[]
+}
+
+interface TesteResponse {
+  session_id?: number | string
+  sessionId?: number | string
+  nivel_atual?: string
+  nivelAtual?: string
+  questao_numero?: number
+  questaoNumero?: number
+  total_questoes_nivel?: number
+  totalQuestoes?: number
+  questao?: Questao
+  question?: Questao
+}
+
+interface TesteEmAndamento {
+  habilidade: string
+  questoes: Questao[]
+  sessionId?: number | string
+  nivelAtual?: string
+  questaoNumero?: number
+  totalQuestoes?: number
+  completo?: boolean
+  nivelFinal?: number
+}
+
 type Step = "autoavaliacao" | "testes"
 
 export default function TestesHabilidadesPage() {
@@ -41,9 +84,9 @@ export default function TestesHabilidadesPage() {
   const [competenciasEscolhidas, setCompetenciasEscolhidas] = useState<Map<string, CompetenciaComNivel>>(new Map())
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [autoavaliacaoAnterior, setAutoavaliacaoAnterior] = useState<any>(null)
-  const [testeEmAndamento, setTesteEmAndamento] = useState<{ habilidade: string; questoes: any[] } | null>(null)
+  const [testeEmAndamento, setTesteEmAndamento] = useState<TesteEmAndamento | null>(null)
   const [isLoadingQuestoes, setIsLoadingQuestoes] = useState<string | null>(null)
-  const [respostasSelected, setRespostasSelected] = useState<Map<number, number>>(new Map())
+  const [respostasSelected, setRespostasSelected] = useState<Map<string | number, number>>(new Map())
   const [testesConcluidos, setTestesConcluidos] = useState<Map<string, number>>(new Map()) // Armazena habilidade -> nível
 
   useEffect(() => {
@@ -77,14 +120,10 @@ export default function TestesHabilidadesPage() {
             // Chamar a rota que retorna competências filtradas pela área do candidato
             const competenciasResponse = await api.get<any>("/api/v1/candidato/competencias")
             
-            console.log("Competências Response:", competenciasResponse)
-            
             // A resposta pode ser um array direto ou um objeto com propriedade competencias
             const competencias = Array.isArray(competenciasResponse) 
               ? competenciasResponse 
               : (competenciasResponse.competencias || competenciasResponse.data || [])
-            
-            console.log("Competências Formatadas:", competencias)
             
             // Transformar a resposta da API para o formato esperado
             const competenciasFormatadas = competencias.map((comp: any) => ({
@@ -94,12 +133,10 @@ export default function TestesHabilidadesPage() {
               categoria: comp.categoria || "tecnica",
             }))
             
-            console.log("Competências a serem exibidas:", competenciasFormatadas)
             setCompetenciasDisponiveis(competenciasFormatadas)
             
           } catch (apiErr: any) {
             // Se a API falhar, tentar com dados estáticos como fallback
-            console.warn("Erro ao carregar competências da API, usando dados estáticos:", apiErr)
             let area = getAreaById(data.area_atuacao)
             
             if (!area) {
@@ -112,10 +149,7 @@ export default function TestesHabilidadesPage() {
             
             if (area) {
               const competencias = area.categorias.flatMap(cat => cat.competencias)
-              console.log("Competências estáticas carregadas:", competencias)
               setCompetenciasDisponiveis(competencias)
-            } else {
-              console.error("Área não encontrada:", data.area_atuacao)
             }
           }
             
@@ -249,20 +283,65 @@ export default function TestesHabilidadesPage() {
   const buscarQuestoes = async (habilidade: string) => {
     setIsLoadingQuestoes(habilidade)
     try {
-      const response = await api.get<any>(`/api/v1/candidates/testes/questoes/filtrar?habilidade=${encodeURIComponent(habilidade)}`)
- 
+      // Iniciar teste adaptativo com nível padrão Intermediário
+      const response = await api.post<TesteResponse>("/api/v1/candidates/testes/adaptativo/iniciar", {
+        habilidade: habilidade,
+        nivel_inicial: "intermediario"
+      })
+      
+      if (!response) {
+        throw new Error("Resposta vazia da API")
+      }
+
+      console.log("Resposta completa da API /iniciar:", response)
+      
+      // Extrair dados com fallback para diferentes nomes
+      const sessionId = response.session_id || response.sessionId
+      const nivelAtual = response.nivel_atual || response.nivelAtual
+      const questaoNumero = response.questao_numero || response.questaoNumero || 1
+      const totalQuestoes = response.total_questoes_nivel || response.totalQuestoes || 5
+      
+      // Obter a questão do response
+      let questao = response.questao || response.question
+      
+      if (!questao) {
+        console.error("Questão não encontrada. Response completa:", response)
+        throw new Error("Questão não retornada pela API. Tente novamente.")
+      }
+
+      // Garantir que temos alternativas no formato correto
+      if (!questao.alternativas) {
+        questao.alternativas = questao.alternatives || questao.opcoes || questao.options || []
+      }
+      
+      // Validar que temos alternativas
+      if (!questao.alternativas || questao.alternativas.length === 0) {
+        console.error("Nenhuma alternativa encontrada:", questao)
+        throw new Error("Questão sem alternativas. Tente novamente.")
+      }
+      
+      console.log("Questão processada:", questao)
+      console.log("Alternativas count:", questao.alternativas.length)
+      
+      // Usar setTimeout para garantir que o estado seja atualizado antes de renderizar
+      await new Promise(resolve => setTimeout(resolve, 0))
       
       setTesteEmAndamento({
         habilidade: habilidade,
-        questoes: response?.questoes || []
+        questoes: [questao],
+        sessionId: sessionId,
+        nivelAtual: nivelAtual,
+        questaoNumero: questaoNumero,
+        totalQuestoes: totalQuestoes
       })
       
       toast({
-        title: "✅ Questões Carregadas",
-        description: `${response?.quantidade_retornada || 0} questões para ${habilidade}`,
+        title: "✅ Teste Iniciado",
+        description: `Começando no nível ${nivelAtual}. Você terá ${totalQuestoes} questões.`,
         variant: "default"
       })
     } catch (err: any) {
+      console.error("Erro ao buscar questões:", err)
       toast({
         title: "❌ Erro",
         description: err.message || "Erro ao carregar questões",
@@ -274,80 +353,179 @@ export default function TestesHabilidadesPage() {
   }
 
   const submeterRespostas = async () => {
-    if (!testeEmAndamento) return
+    if (!testeEmAndamento?.sessionId) return
     
     try {
-      // Validar se respondeu todas as questões
-      if (respostasSelected.size !== testeEmAndamento.questoes.length) {
+      // Pegar a questão atual (primeiro item do array que agora tem apenas 1)
+      const questaoAtual = testeEmAndamento.questoes?.[0]
+      if (!questaoAtual) {
         toast({
-          title: "⚠️ Atenção",
-          description: `Você precisa responder todas as ${testeEmAndamento.questoes.length} questões`,
+          title: "❌ Erro",
+          description: "Questão não encontrada",
           variant: "destructive"
         })
         return
       }
 
-      // Calcular acertos
-      let acertos = 0
-      const respostas = testeEmAndamento.questoes.map((questao: any, idx: number) => {
-        const alternativaIdx = respostasSelected.get(questao.id || idx)
-        
-        // Log de debug
-        console.log(`Questão ${idx + 1} (ID: ${questao.id}):`, {
-          alternativaSelecionada: alternativaIdx,
-          respostaCorreta: questao.respostaCorreta,
-          alternativas: questao.alternativas?.map((a: any, i: number) => `${i}: ${a.texto}`)
+      // Validar se respondeu
+      const alternativaIdx = respostasSelected.get((questaoAtual.id as string | number) || 0)
+      if (alternativaIdx === undefined) {
+        toast({
+          title: "⚠️ Atenção",
+          description: "Você precisa selecionar uma resposta",
+          variant: "destructive"
         })
-
-        // Comparar se a alternativa selecionada está correta
-        if (alternativaIdx !== undefined) {
-          // Verificar se o índice da alternativa selecionada é igual ao índice da resposta correta
-          if (alternativaIdx === questao.respostaCorreta) {
-            acertos++
-            console.log(`✅ Questão ${idx + 1} - CORRETA`)
-          } else {
-            console.log(`❌ Questão ${idx + 1} - INCORRETA`)
-          }
-        }
-        
-        return {
-          questao_id: questao?.id,
-          alternativa_selecionada: alternativaIdx
-        }
-      })
-
-      // Calcular percentual de acertos
-      const percentualAcertos = Math.round((acertos / testeEmAndamento.questoes.length) * 100)
-      
-      // Log no console
-      console.log(`🎯 Teste de ${testeEmAndamento.habilidade} - Acertos: ${acertos}/${testeEmAndamento.questoes.length} (${percentualAcertos}%)`)
-      
-      // Determinar nível baseado no percentual
-      let nivelAchievd = 1 // Iniciante por padrão
-      if (percentualAcertos >= 80) {
-        nivelAchievd = 3 // Avançado
-      } else if (percentualAcertos >= 60) {
-        nivelAchievd = 2 // Intermediário
+        return
       }
 
-      // Registrar o nível alcançado
-      const novosTestes = new Map(testesConcluidos)
-      novosTestes.set(testeEmAndamento.habilidade, nivelAchievd)
-      setTestesConcluidos(novosTestes)
-
-      toast({
-        title: "✅ Teste Submetido",
-        description: `Você acertou ${acertos}/${testeEmAndamento.questoes.length} questões (${percentualAcertos}%) - Nível ${nivelAchievd === 3 ? "Avançado" : nivelAchievd === 2 ? "Intermediário" : "Iniciante"}`,
-        variant: "default"
-      })
+      // Obter alternativas - verificar múltiplos nomes de campos
+      const alternativas = questaoAtual.alternativas || 
+                          questaoAtual.alternatives || 
+                          questaoAtual.opcoes || 
+                          questaoAtual.options || 
+                          []
       
-      // Limpar o teste em andamento
-      setTesteEmAndamento(null)
+      if (!alternativas || alternativas.length === 0) {
+        throw new Error("Nenhuma alternativa disponível para esta questão")
+      }
+
+      const alternativaSelecionada = alternativas[alternativaIdx]
+      
+      if (!alternativaSelecionada) {
+        throw new Error("Alternativa selecionada não encontrada")
+      }
+
+      console.log("Questão ID:", questaoAtual.id)
+      console.log("Alternativa selecionada (índice):", alternativaIdx)
+      console.log("Alternativa selecionada (objeto):", alternativaSelecionada)
+      console.log("Alternativa ID:", alternativaSelecionada.id)
+
+      // Enviar resposta - enviar o ID da alternativa selecionada
+      const payload = {
+        question_id: questaoAtual.id,
+        alternative_id: alternativaSelecionada.id
+      }
+
+      console.log("Payload enviado:", payload)
+
+      const response = await api.post<any>(
+        `/api/v1/candidates/testes/adaptativo/sessao/${testeEmAndamento.sessionId}/responder`,
+        payload
+      )
+
+      console.log("Resposta do servidor:", response)
+
+      // Limpar seleção anterior
       setRespostasSelected(new Map())
+
+      if (!response) {
+        throw new Error("Resposta vazia do servidor")
+      }
+
+      // A resposta tem o formato:
+      // { session_id, is_completed, questao, nivel_atual, progresso, mensagem }
+      const isCompleted = response.is_completed === true
+      const proximaQuestao = response.questao
+      const nivelAtual = response.nivel_atual
+
+      if (isCompleted) {
+        // Teste finalizado - buscar resultado detalhado com o nível real baseado em acertos
+        try {
+          const resultadoResponse = await api.get<any>(
+            `/api/v1/candidates/testes/adaptativo/sessao/${testeEmAndamento.sessionId}/resultado`
+          )
+
+          console.log("Resultado detalhado do teste:", resultadoResponse)
+
+          let nivelNumerico = 1
+          
+          // Usar o nível final do resultado se disponível
+          if (resultadoResponse?.nivel_final_atingido) {
+            const nivel = resultadoResponse.nivel_final_atingido.toLowerCase()
+            if (nivel.includes("n1") || nivel.includes("basico")) nivelNumerico = 1
+            else if (nivel.includes("n2") || nivel.includes("intermediario")) nivelNumerico = 2
+            else if (nivel.includes("n3") || nivel.includes("avancado")) nivelNumerico = 3
+            else if (nivel.includes("n4") || nivel.includes("especialista")) nivelNumerico = 4
+          } else if (resultadoResponse?.pontuacao_final) {
+            // Se não tiver nivel_final_atingido, usar a pontuação
+            const pontuacao = resultadoResponse.pontuacao_final
+            if (pontuacao >= 80) nivelNumerico = 3
+            else if (pontuacao >= 60) nivelNumerico = 2
+            else nivelNumerico = 1
+          }
+          
+          const novosTestes = new Map(testesConcluidos)
+          novosTestes.set(testeEmAndamento.habilidade, nivelNumerico)
+          setTestesConcluidos(novosTestes)
+
+          const nivelLabel = 
+            nivelNumerico === 4 ? "Especialista" :
+            nivelNumerico === 3 ? "Avançado" :
+            nivelNumerico === 2 ? "Intermediário" :
+            "Básico"
+
+          // Manter o teste em andamento mas marcado como completo para mostrar resultado
+          setTesteEmAndamento({
+            ...testeEmAndamento,
+            completo: true,
+            nivelFinal: nivelNumerico
+          })
+
+          toast({
+            title: "✅ Teste Concluído",
+            description: `Você atingiu o nível: ${nivelLabel}`,
+            variant: "default"
+          })
+        } catch (resultadoErr) {
+          console.error("Erro ao buscar resultado detalhado:", resultadoErr)
+          // Se falhar, usar fallback com o nível do estado
+          let nivelNumerico = 1
+          if (testeEmAndamento.nivelAtual) {
+            const nivel = testeEmAndamento.nivelAtual.toLowerCase()
+            if (nivel.includes("intermediario") || nivel.includes("intermediário")) nivelNumerico = 2
+            else if (nivel.includes("avancado") || nivel.includes("avançado")) nivelNumerico = 3
+            else if (nivel.includes("especialista")) nivelNumerico = 4
+          }
+          
+          const novosTestes = new Map(testesConcluidos)
+          novosTestes.set(testeEmAndamento.habilidade, nivelNumerico)
+          setTestesConcluidos(novosTestes)
+
+          setTesteEmAndamento({
+            ...testeEmAndamento,
+            completo: true,
+            nivelFinal: nivelNumerico
+          })
+
+          toast({
+            title: "✅ Teste Concluído",
+            description: "Teste finalizado com sucesso",
+            variant: "default"
+          })
+        }
+      } else if (proximaQuestao) {
+        // Há próxima questão
+        
+        // Garantir que temos alternativas no formato correto
+        let questao = proximaQuestao
+        if (!questao.alternativas) {
+          questao.alternativas = questao.alternatives || questao.opcoes || questao.options || []
+        }
+        
+        setTesteEmAndamento({
+          ...testeEmAndamento,
+          questoes: [questao],
+          questaoNumero: (testeEmAndamento.questaoNumero || 1) + 1,
+          nivelAtual: nivelAtual // Atualizar nível atual
+        })
+      } else {
+        throw new Error("Nenhuma questão encontrada e teste não está completo")
+      }
     } catch (err: any) {
+      console.error("Erro ao submeter resposta:", err)
       toast({
         title: "❌ Erro",
-        description: err.message || "Erro ao submeter respostas",
+        description: err.message || "Erro ao submeter resposta",
         variant: "destructive",
       })
     }
@@ -589,11 +767,11 @@ export default function TestesHabilidadesPage() {
                   </div>
                   <Button 
                     onClick={() => buscarQuestoes(comp)}
-                    disabled={isLoadingQuestoes === comp}
+                    disabled={isLoadingQuestoes === comp || !!nivelAlcancado}
                     size="sm"
                     className={`flex-shrink-0 ${
                       nivelAlcancado
-                        ? "bg-green-500 hover:bg-green-600 text-white"
+                        ? "bg-green-500 hover:bg-green-600 text-white cursor-not-allowed"
                         : "bg-[#24BFB0] hover:bg-[#1a9d8b] text-gray-900"
                     }`}
                   >
@@ -620,52 +798,130 @@ export default function TestesHabilidadesPage() {
         </Alert>
       )}
 
-      {testeEmAndamento && (
+      {testeEmAndamento && !testeEmAndamento.completo && (
         <Card className="border-green-200 bg-green-50">
           <CardHeader>
-            <CardTitle className="text-lg text-green-900">Teste em Andamento: {testeEmAndamento.habilidade}</CardTitle>
+            <CardTitle className="text-lg text-green-900">Teste Adaptativo: {testeEmAndamento.habilidade}</CardTitle>
             <CardDescription className="text-green-800">
-              Total de questões: {testeEmAndamento.questoes.length}
+              Questão {testeEmAndamento.questaoNumero || 1} de {testeEmAndamento.totalQuestoes || "?"}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {testeEmAndamento.questoes.map((questao, idx) => (
-                <div key={questao.id || idx} className="p-4 bg-white rounded border border-green-200">
-                  <p className="font-semibold text-gray-900 mb-4">{idx + 1}. {questao.texto_questao || questao.pergunta}</p>
-                  {questao.alternativas && questao.alternativas.length > 0 && (
-                    <div className="space-y-2">
-                      {questao.alternativas.map((alt: any, altIdx: number) => (
-                        <button 
-                          key={alt.id} 
-                          onClick={() => setRespostasSelected(new Map(respostasSelected).set(questao.id || idx, altIdx))}
-                          className={`w-full text-left p-3 rounded border transition-all ${
-                            respostasSelected.get(questao.id || idx) === altIdx
-                              ? "bg-[#03565C] text-white border-[#03565C]"
-                              : "bg-gray-50 hover:bg-gray-100 border-gray-200"
-                          } text-sm`}
-                        >
-                          <span className="mr-3">{respostasSelected.get(questao.id || idx) === altIdx ? "●" : "○"}</span>
-                          {alt.texto}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+              {testeEmAndamento.questoes && testeEmAndamento.questoes.length > 0 && (
+                <div className="p-4 bg-white rounded border border-green-200">
+                  <p className="font-semibold text-gray-900 mb-4 text-base">
+                    {testeEmAndamento.questoes[0].texto_questao || testeEmAndamento.questoes[0].pergunta || testeEmAndamento.questoes[0].question}
+                  </p>
+                  {(() => {
+                    const alternativas = testeEmAndamento.questoes[0].alternativas || 
+                                        testeEmAndamento.questoes[0].alternatives || 
+                                        testeEmAndamento.questoes[0].opcoes || 
+                                        testeEmAndamento.questoes[0].options || 
+                                        []
+                    
+                    if (alternativas && alternativas.length > 0) {
+                      return (
+                        <div className="space-y-2">
+                          {alternativas.map((alt: any, altIdx: number) => (
+                            <button 
+                              key={alt.id || altIdx} 
+                              onClick={() => setRespostasSelected(new Map(respostasSelected).set((testeEmAndamento.questoes[0].id as string | number) || 0, altIdx))}
+                              className={`w-full text-left p-3 rounded border transition-all ${
+                                respostasSelected.get((testeEmAndamento.questoes[0].id as string | number) || 0) === altIdx
+                                  ? "bg-[#03565C] text-white border-[#03565C]"
+                                  : "bg-gray-50 hover:bg-gray-100 border-gray-200"
+                              } text-sm`}
+                            >
+                              <span className="mr-3">{respostasSelected.get((testeEmAndamento.questoes[0].id as string | number) || 0) === altIdx ? "●" : "○"}</span>
+                              {alt.texto || alt.text || alt.descricao || alt.description}
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    }
+                    return <p className="text-red-500 text-sm">Nenhuma alternativa disponível</p>
+                  })()}
                 </div>
-              ))}
+              )}
             </div>
             <div className="flex gap-3 mt-6">
               <Button 
                 variant="outline"
-                onClick={() => setTesteEmAndamento(null)}
+                onClick={() => {
+                  setTesteEmAndamento(null)
+                  setRespostasSelected(new Map())
+                }}
               >
-                Voltar
+                Cancelar Teste
               </Button>
               <Button 
                 className="bg-[#03565C] hover:bg-[#024147]"
                 onClick={submeterRespostas}
               >
-                Continuar Teste
+                Próxima Questão
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {testeEmAndamento && testeEmAndamento.completo && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-lg text-blue-900">✅ Teste Concluído: {testeEmAndamento.habilidade}</CardTitle>
+            <CardDescription className="text-blue-800">
+              Você completou todas as {testeEmAndamento.totalQuestoes} questões
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Resultado Final */}
+              <div className="p-6 bg-white rounded-lg border-2 border-blue-300 text-center">
+                <p className="text-gray-600 mb-2">Nível Alcançado</p>
+                <p className="text-4xl font-bold text-[#03565C] mb-2">
+                  {testeEmAndamento.nivelFinal === 4 ? "Especialista" :
+                   testeEmAndamento.nivelFinal === 3 ? "Avançado" :
+                   testeEmAndamento.nivelFinal === 2 ? "Intermediário" :
+                   "Básico"}
+                </p>
+                <p className="text-sm text-gray-500">Você pode fazer novos testes para melhorar seu nível</p>
+              </div>
+
+              {/* Questões respondidas */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-4">Questões respondidas ({testeEmAndamento.questaoNumero || testeEmAndamento.totalQuestoes} de {testeEmAndamento.totalQuestoes})</h3>
+                <div className="space-y-3">
+                  {testeEmAndamento.questoes && testeEmAndamento.questoes.map((questao, idx) => (
+                    <div key={questao.id || idx} className="p-3 bg-white rounded border border-gray-200">
+                      <p className="font-medium text-gray-900 text-sm">
+                        {questao.texto_questao || questao.pergunta || questao.question}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-2">
+                        Resposta selecionada: 
+                        {(() => {
+                          const alternativas = questao.alternativas || questao.alternatives || questao.opcoes || questao.options || []
+                          const idx = respostasSelected.get((questao.id as string | number) || 0)
+                          return idx !== undefined && alternativas[idx] 
+                            ? ` ${alternativas[idx].texto || alternativas[idx].text || alternativas[idx].descricao || alternativas[idx].description}`
+                            : " Não respondida"
+                        })()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setTesteEmAndamento(null)
+                  setRespostasSelected(new Map())
+                }}
+              >
+                Fechar Resultado
               </Button>
             </div>
           </CardContent>
