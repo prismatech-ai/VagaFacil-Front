@@ -39,9 +39,10 @@ export interface AdaptiveTestAnswerResponse {
     nivel_final: string
     mudanca_nivel: string
     descricao_resultado: string
+    acertos_basico?: number
     acertos_intermediario?: number
     acertos_avancado?: number
-    acertos_basico?: number
+    acertos_especialista?: number
   }
 }
 
@@ -99,11 +100,17 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
 
     setIsInitializing(true)
     try {
+      const nivelMap: Record<number, string> = {
+        1: "basico",
+        2: "intermediario",
+        3: "avancado"
+      }
+
       const response = await api.post<AdaptiveTestSessionResponse>(
-        "/api/v1/candidato/testes-adaptativos/iniciar",
+        "/api/v1/candidates/testes/adaptativo/iniciar",
         {
           habilidade: habilidade,
-          nivel_autoavaliacao: selectedLevel
+          nivel_inicial: nivelMap[selectedLevel]
         }
       )
 
@@ -111,7 +118,7 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
       setNivelAtual(response.nivel_atual)
       setQuestaoAtual(response.questao)
       setQuestaoNumero(response.questao_numero)
-      setTotalQuestoes(response.total_questoes_nivel)
+      setTotalQuestoes(5) // 5 questões por nível agora
       setStep("teste")
       setSelectedAnswer(null)
 
@@ -145,13 +152,27 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
     setIsAnswering(true)
     try {
       const response = await api.post<AdaptiveTestAnswerResponse>(
-        "/api/v1/candidato/testes-adaptativos/responder",
+        `/api/v1/candidates/testes/adaptativo/sessao/${sessionId}/responder`,
         {
-          session_id: sessionId,
           question_id: questaoAtual.id,
           alternative_id: selectedAnswer
         }
       )
+
+      // Mostrar feedback imediato
+      if (response.acertou) {
+        toast({
+          title: "✅ Correto!",
+          description: "Próxima questão...",
+          variant: "default"
+        })
+      } else {
+        toast({
+          title: "❌ Incorreto",
+          description: "Tente acertar as próximas!",
+          variant: "destructive"
+        })
+      }
 
       // Registrar resposta no histórico
       setHistorico([
@@ -179,20 +200,6 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
           setQuestaoAtual(response.proxima_questao)
           setQuestaoNumero(questaoNumero + 1)
           setSelectedAnswer(null)
-
-          if (response.acertou) {
-            toast({
-              title: "✅ Correto!",
-              description: "Próxima questão...",
-              variant: "default"
-            })
-          } else {
-            toast({
-              title: "❌ Incorreto",
-              description: `A resposta correta era a alternativa ${response.resposta_correta_id}`,
-              variant: "destructive"
-            })
-          }
         }
       }
     } catch (err: any) {
@@ -219,14 +226,14 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
         <CardContent className="pt-8">
           <div className="space-y-4">
             <p className="text-gray-600 mb-6">
-              Selecione o nível que melhor corresponde ao seu conhecimento em <strong>{habilidade}</strong>. O teste se adaptará com base no seu desempenho.
+              Selecione seu nível inicial em <strong>{habilidade}</strong>. Você terá 5 questões e o teste se adaptará conforme seu desempenho, podendo evoluir para níveis superiores ou regredir para inferiores.
             </p>
 
             <div className="grid gap-3">
               {[
-                { level: 1, label: "Básico", description: "Fundamentos da habilidade" },
+                { level: 1, label: "Básico", description: "Fundamentos e conceitos iniciais" },
                 { level: 2, label: "Intermediário", description: "Aplicação prática e conceitos intermediários" },
-                { level: 3, label: "Avançado", description: "Técnicas avançadas e resolução de problemas complexos" }
+                { level: 3, label: "Avançado", description: "Técnicas avançadas e problemas complexos" }
               ].map((option) => (
                 <button
                   key={option.level}
@@ -253,7 +260,7 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
             <Alert className="border-blue-200 bg-blue-50 mt-6">
               <AlertCircle className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
-                Você responderá <strong>5 questões</strong> do nível selecionado. Baseado no seu desempenho, o teste pode evoluir para níveis superiores ou regressar para níveis inferiores.
+                <strong>Regras de Progressão:</strong> O teste tem 5 questões por nível. Conforme você acerta, pode evoluir para níveis superiores. Se erra muito, pode regredir. O objetivo é encontrar seu verdadeiro nível de conhecimento!
               </AlertDescription>
             </Alert>
 
@@ -449,6 +456,12 @@ export default function TesteAdaptativo({ habilidade, onComplete, onCancel }: Ad
                   <div className="flex justify-between items-center p-3 bg-orange-50 rounded">
                     <span className="text-gray-700">Avançado</span>
                     <Badge className="bg-orange-100 text-orange-800">{resultado.acertos_avancado}/5</Badge>
+                  </div>
+                )}
+                {resultado.acertos_especialista !== null && resultado.acertos_especialista !== undefined && (
+                  <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                    <span className="text-gray-700">Especialista 🎉</span>
+                    <Badge className="bg-green-100 text-green-800">{resultado.acertos_especialista}/5</Badge>
                   </div>
                 )}
               </div>

@@ -169,14 +169,12 @@ export default function ConvitesPage() {
                 candidato_status: statusData,
               }
             } catch (err) {
-              console.warn(`Erro ao carregar status do candidato ${convite.candidate_id}:`, err)
               // Se falhar, retorna convite original
               return convite
             }
           })
         )
       } catch (err) {
-        console.warn("Erro ao enriquecer dados de status:", err)
         // Continua com dados originais se enriquecimento falhar
       }
       
@@ -206,7 +204,6 @@ export default function ConvitesPage() {
       const response = await api.get(
         `/api/v1/empresa/vagas/${selectedVagaId}/candidatos/${candidateId}`
       )
-      console.log("Dados do candidato retornados pela API:", response)
       setDadosCandidato(response as DadosCandidato)
       setSelectedCandidateId(candidateId)
       setIsDetailDialogOpen(true)
@@ -230,8 +227,6 @@ export default function ConvitesPage() {
   }
 
   const baixarCurriculo = async (candidateId: number) => {
-    console.log("Tentando baixar currículo do candidato:", candidateId)
-    
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
       const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -247,8 +242,6 @@ export default function ConvitesPage() {
         }
       )
 
-      console.log("Response status:", response.status)
-
       if (!response.ok) {
         let errorText = "Erro desconhecido"
         try {
@@ -257,12 +250,10 @@ export default function ConvitesPage() {
         } catch (e) {
           errorText = `HTTP ${response.status}`
         }
-        console.error("Erro ao obter URL de download:", errorText)
         throw new Error(`Falha ao obter URL de download: ${errorText}`)
       }
 
       const { download_url, nome_arquivo, mensagem } = await response.json()
-      console.log("URL assinada recebida:", mensagem)
       
       // Abre em novo abá (mais seguro e escalável)
       window.open(download_url, "_blank")
@@ -272,7 +263,6 @@ export default function ConvitesPage() {
         description: "Iniciando download do currículo...",
       })
     } catch (error) {
-      console.error("Erro ao baixar currículo:", error)
       const errorMsg = error instanceof Error ? error.message : "Erro ao baixar currículo"
       toast({
         title: "Erro",
@@ -339,9 +329,8 @@ export default function ConvitesPage() {
       try {
         const statusResponse = await api.get(`/api/v1/candidato/status`)
         const statusData = (statusResponse as any).data || statusResponse
-        console.log("Status do candidato após marcar contratado:", statusData)
       } catch (statusError) {
-        console.warn("Não foi possível verificar status do candidato", statusError)
+        // Falha silenciosa
       }
 
       // Registrar candidato contratado recentemente
@@ -362,7 +351,6 @@ export default function ConvitesPage() {
         carregarConvites(selectedVagaId)
       }
     } catch (error) {
-      console.error("Erro ao marcar como contratado:", error)
       const errorMsg = error instanceof Error ? error.message : "Erro ao marcar como contratado"
       toast({
         title: "❌ Erro",

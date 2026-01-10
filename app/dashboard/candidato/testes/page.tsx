@@ -187,7 +187,7 @@ export default function TestesPage() {
         </CardHeader>
         <CardContent className="text-sm text-blue-800 space-y-3">
           <p>
-            • Cada teste é composto por 15 questões relacionadas às competências que você indicou na autoavaliação
+            • A quantidade de questões varia de acordo com o teste selecionado e está relacionada às competências que você indicou na autoavaliação
           </p>
           <p>
             • As questões são de múltipla escolha com 4 alternativas cada

@@ -198,7 +198,6 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
         router.push("/empresa/jobs/list")
       }
     } catch (error) {
-
       setErrors({ ...errors, submit: "Erro ao criar vaga. Tente novamente." })
     } finally {
       setLoading(false)
@@ -308,7 +307,7 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
 
               {/* Descrição */}
               <div className="space-y-2">
-                <Label htmlFor="descricao">Descrição da Vaga *</Label>
+                <Label htmlFor="descricao">Descrição da Vaga * (mínimo 10 caracteres)</Label>
                 <Textarea
                   id="descricao"
                   placeholder="Descreva a vaga, responsabilidades, e o que procura..."
@@ -318,8 +317,20 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
                     if (errors.descricao) setErrors({ ...errors, descricao: "" })
                   }}
                   disabled={loading || isLoading}
-                  className={`min-h-32 ${errors.descricao ? "border-red-500" : ""}`}
+                  className={`min-h-32 ${errors.descricao ? "border-red-500" : ""} ${descricao.length < 10 ? "border-orange-300" : ""}`}
                 />
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    {descricao.length < 10 ? (
+                      <span className="text-orange-600 font-medium">
+                        ⚠️ {10 - descricao.length} caracteres faltando
+                      </span>
+                    ) : (
+                      <span className="text-green-600 font-medium">✅ Descrição válida</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500">{descricao.length}/10</span>
+                </div>
                 {errors.descricao && <p className="text-sm text-red-500">{errors.descricao}</p>}
               </div>
 
@@ -576,8 +587,9 @@ export function CadastroVaga({ onSubmit, isLoading = false }: CadastroVagaProps)
               <div className="flex gap-3">
                 <Button
                   type="submit"
-                  disabled={loading || isLoading}
-                  className="flex-1 gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base"
+                  disabled={loading || isLoading || descricao.length < 10}
+                  className="flex-1 gap-2 bg-[#03565C] hover:bg-[#024147] py-6 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={descricao.length < 10 ? "A descrição deve ter no mínimo 10 caracteres" : ""}
                 >
                   {loading || isLoading ? "Criando..." : "Criar Vaga"}
                   {!(loading || isLoading) && <ChevronRight className="h-4 w-4" />}

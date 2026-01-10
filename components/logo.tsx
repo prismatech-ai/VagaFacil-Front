@@ -21,7 +21,6 @@ export function Logo({ className = "", width = 140 }: LogoProps) {
         width={width}
         height={estimatedHeight}
         sizes={`${width}px`}
-        className="w-full h-auto"
         style={{ 
           width: "100%", 
           height: "auto",

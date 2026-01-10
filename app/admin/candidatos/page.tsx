@@ -180,7 +180,6 @@ export default function AdminCandidatosPage() {
         setCandidatoSelecionado(cand)
       }
     } catch (err) {
-      console.error('Erro ao buscar detalhes do candidato:', err)
       // Fallback para dados já carregados
       setCandidatoSelecionado(cand)
     }
@@ -243,7 +242,6 @@ export default function AdminCandidatosPage() {
         })
       }
     } catch (err) {
-      console.error('Erro ao buscar dados completos do candidato:', err)
       // Fallback para dados do candidato da lista
       setFormEdicao({
         nome: cand.nome ?? "",
@@ -259,29 +257,83 @@ export default function AdminCandidatosPage() {
     setDialogEditarOpen(true)
   }
 
-  const salvarEdicao = () => {
+  const salvarEdicao = async () => {
     if (!candidatoSelecionado) return
-    const habilidades = (formEdicao.habilidades ?? "")
-      .split(",")
-      .map((h) => h.trim())
-      .filter(Boolean)
-    setCandidatos((prev) =>
-      prev.map((c) =>
-        c.id === candidatoSelecionado.id
-          ? {
-              ...c,
-              nome: formEdicao.nome,
-              email: formEdicao.email,
-              telefone: formEdicao.telefone || undefined,
-              localizacao: formEdicao.localizacao || undefined,
-              linkedin: formEdicao.linkedin || undefined,
-              habilidades,
-              nivelDesejado: formEdicao.areaAtuacao,
-            }
-          : c,
-      ) as Candidato[]
-    )
-    setDialogEditarOpen(false)
+    
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast({
+          title: 'Erro',
+          description: 'Token não encontrado',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const habilidades = (formEdicao.habilidades ?? "")
+        .split(",")
+        .map((h) => h.trim())
+        .filter(Boolean)
+
+      const payload = {
+        nome: formEdicao.nome,
+        email: formEdicao.email,
+        telefone: formEdicao.telefone || null,
+        localizacao: formEdicao.localizacao || null,
+        linkedin: formEdicao.linkedin || null,
+        habilidades: habilidades,
+        area_atuacao: formEdicao.areaAtuacao || null,
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/candidatos/${candidatoSelecionado.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: Falha ao atualizar candidato`)
+      }
+
+      // Atualizar localmente após sucesso
+      setCandidatos((prev) =>
+        prev.map((c) =>
+          c.id === candidatoSelecionado.id
+            ? {
+                ...c,
+                nome: formEdicao.nome,
+                email: formEdicao.email,
+                telefone: formEdicao.telefone || undefined,
+                localizacao: formEdicao.localizacao || undefined,
+                linkedin: formEdicao.linkedin || undefined,
+                habilidades,
+                nivelDesejado: formEdicao.areaAtuacao,
+              }
+            : c,
+        ) as Candidato[]
+      )
+
+      toast({
+        title: 'Sucesso',
+        description: 'Candidato atualizado com sucesso',
+      })
+
+      setDialogEditarOpen(false)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar candidato'
+      toast({
+        title: 'Erro',
+        description: errorMessage,
+        variant: 'destructive',
+      })
+    }
   }
 
   const removerCandidato = (id: string) => {

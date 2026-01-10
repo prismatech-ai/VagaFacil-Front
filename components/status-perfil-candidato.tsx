@@ -22,7 +22,7 @@ interface ContratacaoData {
 
 interface StatusPerfil {
   is_active: boolean
-  contratado: boolean
+  foi_contratado: boolean
   data_contratacao?: string
   empresa_nome?: string
   vaga_titulo?: string
@@ -48,20 +48,17 @@ export function StatusPerfilCandidato() {
       try {
         const contratacaoResponse = await api.get("/api/v1/candidato/contratacao")
         const contratacaoData = (contratacaoResponse as any).data || contratacaoResponse
-        console.log("✅ Contratação encontrada:", contratacaoData)
         setContratacao(contratacaoData)
         setStatus({
           is_active: false,
-          contratado: true,
+          foi_contratado: contratacaoData.foi_contratado,
           data_contratacao: contratacaoData.data_contratacao,
           empresa_nome: contratacaoData.empresa_nome,
           vaga_titulo: contratacaoData.vaga_titulo
         })
       } catch (contratacaoError: any) {
-        console.log("Erro ao buscar contratação:", contratacaoError.status, contratacaoError.message)
         // Se for 404, significa que não foi contratado
         if (contratacaoError.status === 404 || contratacaoError.message?.includes("404")) {
-          console.log("Candidato não foi contratado. Componente desabilitado.")
           setStatus(null)
           return
         }
@@ -70,24 +67,19 @@ export function StatusPerfilCandidato() {
         throw contratacaoError
       }
     } catch (error: any) {
-      console.error("Erro ao carregar status:", error)
-      
       // Se for CORS ou fetch error, ignora silenciosamente
       if (error.message?.includes("CORS") || error.message?.includes("Failed to fetch")) {
-        console.log("CORS ou erro de conexão com backend. Componente desabilitado.")
         setStatus(null)
         return
       }
       
       // Se for 403, significa que é uma conta de empresa, não de candidato
       if (error.message?.includes("403") || error.status === 403) {
-        console.log("Usuário é uma empresa, não um candidato. Componente desabilitado.")
         setStatus(null)
         return
       }
       
       // Se falhar por outro motivo, desabilita o componente
-      console.log("Erro desconhecido. Componente desabilitado.")
       setStatus(null)
     } finally {
       setIsLoading(false)
@@ -105,7 +97,6 @@ export function StatusPerfilCandidato() {
         description: "Seu perfil foi reativado e você está visível para as empresas novamente.",
       })
     } catch (error) {
-      console.error("Erro ao reativar perfil:", error)
       const errorMsg = error instanceof Error ? error.message : "Erro ao reativar perfil"
       
       // Se for 403, não é candidato
@@ -134,7 +125,7 @@ export function StatusPerfilCandidato() {
   }
 
   useEffect(() => {
-    console.log("Status Perfil Candidato - isLoading:", isLoading, "status:", status)
+    // Status perfil candidato component effect
   }, [isLoading, status])
 
   if (isLoading) {
@@ -145,13 +136,13 @@ export function StatusPerfilCandidato() {
     return null
   }
 
-  // Se perfil está ativo e não foi contratado, não mostra nada
-  if (status.is_active && !status.contratado) {
+  // Se não foi contratado, não mostra nada
+  if (!status.foi_contratado) {
     return null
   }
 
-  // Se foi contratado ou perfil está inativo - mostra modal bloqueante
-  if (!status.is_active || status.contratado) {
+  // Se foi contratado - mostra modal bloqueante
+  if (status.foi_contratado) {
     return (
       <>
         {/* Overlay escuro de fundo */}

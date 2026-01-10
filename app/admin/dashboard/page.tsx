@@ -289,7 +289,6 @@ export default function AdminDashboardPage() {
       setVagaSelecionada(vagaCompleta)
       setDialogVagaOpen(true)
     } catch (err) {
-      console.error('Erro ao buscar detalhes da vaga:', err)
       // Fallback: usar dados já carregados
       setVagaSelecionada(vaga)
       setDialogVagaOpen(true)
@@ -368,7 +367,6 @@ export default function AdminDashboardPage() {
       setCandidaturaSelecionada(candidaturaCompleta)
       setDialogCandidaturaOpen(true)
     } catch (err) {
-      console.error('Erro ao buscar detalhes da candidatura:', err)
       // Fallback: usar dados já carregados
       setCandidaturaSelecionada(candidatura)
       setDialogCandidaturaOpen(true)

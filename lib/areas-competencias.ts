@@ -20,7 +20,7 @@ export interface Competencia {
     n3?: string
     n4?: string
   }
-  nivel: 1 | 2 | 3 | 4 | null
+  nivel: 1 | 2 | 3 | null
 }
 
 export interface CategoriaCompetencias {

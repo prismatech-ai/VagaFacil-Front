@@ -146,7 +146,7 @@ export default function PipelinePage() {
       case "entrevistas":
         return pipeline.filter(p => p.data_entrevista && p.resultado === undefined)
       case "contratados":
-        return pipeline.filter(p => p.resultado !== undefined)
+        return pipeline.filter(p => p.resultado === true)
       default:
         return pipeline
     }

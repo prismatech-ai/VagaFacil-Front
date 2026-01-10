@@ -17,6 +17,7 @@ import { ResumeUpload } from "@/components/resume-upload"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
+import { TODAS_AREAS, getAreaById } from "@/lib/areas-competencias"
 import { AlertCircle, Mail, Phone, MapPin, User } from "lucide-react"
 
 interface CandidatoData {
@@ -412,14 +413,76 @@ export default function MeuPerfilPage() {
     try {
       if (!resumeUrl) return
       
-      // ✅ Através do proxy (sem CORS)
-      const proxyUrl = `/api/v1/uploads/download?file_url=${encodeURIComponent(resumeUrl)}`
-  
-      window.open(proxyUrl, '_blank')
+      // ✅ Extrair KEY do S3 da URL completa
+      // De: https://vagafacil-bucket.s3.us-east-2.amazonaws.com/uploads/resumes/79/arquivo.pdf
+      // Para: uploads/resumes/79/arquivo.pdf
+      const urlObj = new URL(resumeUrl)
+      const key = urlObj.pathname.substring(1) // Remove a barra inicial
+      
+      // ✅ Fazer requisição ao BACKEND, não ao frontend
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const downloadUrl = `${apiUrl}/api/v1/uploads/download?key=${encodeURIComponent(key)}`
+      
+      // ✅ Fazer requisição ao backend e depois abrir em nova aba
+      const token = localStorage.getItem('token')
+      const response = await fetch(downloadUrl, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+
+      if (!response.ok) {
+        try {
+          const error = await response.json()
+          throw new Error(error.detail || 'Erro ao baixar currículo')
+        } catch {
+          throw new Error('Erro ao baixar currículo')
+        }
+      }
+
+      // Verificar Content-Type para saber se é JSON ou arquivo direto
+      const contentType = response.headers.get('content-type')
+      
+      if (contentType && contentType.includes('application/json')) {
+        // Se backend retornar JSON com URL assinada
+        const data = await response.json()
+        if (data.url) {
+          window.open(data.url, '_blank')
+        }
+      } else {
+        // Se backend retornar arquivo direto (PDF, etc), fazer download
+        const blob = await response.blob()
+        
+        // Extrair nome do arquivo do header Content-Disposition ou usar padrão
+        const contentDisposition = response.headers.get('content-disposition')
+        let fileName = 'curriculo.pdf'
+        
+        if (contentDisposition) {
+          const fileNameMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/)
+          if (fileNameMatch) {
+            fileName = decodeURIComponent(fileNameMatch[1])
+          } else {
+            const simpleMatch = contentDisposition.match(/filename=([^;]+)/)
+            if (simpleMatch) {
+              fileName = simpleMatch[1].replace(/"/g, '')
+            }
+          }
+        }
+        
+        // Criar link de download e simular clique
+        const blobUrl = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(blobUrl)
+      }
     } catch (error) {
       toast({
         title: "❌ Erro",
-        description: "Erro ao baixar o currículo. Tente novamente.",
+        description: error instanceof Error ? error.message : "Erro ao baixar o currículo. Tente novamente.",
         variant: "destructive"
       })
     }
@@ -866,18 +929,35 @@ export default function MeuPerfilPage() {
                   {/* Área de Atuação */}
                   <div className="space-y-2">
                     <Label>Área de Atuação</Label>
-                    <Input
-                      placeholder="Ex: Desenvolvimento Backend"
-                      value={formAreaAtuacao.area_atuacao}
-                      disabled={!isEditingArea}
-                      onChange={(e) =>
-                        setFormAreaAtuacao({
-                          ...formAreaAtuacao,
-                          area_atuacao: e.target.value,
-                        })
-                      }
-                      className={!isEditingArea ? "bg-gray-50" : ""}
-                    />
+                    {isEditingArea ? (
+                      <Select
+                        value={formAreaAtuacao.area_atuacao}
+                        onValueChange={(value) =>
+                          setFormAreaAtuacao({
+                            ...formAreaAtuacao,
+                            area_atuacao: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma área" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TODAS_AREAS.map((area) => (
+                            <SelectItem key={area.id} value={area.id}>
+                              {area.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        placeholder="Ex: Desenvolvimento Backend"
+                        value={getAreaById(formAreaAtuacao.area_atuacao)?.nome || formAreaAtuacao.area_atuacao}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                    )}
                   </div>
 
                   {/* Bio */}

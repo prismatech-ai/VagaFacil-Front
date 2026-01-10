@@ -18,6 +18,7 @@ export default function CandidateDetailPage() {
   // In production, this would come from backend
   const [isDataUnlocked, setIsDataUnlocked] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [unlockedData, setUnlockedData] = useState<any>(null)
 
   const competenciasArray = [
     { nome: "React", nivelDeclarado: 4 as const, testeScore: 92 },
@@ -27,16 +28,6 @@ export default function CandidateDetailPage() {
     { nome: "Docker", nivelDeclarado: 3 as const, testeScore: 82 },
   ]
 
-  const mockUnlockedData = {
-    candidatoId: candidateId,
-    dadosPessoais: {
-      nome: "João Silva",
-      email: "joao.silva@email.com",
-      telefone: "(11) 98765-4321",
-      curriculo: "Link para o currículo",
-    },
-    competencias: competenciasArray,
-  }
 
   const handleShowInterest = async () => {
     setIsLoading(true)
@@ -44,13 +35,18 @@ export default function CandidateDetailPage() {
       // Usar a nova rota que aceita id_anonimo
       const response = await api.post(
         `/api/v1/pipeline/candidato-anonimo/${candidateId}/indicar-interesse?job_id=${jobId}`
-      )
+      ) as any
       
       toast({
         title: "Sucesso!",
         description: "Interesse demonstrado com sucesso. Você pode agora enviar um convite de entrevista.",
         variant: "default",
       })
+      
+      // Armazenar dados descompactados
+      if (response?.data) {
+        setUnlockedData(response.data)
+      }
       
       // Simular unlock de dados após demonstrar interesse
       setIsDataUnlocked(true)
@@ -89,7 +85,7 @@ export default function CandidateDetailPage() {
   return (
     <DetalhesCandidatoDadosLiberados
       candidatoId={candidateId}
-      dadosPessoais={mockUnlockedData.dadosPessoais}
+      dadosPessoais={unlockedData?.dadosPessoais || {}}
       competencias={competenciasArray}
       onBack={handleBack}
     />
